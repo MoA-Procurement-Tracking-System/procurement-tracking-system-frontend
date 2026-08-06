@@ -1,0 +1,6 @@
+{
+  "name": "MoA Procurement Tracking System",
+  "description": "Ministry of Agriculture (MoA) Internal Procurement Planning, Tracking and Reporting System with role-based auth and secure dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
