@@ -33,8 +33,6 @@ NEXT_PUBLIC_AUTH_LOGIN_PATH=/Auth/login
 NEXT_PUBLIC_AUTH_PASSWORD_RESET_PATH=/Auth/forgot-password
 ```
 
-
-
 ## Quality checks
 
 ```bash
