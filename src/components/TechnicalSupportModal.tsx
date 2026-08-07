@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Headphones,
   Mail,
@@ -24,6 +24,23 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({
   const [userEmail, setUserEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -40,7 +57,12 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="technical-support-title"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden"
+      >
         {/* Header */}
         <div className="bg-white border-b border-slate-200 text-slate-900 p-5 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -48,7 +70,10 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({
               <Headphones className="w-5 h-5 text-[#0b3c2a]" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900">
+              <h3
+                id="technical-support-title"
+                className="font-bold text-base text-slate-900"
+              >
                 {language === "am"
                   ? "የቴክኒክ ድጋፍ ማዕከል"
                   : "MoA ICT Technical Support"}
@@ -61,7 +86,11 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={
+              language === "am" ? "የድጋፍ መስኮቱን ዝጋ" : "Close technical support"
+            }
             className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />

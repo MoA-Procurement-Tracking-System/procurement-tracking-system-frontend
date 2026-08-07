@@ -1,4 +1,11 @@
+"use client";
+
 import React, { createContext, useContext, useState } from "react";
+import { authenticate, requestPasswordReset } from "../lib/authApi";
+
+export const REMEMBERED_EMAIL_STORAGE_KEY = "moa_remembered_email";
+const ACCESS_TOKEN_STORAGE_KEY = "moa_access_token";
+const REFRESH_TOKEN_STORAGE_KEY = "moa_refresh_token";
 
 interface AuthContextType {
   loginError: string | null;
@@ -6,11 +13,7 @@ interface AuthContextType {
   loginSuccess: boolean;
   viewState: "LOGIN" | "FORGOT_PASSWORD";
   setViewState: (view: "LOGIN" | "FORGOT_PASSWORD") => void;
-  login: (
-    username: string,
-    pass: string,
-    rememberMe: boolean,
-  ) => Promise<boolean>;
+  login: (email: string, pass: string, rememberMe: boolean) => Promise<boolean>;
   sendPasswordResetLink: (
     email: string,
   ) => Promise<{ success: boolean; message: string }>;
@@ -29,26 +32,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const login = async (
-    usernameInput: string,
+    emailInput: string,
     passwordInput: string,
+    rememberMe: boolean,
   ): Promise<boolean> => {
     setIsLoading(true);
     setLoginError(null);
     setLoginSuccess(false);
 
-    await new Promise((res) => setTimeout(res, 500));
+    try {
+      const normalizedEmail = emailInput.trim().toLowerCase();
+      const session = await authenticate(normalizedEmail, passwordInput);
 
-    const cleanInput = usernameInput.trim().toLowerCase();
+      const selectedStorage = rememberMe ? localStorage : sessionStorage;
+      const otherStorage = rememberMe ? sessionStorage : localStorage;
 
-    // Basic authentication validation
-    if (cleanInput && passwordInput.length >= 4) {
+      selectedStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+      selectedStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+      otherStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+      otherStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+
+      if (session.accessToken) {
+        selectedStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, session.accessToken);
+      }
+      if (session.refreshToken) {
+        selectedStorage.setItem(
+          REFRESH_TOKEN_STORAGE_KEY,
+          session.refreshToken,
+        );
+      }
+
+      if (rememberMe) {
+        localStorage.setItem(REMEMBERED_EMAIL_STORAGE_KEY, normalizedEmail);
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_STORAGE_KEY);
+      }
+
       setLoginSuccess(true);
-      setIsLoading(false);
       return true;
-    } else {
-      setLoginError("Invalid username or password.");
-      setIsLoading(false);
+    } catch (error) {
+      setLoginError(
+        error instanceof Error
+          ? error.message
+          : "Unable to sign in. Please try again.",
+      );
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,13 +86,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     email: string,
   ): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 500));
-    setIsLoading(false);
 
-    return {
-      success: true,
-      message: `A password reset link with security instructions has been sent to ${email}.`,
-    };
+    try {
+      await requestPasswordReset(email);
+      return { success: true, message: "" };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to process the password reset request.",
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const changeView = (view: "LOGIN" | "FORGOT_PASSWORD") => {
+    setLoginError(null);
+    setLoginSuccess(false);
+    setViewState(view);
   };
 
   return (
@@ -72,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading,
         loginSuccess,
         viewState,
-        setViewState,
+        setViewState: changeView,
         login,
         sendPasswordResetLink,
       }}

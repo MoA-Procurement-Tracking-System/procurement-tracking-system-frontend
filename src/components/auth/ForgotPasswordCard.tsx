@@ -34,9 +34,9 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
 
     const res = await sendPasswordResetLink(email);
     if (res.success) {
-      setSuccessMsg(res.message);
+      setSuccessMsg(t("resetLinkSent"));
     } else {
-      setErrorMsg("Failed to process password reset request.");
+      setErrorMsg(res.message || t("resetRequestFailed"));
     }
   };
 
@@ -45,7 +45,9 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
       {/* Top Header Bar */}
       <div className="w-full max-w-5xl flex justify-end">
         <button
+          type="button"
           onClick={() => setLanguage(language === "en" ? "am" : "en")}
+          aria-label={t("switchLanguage")}
           className="flex items-center space-x-2 bg-white/90 backdrop-blur border border-slate-200 shadow-sm hover:border-emerald-500 rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#0b3c2a] transition-all cursor-pointer"
         >
           <Globe className="w-3.5 h-3.5 text-emerald-700" />
@@ -71,7 +73,10 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
 
           {/* Success / Error Messages */}
           {successMsg && (
-            <div className="mt-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3.5 rounded-xl text-xs flex items-start space-x-2.5 animate-fade-in">
+            <div
+              role="status"
+              className="mt-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3.5 rounded-xl text-xs flex items-start space-x-2.5 animate-fade-in"
+            >
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium leading-relaxed">
                 {successMsg}
@@ -80,7 +85,10 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
           )}
 
           {errorMsg && (
-            <div className="mt-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5">
+            <div
+              role="alert"
+              className="mt-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5"
+            >
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium">{errorMsg}</div>
             </div>
@@ -89,15 +97,26 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
           {/* Form */}
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label
+                htmlFor="reset-email"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
+              >
                 {t("emailAddress")}
               </label>
               <div className="relative">
                 <input
+                  id="reset-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
+                  inputMode="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setSuccessMsg(null);
+                    setErrorMsg(null);
+                  }}
                   placeholder="name@moa.gov.et"
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0b3c2a]/30 focus:border-[#0b3c2a] focus:bg-white transition-all"
                 />
@@ -107,13 +126,13 @@ export const ForgotPasswordCard: React.FC<ForgotPasswordCardProps> = ({
             {/* Send Reset Link Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !email.trim()}
               className="w-full mt-2 py-3 px-4 bg-[#0b3c2a] hover:bg-[#062c1e] text-white font-semibold rounded-xl text-sm shadow-md shadow-emerald-950/20 hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-60"
             >
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Sending...</span>
+                  <span>{t("sendingResetLink")}</span>
                 </>
               ) : (
                 <>

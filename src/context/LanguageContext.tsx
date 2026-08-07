@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+"use client";
+
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { Language } from "../types";
 
 interface Translations {
@@ -22,12 +29,12 @@ export const DICTIONARY: Translations = {
     am: "ግብርና ሚኒስቴር",
   },
   usernameOrEmail: {
-    en: "Username or Email",
-    am: "የተጠቃሚ ስም ወይም ኢሜይል",
+    en: "Email Address",
+    am: "የኢሜይል አድራሻ",
   },
   usernamePlaceholder: {
-    en: "Enter officer, director, or admin",
-    am: "ኦፊሰር፣ ዳይሬክተር ወይም አስተዳዳሪ ያስገቡ",
+    en: "name@moa.gov.et",
+    am: "name@moa.gov.et",
   },
   password: {
     en: "Password",
@@ -49,6 +56,18 @@ export const DICTIONARY: Translations = {
     en: "Signing in...",
     am: "በመግባት ላይ...",
   },
+  showPassword: {
+    en: "Show password",
+    am: "የይለፍ ቃሉን አሳይ",
+  },
+  hidePassword: {
+    en: "Hide password",
+    am: "የይለፍ ቃሉን ደብቅ",
+  },
+  switchLanguage: {
+    en: "Switch language",
+    am: "ቋንቋ ቀይር",
+  },
   technicalSupport: {
     en: "Technical Support",
     am: "ቴክኒካዊ ድጋፍ",
@@ -68,6 +87,18 @@ export const DICTIONARY: Translations = {
   sendResetLink: {
     en: "Send Reset Link",
     am: "የማስተካከያ ሊንክ ላክ",
+  },
+  sendingResetLink: {
+    en: "Sending...",
+    am: "በመላክ ላይ...",
+  },
+  resetLinkSent: {
+    en: "If an account exists for this email, password reset instructions have been sent.",
+    am: "በዚህ ኢሜይል የተመዘገበ መለያ ካለ፣ የይለፍ ቃል ማስተካከያ መመሪያ ተልኳል።",
+  },
+  resetRequestFailed: {
+    en: "Failed to process the password reset request.",
+    am: "የይለፍ ቃል ማስተካከያ ጥያቄውን ማስኬድ አልተቻለም።",
   },
   backToSignIn: {
     en: "Back to Sign In",
@@ -145,26 +176,50 @@ const LanguageContext = createContext<LanguageContextType | undefined>(
   undefined,
 );
 
+const languageListeners = new Set<() => void>();
+
+function getStoredLanguage(): Language {
+  const storedLanguage = localStorage.getItem("moa_lang");
+  return storedLanguage === "am" ? "am" : "en";
+}
+
+function getServerLanguage(): Language {
+  return "en";
+}
+
+function subscribeToLanguage(onStoreChange: () => void) {
+  languageListeners.add(onStoreChange);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === "moa_lang") {
+      onStoreChange();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    languageListeners.delete(onStoreChange);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function updateStoredLanguage(language: Language) {
+  localStorage.setItem("moa_lang", language);
+  languageListeners.forEach((listener) => listener());
+}
+
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [language, setLanguage] = useState<Language>(() => {
-    if (typeof window === "undefined") {
-      return "en";
-    }
-
-    const storedLanguage = localStorage.getItem("moa_lang");
-    return storedLanguage === "am" || storedLanguage === "en"
-      ? storedLanguage
-      : "en";
-  });
+  const language = useSyncExternalStore(
+    subscribeToLanguage,
+    getStoredLanguage,
+    getServerLanguage,
+  );
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    localStorage.setItem("moa_lang", language);
+    document.documentElement.lang = language;
   }, [language]);
 
   const t = (key: string): string => {
@@ -175,7 +230,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage: updateStoredLanguage, t }}
+    >
       {children}
     </LanguageContext.Provider>
   );

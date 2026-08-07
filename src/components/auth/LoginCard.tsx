@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import {
   User,
   Lock,
@@ -11,11 +11,33 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { MoALogo } from "../MoALogo";
-import { useAuth } from "../../context/AuthContext";
+import {
+  REMEMBERED_EMAIL_STORAGE_KEY,
+  useAuth,
+} from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 
 interface LoginCardProps {
   onOpenTechSupport: () => void;
+}
+
+function subscribeToRememberedEmail(onStoreChange: () => void) {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === REMEMBERED_EMAIL_STORAGE_KEY) {
+      onStoreChange();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+function getRememberedEmail() {
+  return localStorage.getItem(REMEMBERED_EMAIL_STORAGE_KEY) ?? "";
+}
+
+function getServerRememberedEmail() {
+  return "";
 }
 
 export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
@@ -23,10 +45,17 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
     useAuth();
   const { language, setLanguage, t } = useLanguage();
 
-  const [username, setUsername] = useState("");
+  const rememberedEmail = useSyncExternalStore(
+    subscribeToRememberedEmail,
+    getRememberedEmail,
+    getServerRememberedEmail,
+  );
+  const [emailInput, setEmailInput] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberChoice, setRememberChoice] = useState<boolean | null>(null);
+  const username = emailInput ?? rememberedEmail;
+  const rememberMe = rememberChoice ?? Boolean(rememberedEmail);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +68,9 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
       {/* Top Header Bar with Language Toggle */}
       <div className="w-full max-w-5xl flex justify-end">
         <button
+          type="button"
           onClick={() => setLanguage(language === "en" ? "am" : "en")}
+          aria-label={t("switchLanguage")}
           className="flex items-center space-x-2 bg-white/90 backdrop-blur border border-slate-200 shadow-sm hover:border-emerald-500 rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#0b3c2a] transition-all cursor-pointer"
         >
           <Globe className="w-3.5 h-3.5 text-emerald-700" />
@@ -65,7 +96,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
 
           {/* Error Banner */}
           {loginError && (
-            <div className="mt-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5 animate-shake">
+            <div
+              role="alert"
+              className="mt-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5 animate-shake"
+            >
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium">{loginError}</div>
             </div>
@@ -73,7 +107,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
 
           {/* Success Banner */}
           {loginSuccess && (
-            <div className="mt-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5 animate-fade-in">
+            <div
+              role="status"
+              className="mt-5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs flex items-start space-x-2.5 animate-fade-in"
+            >
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium">Successfully signed in.</div>
             </div>
@@ -83,7 +120,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {/* Username or Email Input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
+              >
                 {t("usernameOrEmail")}
               </label>
               <div className="relative">
@@ -91,10 +131,14 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
                   <User className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
-                  type="text"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="username"
+                  inputMode="email"
                   required
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => setEmailInput(e.target.value)}
                   placeholder={t("usernamePlaceholder")}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0b3c2a]/30 focus:border-[#0b3c2a] focus:bg-white transition-all"
                 />
@@ -103,7 +147,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
 
             {/* Password Input */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
+              >
                 {t("password")}
               </label>
               <div className="relative">
@@ -111,7 +158,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
                   <Lock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -121,6 +171,10 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={
+                    showPassword ? t("hidePassword") : t("showPassword")
+                  }
+                  aria-pressed={showPassword}
                   className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   {showPassword ? (
@@ -138,7 +192,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={(e) => setRememberChoice(e.target.checked)}
                   className="w-4 h-4 rounded text-[#0b3c2a] border-slate-300 focus:ring-[#0b3c2a] cursor-pointer"
                 />
                 <span className="font-medium text-slate-700">
@@ -158,7 +212,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({ onOpenTechSupport }) => {
             {/* Sign In Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !username.trim() || !password}
               className="w-full mt-2 py-3 px-4 bg-[#0b3c2a] hover:bg-[#062c1e] text-white font-semibold rounded-xl text-sm shadow-md shadow-emerald-950/20 hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-60"
             >
               {isLoading ? (
