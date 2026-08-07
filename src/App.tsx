@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
