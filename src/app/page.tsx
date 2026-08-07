@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState } from "react";
+"use client"
 
 import App from "../App";
 
