@@ -1,6 +1,6 @@
-export type UserRole = 'OFFICER' | 'DIRECTOR' | 'ADMIN';
+export type UserRole = "OFFICER" | "DIRECTOR" | "ADMIN";
 
-export type UserStatus = 'ACTIVE' | 'INACTIVE';
+export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export interface User {
   id: string;
@@ -17,15 +17,15 @@ export interface User {
 }
 
 export type RequisitionStatus =
-  | 'DRAFT'
-  | 'PENDING_APPROVAL'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'IN_TENDER'
-  | 'AWARDED'
-  | 'FULFILLED';
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "REJECTED"
+  | "IN_TENDER"
+  | "AWARDED"
+  | "FULFILLED";
 
-export type PriorityLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type PriorityLevel = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 
 export interface RequisitionItem {
   id: string;
@@ -57,7 +57,7 @@ export interface Requisition {
     actionBy: string;
     role: string;
     date: string;
-    status: 'APPROVED' | 'REJECTED' | 'PENDING';
+    status: "APPROVED" | "REJECTED" | "PENDING";
     comments?: string;
   }[];
   tenderNumber?: string;
@@ -71,7 +71,7 @@ export interface Tender {
   requisitionId: string;
   openingDate: string;
   closingDate: string;
-  status: 'OPEN' | 'EVALUATION' | 'AWARDED' | 'CANCELLED';
+  status: "OPEN" | "EVALUATION" | "AWARDED" | "CANCELLED";
   estimatedValueETB: number;
   bidsCount: number;
   category: string;
@@ -85,7 +85,7 @@ export interface Vendor {
   email: string;
   phone: string;
   category: string;
-  status: 'VERIFIED' | 'PENDING' | 'BLACKLISTED';
+  status: "VERIFIED" | "PENDING" | "BLACKLISTED";
   rating: number; // 1-5
   totalContractsETB: number;
 }
@@ -108,8 +108,8 @@ export interface AuditLog {
   userName: string;
   action: string;
   ipAddress: string;
-  status: 'SUCCESS' | 'FAILURE';
+  status: "SUCCESS" | "FAILURE";
   details: string;
 }
 
-export type Language = 'en' | 'am';
+export type Language = "en" | "am";

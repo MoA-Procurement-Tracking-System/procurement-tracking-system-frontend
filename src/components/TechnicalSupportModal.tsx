@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
-import { Headphones, Mail, Phone, X, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import React, { useState } from "react";
+import {
+  Headphones,
+  Mail,
+  Phone,
+  X,
+  CheckCircle2,
+  ShieldAlert,
+} from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 interface TechnicalSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ isOpen, onClose }) => {
+export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { language } = useLanguage();
-  const [ticketSubject, setTicketSubject] = useState('');
-  const [ticketMessage, setTicketMessage] = useState('');
-  const [userEmail, setUserEmail] = useState('');
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketMessage, setTicketMessage] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
@@ -21,9 +31,9 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
-      setTicketSubject('');
-      setTicketMessage('');
-      setUserEmail('');
+      setTicketSubject("");
+      setTicketMessage("");
+      setUserEmail("");
       onClose();
     }, 2200);
   };
@@ -39,10 +49,14 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">
-                {language === 'am' ? 'የቴክኒክ ድጋፍ ማዕከል' : 'MoA ICT Technical Support'}
+                {language === "am"
+                  ? "የቴክኒክ ድጋፍ ማዕከል"
+                  : "MoA ICT Technical Support"}
               </h3>
               <p className="text-xs text-slate-500">
-                {language === 'am' ? 'የኢንፎርሜሽን እና ኮሙኒኬሽን ቴክኖሎጂ ዳይሬክቶሬት' : 'ICT & Systems Administration Directorate'}
+                {language === "am"
+                  ? "የኢንፎርሜሽን እና ኮሙኒኬሽን ቴክኖሎጂ ዳይሬክቶሬት"
+                  : "ICT & Systems Administration Directorate"}
               </p>
             </div>
           </div>
@@ -62,12 +76,14 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
                 <CheckCircle2 className="w-7 h-7" />
               </div>
               <h4 className="font-bold text-slate-800 text-lg">
-                {language === 'am' ? 'የድጋፍ ጥያቄዎ ተልኳል!' : 'Support Request Submitted!'}
+                {language === "am"
+                  ? "የድጋፍ ጥያቄዎ ተልኳል!"
+                  : "Support Request Submitted!"}
               </h4>
               <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                {language === 'am'
-                  ? 'የቴክኒክ ቡድናችን ጥያቄዎን መዝግቦ በኢሜይልዎ ምላሽ ይሰጥዎታል።'
-                  : 'Request #REQ-8921 logged. An ICT helpdesk specialist will respond shortly.'}
+                {language === "am"
+                  ? "የቴክኒክ ቡድናችን ጥያቄዎን መዝግቦ በኢሜይልዎ ምላሽ ይሰጥዎታል።"
+                  : "Request #REQ-8921 logged. An ICT helpdesk specialist will respond shortly."}
               </p>
             </div>
           ) : (
@@ -78,18 +94,22 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
                   <Phone className="w-4 h-4 text-[#0b3c2a] shrink-0" />
                   <div>
                     <span className="block font-semibold text-slate-900">
-                      {language === 'am' ? 'ነፃ የስልክ መስመር' : 'Hotline'}
+                      {language === "am" ? "ነፃ የስልክ መስመር" : "Hotline"}
                     </span>
-                    <span className="text-slate-600 font-mono">9090 / +251 11 646 0128</span>
+                    <span className="text-slate-600 font-mono">
+                      9090 / +251 11 646 0128
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 text-xs text-slate-700">
                   <Mail className="w-4 h-4 text-[#0b3c2a] shrink-0" />
                   <div>
                     <span className="block font-semibold text-slate-900">
-                      {language === 'am' ? 'ድጋፍ ኢሜይል' : 'Support Email'}
+                      {language === "am" ? "ድጋፍ ኢሜይል" : "Support Email"}
                     </span>
-                    <span className="text-slate-600 font-mono text-[11px]">support@moa.gov.et</span>
+                    <span className="text-slate-600 font-mono text-[11px]">
+                      support@moa.gov.et
+                    </span>
                   </div>
                 </div>
               </div>
@@ -98,9 +118,9 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
               <div className="flex items-start space-x-2.5 text-xs bg-white border border-amber-200 text-amber-900 p-3 rounded-lg shadow-xs">
                 <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <p>
-                  {language === 'am'
-                    ? 'የመለያ መቆለፍ ወይም የይለፍ ቃል መቀየር ችግር ካለዎት፣ እባክዎን የመምሪያዎትን የአይሲቲ አስተዳዳሪ ያነጋግሩ።'
-                    : 'For account unlock or credential resets, specify your official MoA Department ID below.'}
+                  {language === "am"
+                    ? "የመለያ መቆለፍ ወይም የይለፍ ቃል መቀየር ችግር ካለዎት፣ እባክዎን የመምሪያዎትን የአይሲቲ አስተዳዳሪ ያነጋግሩ።"
+                    : "For account unlock or credential resets, specify your official MoA Department ID below."}
                 </p>
               </div>
 
@@ -108,7 +128,7 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {language === 'am' ? 'የእርስዎ ኢሜይል' : 'Your MoA Email'}
+                    {language === "am" ? "የእርስዎ ኢሜይል" : "Your MoA Email"}
                   </label>
                   <input
                     type="email"
@@ -122,12 +142,16 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {language === 'am' ? 'የችግሩ ርዕስ' : 'Issue Subject'}
+                    {language === "am" ? "የችግሩ ርዕስ" : "Issue Subject"}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder={language === 'am' ? 'ለምሳሌ፡ የመግቢያ ችግር' : 'e.g. Cannot access requisition form'}
+                    placeholder={
+                      language === "am"
+                        ? "ለምሳሌ፡ የመግቢያ ችግር"
+                        : "e.g. Cannot access requisition form"
+                    }
                     value={ticketSubject}
                     onChange={(e) => setTicketSubject(e.target.value)}
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b3c2a]"
@@ -136,12 +160,16 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {language === 'am' ? 'የችግሩ ማብራሪያ' : 'Description of Issue'}
+                    {language === "am" ? "የችግሩ ማብራሪያ" : "Description of Issue"}
                   </label>
                   <textarea
                     required
                     rows={3}
-                    placeholder={language === 'am' ? 'ዝርዝር ማብራሪያ ያስገቡ...' : 'Describe what happened or any error code...'}
+                    placeholder={
+                      language === "am"
+                        ? "ዝርዝር ማብራሪያ ያስገቡ..."
+                        : "Describe what happened or any error code..."
+                    }
                     value={ticketMessage}
                     onChange={(e) => setTicketMessage(e.target.value)}
                     className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b3c2a] resize-none"
@@ -154,13 +182,13 @@ export const TechnicalSupportModal: React.FC<TechnicalSupportModalProps> = ({ is
                     onClick={onClose}
                     className="px-4 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
                   >
-                    {language === 'am' ? 'ሰርዝ' : 'Cancel'}
+                    {language === "am" ? "ሰርዝ" : "Cancel"}
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-2 text-xs font-medium text-white bg-[#0b3c2a] hover:bg-[#072a1d] rounded-lg transition-colors shadow-sm cursor-pointer"
                   >
-                    {language === 'am' ? 'ጥያቄ ላክ' : 'Submit Request'}
+                    {language === "am" ? "ጥያቄ ላክ" : "Submit Request"}
                   </button>
                 </div>
               </form>

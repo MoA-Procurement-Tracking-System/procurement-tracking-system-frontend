@@ -1,15 +1,26 @@
-import React from 'react';
+import React from "react";
 
 interface MoALogoProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   showText?: boolean;
 }
 
-export const MoALogo: React.FC<MoALogoProps> = ({ size = 'md', showText = true }) => {
+export const MoALogo: React.FC<MoALogoProps> = ({
+  size = "md",
+  showText = true,
+}) => {
   const dimensions = {
-    sm: { circle: 56, title: 'text-xs', subtitle: 'text-[9px]' },
-    md: { circle: 92, title: 'text-base font-extrabold', subtitle: 'text-[11px] font-semibold' },
-    lg: { circle: 120, title: 'text-xl font-black', subtitle: 'text-xs font-bold' },
+    sm: { circle: 56, title: "text-xs", subtitle: "text-[9px]" },
+    md: {
+      circle: 92,
+      title: "text-base font-extrabold",
+      subtitle: "text-[11px] font-semibold",
+    },
+    lg: {
+      circle: 120,
+      title: "text-xl font-black",
+      subtitle: "text-xs font-bold",
+    },
   }[size];
 
   return (
@@ -62,17 +73,22 @@ export const MoALogo: React.FC<MoALogoProps> = ({ size = 'md', showText = true }
 
       {showText && (
         <div className="mt-3 flex flex-col items-center">
-          <span className={`text-slate-900 tracking-tight font-extrabold ${dimensions.title}`}>
+          <span
+            className={`text-slate-900 tracking-tight font-extrabold ${dimensions.title}`}
+          >
             ግብርና ሚኒስቴር
           </span>
           <span
             className={`text-slate-900 font-serif font-semibold tracking-[0.2em] uppercase mt-1 ${dimensions.subtitle}`}
           >
-            MINISTRY <span className="text-[0.75em] tracking-normal font-sans font-normal">OF</span> AGRICULTURE
+            MINISTRY{" "}
+            <span className="text-[0.75em] tracking-normal font-sans font-normal">
+              OF
+            </span>{" "}
+            AGRICULTURE
           </span>
         </div>
       )}
     </div>
   );
 };
-

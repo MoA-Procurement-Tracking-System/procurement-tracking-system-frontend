@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { LanguageProvider } from './context/LanguageContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { LoginCard } from './components/auth/LoginCard';
-import { ForgotPasswordCard } from './components/auth/ForgotPasswordCard';
-import { TechnicalSupportModal } from './components/TechnicalSupportModal';
+import React, { useState } from "react";
+import { LanguageProvider } from "./context/LanguageContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { LoginCard } from "./components/auth/LoginCard";
+import { ForgotPasswordCard } from "./components/auth/ForgotPasswordCard";
+import { TechnicalSupportModal } from "./components/TechnicalSupportModal";
 
 const MainAppRouter: React.FC = () => {
   const { viewState } = useAuth();
@@ -15,12 +15,17 @@ const MainAppRouter: React.FC = () => {
   return (
     <>
       {/* Route Views */}
-      {viewState === 'LOGIN' && <LoginCard onOpenTechSupport={openSupport} />}
+      {viewState === "LOGIN" && <LoginCard onOpenTechSupport={openSupport} />}
 
-      {viewState === 'FORGOT_PASSWORD' && <ForgotPasswordCard onOpenTechSupport={openSupport} />}
+      {viewState === "FORGOT_PASSWORD" && (
+        <ForgotPasswordCard onOpenTechSupport={openSupport} />
+      )}
 
       {/* Global Technical Support Dialog */}
-      <TechnicalSupportModal isOpen={isTechSupportOpen} onClose={closeSupport} />
+      <TechnicalSupportModal
+        isOpen={isTechSupportOpen}
+        onClose={closeSupport}
+      />
     </>
   );
 };
