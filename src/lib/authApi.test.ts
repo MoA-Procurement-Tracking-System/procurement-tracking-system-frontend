@@ -1,83 +1,118 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AuthApiError, authenticate, requestPasswordReset } from "./authApi";
+import {
+  AuthApiError,
+  authenticate,
+  changePassword,
+  requestPasswordReset,
+  signOut,
+} from "./authApi";
 
 afterEach(() => {
   vi.restoreAllMocks();
-  vi.unstubAllEnvs();
 });
 
 describe("auth API", () => {
-  it("normalizes the email and reads tokens from a successful login", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.example.test/api/");
+  it("normalizes the identifier and sends remember-me to the same-origin BFF", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          data: {
-            accessToken: "access-token",
-            refreshToken: "refresh-token",
+          status: "AUTHENTICATED",
+          user: {
+            id: "1",
+            email: "officer@moa.gov.et",
+            username: "officer",
+            displayName: "Procurement Officer",
+            role: "OFFICER",
           },
+          expiresAt: new Date().toISOString(),
         }),
         { status: 200 },
       ),
     );
 
-    const session = await authenticate(" Officer@MOA.GOV.ET ", "secret");
+    const session = await authenticate(" Officer ", "secret", true);
 
-    expect(session.accessToken).toBe("access-token");
-    expect(session.refreshToken).toBe("refresh-token");
+    expect(session.user.role).toBe("OFFICER");
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.test/api/Auth/login",
+      "/api/auth/login",
       expect.objectContaining({
         method: "POST",
-        credentials: "include",
+        credentials: "same-origin",
         body: JSON.stringify({
-          email: "officer@moa.gov.et",
+          identifier: "officer",
           password: "secret",
+          rememberMe: true,
         }),
       }),
     );
   });
 
-  it("surfaces a useful API error message", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.example.test/api");
+  it("surfaces the backend's generic sign-in error", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ message: "Invalid email or password." }), {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({
+          message: "Unable to sign in with those credentials.",
+        }),
+        { status: 401 },
+      ),
     );
 
-    await expect(authenticate("officer@moa.gov.et", "wrong")).rejects.toThrow(
-      "Invalid email or password.",
+    await expect(authenticate("unknown", "wrong", false)).rejects.toEqual(
+      new AuthApiError("Unable to sign in with those credentials."),
     );
   });
 
-  it("uses the configured password-reset endpoint", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.example.test/api");
-    vi.stubEnv(
-      "NEXT_PUBLIC_AUTH_PASSWORD_RESET_PATH",
-      "/Account/request-reset",
-    );
+  it("uses the password lifecycle endpoints without returning browser tokens", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 204 }));
 
     await requestPasswordReset(" Officer@MOA.GOV.ET ");
+    await signOut();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.test/api/Account/request-reset",
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/auth/forgot-password",
       expect.objectContaining({
         body: JSON.stringify({ email: "officer@moa.gov.et" }),
       }),
     );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/auth/logout",
+      expect.objectContaining({ body: "{}" }),
+    );
   });
 
-  it("fails clearly when the API URL is missing", async () => {
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "");
-
-    await expect(authenticate("officer@moa.gov.et", "secret")).rejects.toEqual(
-      new AuthApiError(
-        "Authentication service is not configured. Contact technical support.",
+  it("submits all fields required to replace a temporary password", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "AUTHENTICATED",
+          user: {
+            id: "1",
+            email: "director@moa.gov.et",
+            username: null,
+            displayName: "Director",
+            role: "DIRECTOR",
+          },
+          expiresAt: new Date().toISOString(),
+        }),
+        { status: 200 },
       ),
+    );
+
+    await changePassword("Temporary1!", "New-Password2!", "New-Password2!");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/change-password",
+      expect.objectContaining({
+        body: JSON.stringify({
+          currentPassword: "Temporary1!",
+          newPassword: "New-Password2!",
+          confirmPassword: "New-Password2!",
+        }),
+      }),
     );
   });
 });
