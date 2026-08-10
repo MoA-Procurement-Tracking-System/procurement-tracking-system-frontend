@@ -6,7 +6,9 @@ and reporting system.
 ## What this application provides
 
 - Secure sign-in through a same-origin Next.js authentication proxy.
-- Forced password replacement for first-login users with temporary passwords.
+- Administrator user creation with email-based account invitations.
+- Password creation from single-use invitation links.
+- Forced temporary-password replacement for the bootstrap Administrator.
 - Password-reset request and completion screens.
 - Protected, role-specific dashboards.
 - Session-aware sign-out.
@@ -39,6 +41,9 @@ backend's session cookie.
 - “Remember me” stores only the user's email or username preference.
 - Protected pages validate the backend session during server rendering.
 - Temporary-password sessions can access only the password-change flow.
+- Invited users create their first password without entering a current password.
+- The user-management form accepts only name, email, and a non-Administrator
+  role; it never displays a password or invitation token.
 - Users are redirected to the dashboard assigned to their backend role.
 - Signing out asks the backend to revoke the session before returning to sign-in.
 
@@ -48,12 +53,15 @@ backend's session cookie.
 | -------------------------------- | ------------------------------------------------------- |
 | `/`                              | Sign-in and password-reset request                      |
 | `/change-password`               | Mandatory first-login password change                   |
+| `/create-password?token=...`     | Create a password from an account invitation            |
 | `/reset-password?token=...`      | Complete a password reset                               |
+| `/admin/users`                   | Administrator-only user creation                        |
 | `/dashboard/officer`             | Officer dashboard                                       |
 | `/dashboard/director`            | Director dashboard                                      |
 | `/dashboard/endorsing-committee` | Endorsing Committee dashboard                           |
 | `/dashboard/admin`               | Administrator dashboard                                 |
 | `/api/auth/[...path]`            | Same-origin proxy for approved authentication endpoints |
+| `/api/admin/users`               | Same-origin proxy for Administrator user invitations    |
 
 ## Prerequisites
 
@@ -129,7 +137,8 @@ npm run build
 - Set `BACKEND_API_URL` to a URL reachable from the Next.js server.
 - Keep `.env.local` and all deployment secrets out of Git.
 - Configure the backend's frontend URL, CORS origin, secure session settings,
-  database, and password-reset delivery for the deployed environment.
+  database, invitation delivery, and password-reset delivery for the deployed
+  environment.
 
 ## Related repository
 

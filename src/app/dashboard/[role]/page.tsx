@@ -1,4 +1,5 @@
 import { ClipboardCheck, FileClock, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MoALogo } from "../../../components/MoALogo";
 import { SignOutButton } from "../../../components/dashboard/SignOutButton";
@@ -85,7 +86,17 @@ export default async function DashboardPage({
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">Account access</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-bold text-slate-900">Account access</h2>
+            {session.user.role === "ADMIN" && (
+              <Link
+                href="/admin/users"
+                className="rounded-xl bg-[#064e3b] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#043b2d]"
+              >
+                Manage users
+              </Link>
+            )}
+          </div>
           <dl className="mt-5 grid gap-5 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-slate-500">Name</dt>

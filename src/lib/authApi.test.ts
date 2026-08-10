@@ -3,6 +3,8 @@ import {
   AuthApiError,
   authenticate,
   changePassword,
+  createInvitedUser,
+  createPassword,
   requestPasswordReset,
   signOut,
 } from "./authApi";
@@ -111,6 +113,67 @@ describe("auth API", () => {
           currentPassword: "Temporary1!",
           newPassword: "New-Password2!",
           confirmPassword: "New-Password2!",
+        }),
+      }),
+    );
+  });
+
+  it("creates an invited user's password without a current password", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ message: "Password created." }), {
+        status: 200,
+      }),
+    );
+
+    await createPassword(
+      "invitation-token",
+      "New-Password2!",
+      "New-Password2!",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/create-password",
+      expect.objectContaining({
+        body: JSON.stringify({
+          token: "invitation-token",
+          newPassword: "New-Password2!",
+          confirmPassword: "New-Password2!",
+        }),
+      }),
+    );
+  });
+
+  it("provisions a non-admin user with name, email and role only", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: "2",
+            email: "officer@moa.gov.et",
+            username: null,
+            displayName: "Procurement Officer",
+            role: "OFFICER",
+          },
+          invitationExpiresAt: new Date().toISOString(),
+          message: "Invitation sent.",
+        }),
+        { status: 201 },
+      ),
+    );
+
+    await createInvitedUser(
+      " Procurement Officer ",
+      " Officer@MOA.GOV.ET ",
+      "OFFICER",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/users",
+      expect.objectContaining({
+        body: JSON.stringify({
+          displayName: "Procurement Officer",
+          email: "officer@moa.gov.et",
+          role: "OFFICER",
         }),
       }),
     );

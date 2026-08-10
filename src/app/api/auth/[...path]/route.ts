@@ -10,6 +10,7 @@ const allowedPaths = new Set([
   "logout",
   "forgot-password",
   "reset-password",
+  "create-password",
 ]);
 
 const backendUrl = () =>

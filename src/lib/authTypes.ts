@@ -16,6 +16,14 @@ export interface AuthSession {
   expiresAt: string;
 }
 
+export type ProvisionableRole = Exclude<UserRole, "ADMIN">;
+
+export interface InvitedUserResponse {
+  user: AuthUser;
+  invitationExpiresAt: string;
+  message: string;
+}
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   OFFICER: "Officer",
   DIRECTOR: "Director",

@@ -1,4 +1,8 @@
-import type { AuthSession } from "./authTypes";
+import type {
+  AuthSession,
+  InvitedUserResponse,
+  ProvisionableRole,
+} from "./authTypes";
 
 export class AuthApiError extends Error {
   constructor(message: string) {
@@ -26,10 +30,10 @@ function errorMessage(payload: unknown, fallback: string): string {
   return fallback;
 }
 
-async function authRequest<T>(path: string, body?: object): Promise<T> {
+async function apiRequest<T>(path: string, body?: object): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/auth/${path}`, {
+    response = await fetch(path, {
       method: body ? "POST" : "GET",
       headers: body ? { "Content-Type": "application/json" } : undefined,
       credentials: "same-origin",
@@ -49,6 +53,10 @@ async function authRequest<T>(path: string, body?: object): Promise<T> {
     );
   }
   return payload as T;
+}
+
+function authRequest<T>(path: string, body?: object): Promise<T> {
+  return apiRequest<T>(`/api/auth/${path}`, body);
 }
 
 export function authenticate(
@@ -90,6 +98,30 @@ export async function resetPassword(
     token,
     newPassword,
     confirmPassword,
+  });
+}
+
+export async function createPassword(
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<void> {
+  await authRequest<{ message: string }>("create-password", {
+    token,
+    newPassword,
+    confirmPassword,
+  });
+}
+
+export function createInvitedUser(
+  displayName: string,
+  email: string,
+  role: ProvisionableRole,
+): Promise<InvitedUserResponse> {
+  return apiRequest<InvitedUserResponse>("/api/admin/users", {
+    displayName: displayName.trim(),
+    email: email.trim().toLowerCase(),
+    role,
   });
 }
 
