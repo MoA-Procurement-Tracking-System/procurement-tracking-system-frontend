@@ -1,8 +1,8 @@
-export interface AuthSession {
-  accessToken?: string;
-  refreshToken?: string;
-  payload: unknown;
-}
+import type {
+  AuthSession,
+  InvitedUserResponse,
+  ProvisionableRole,
+} from "./authTypes";
 
 export class AuthApiError extends Error {
   constructor(message: string) {
@@ -11,78 +11,34 @@ export class AuthApiError extends Error {
   }
 }
 
-const DEFAULT_LOGIN_PATH = "/Auth/login";
-const DEFAULT_PASSWORD_RESET_PATH = "/Auth/forgot-password";
-
-function getApiUrl(path: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  if (!baseUrl) {
-    throw new AuthApiError(
-      "Authentication service is not configured. Contact technical support.",
-    );
-  }
-
-  return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
-}
-
-function getStringProperty(
-  value: unknown,
-  propertyNames: string[],
-): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  for (const propertyName of propertyNames) {
-    const propertyValue = record[propertyName];
-    if (typeof propertyValue === "string" && propertyValue.trim()) {
-      return propertyValue;
-    }
-  }
-
-  return getStringProperty(record.data, propertyNames);
-}
-
 async function readResponseBody(response: Response): Promise<unknown> {
-  const responseText = await response.text();
-
-  if (!responseText) {
-    return null;
-  }
-
+  const text = await response.text();
+  if (!text) return null;
   try {
-    return JSON.parse(responseText) as unknown;
+    return JSON.parse(text) as unknown;
   } catch {
-    return responseText;
+    return text;
   }
 }
 
-function getErrorMessage(payload: unknown, fallback: string): string {
-  if (typeof payload === "string" && payload.trim()) {
-    return payload;
+function errorMessage(payload: unknown, fallback: string): string {
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (payload && typeof payload === "object") {
+    const message = (payload as Record<string, unknown>).message;
+    if (typeof message === "string" && message.trim()) return message;
   }
-
-  return (
-    getStringProperty(payload, ["message", "detail", "title", "error"]) ??
-    fallback
-  );
+  return fallback;
 }
 
-async function postJson(path: string, body: object): Promise<unknown> {
-  const url = getApiUrl(path);
+async function apiRequest<T>(path: string, body?: object): Promise<T> {
   let response: Response;
-
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(body),
+    response = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      credentials: "same-origin",
+      cache: "no-store",
+      body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new AuthApiError(
@@ -91,47 +47,84 @@ async function postJson(path: string, body: object): Promise<unknown> {
   }
 
   const payload = await readResponseBody(response);
-
   if (!response.ok) {
     throw new AuthApiError(
-      getErrorMessage(
-        payload,
-        "The request could not be completed. Please check your details and try again.",
-      ),
+      errorMessage(payload, "The request could not be completed."),
     );
   }
-
-  return payload;
+  return payload as T;
 }
 
-export async function authenticate(
-  email: string,
-  password: string,
-): Promise<AuthSession> {
-  const payload = await postJson(
-    process.env.NEXT_PUBLIC_AUTH_LOGIN_PATH ?? DEFAULT_LOGIN_PATH,
-    {
-      email: email.trim().toLowerCase(),
-      password,
-    },
-  );
+function authRequest<T>(path: string, body?: object): Promise<T> {
+  return apiRequest<T>(`/api/auth/${path}`, body);
+}
 
-  return {
-    accessToken: getStringProperty(payload, [
-      "accessToken",
-      "access_token",
-      "token",
-      "jwt",
-    ]),
-    refreshToken: getStringProperty(payload, ["refreshToken", "refresh_token"]),
-    payload,
-  };
+export function authenticate(
+  identifier: string,
+  password: string,
+  rememberMe: boolean,
+): Promise<AuthSession> {
+  return authRequest<AuthSession>("login", {
+    identifier: identifier.trim().toLowerCase(),
+    password,
+    rememberMe,
+  });
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
-  await postJson(
-    process.env.NEXT_PUBLIC_AUTH_PASSWORD_RESET_PATH ??
-      DEFAULT_PASSWORD_RESET_PATH,
-    { email: email.trim().toLowerCase() },
-  );
+  await authRequest<{ message: string }>("forgot-password", {
+    email: email.trim().toLowerCase(),
+  });
+}
+
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<AuthSession> {
+  return authRequest<AuthSession>("change-password", {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<void> {
+  await authRequest<{ message: string }>("reset-password", {
+    token,
+    newPassword,
+    confirmPassword,
+  });
+}
+
+export async function createPassword(
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<void> {
+  await authRequest<{ message: string }>("create-password", {
+    token,
+    newPassword,
+    confirmPassword,
+  });
+}
+
+export function createInvitedUser(
+  displayName: string,
+  email: string,
+  role: ProvisionableRole,
+): Promise<InvitedUserResponse> {
+  return apiRequest<InvitedUserResponse>("/api/admin/users", {
+    displayName: displayName.trim(),
+    email: email.trim().toLowerCase(),
+    role,
+  });
+}
+
+export async function signOut(): Promise<void> {
+  await authRequest<void>("logout", {});
 }

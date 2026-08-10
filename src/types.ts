@@ -1,6 +1,6 @@
-export type UserRole = "OFFICER" | "DIRECTOR" | "ADMIN";
+export type UserRole = "OFFICER" | "DIRECTOR" | "ENDORSING_COMMITTEE" | "ADMIN";
 
-export type UserStatus = "ACTIVE" | "INACTIVE";
+export type UserStatus = "INVITED" | "ACTIVE" | "INACTIVE";
 
 export interface User {
   id: string;
