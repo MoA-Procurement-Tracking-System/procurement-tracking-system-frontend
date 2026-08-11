@@ -27,7 +27,7 @@ export interface InvitedUserResponse {
 export const ROLE_LABELS: Record<UserRole, string> = {
   OFFICER: "Officer",
   DIRECTOR: "Director",
-  ENDORSING_COMMITTEE: "Endorsing Committee",
+  ENDORSING_COMMITTEE: "Endorsing Committee Member",
   ADMIN: "Administrator",
 };
 
@@ -40,4 +40,10 @@ export const ROLE_SLUGS: Record<UserRole, string> = {
 
 export function dashboardPath(role: UserRole): string {
   return `/dashboard/${ROLE_SLUGS[role]}`;
+}
+
+export function roleFromSlug(slug: string): UserRole | undefined {
+  return (Object.entries(ROLE_SLUGS) as [UserRole, string][]).find(
+    ([, roleSlug]) => roleSlug === slug,
+  )?.[0];
 }
