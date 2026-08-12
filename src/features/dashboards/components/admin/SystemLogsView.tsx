@@ -38,7 +38,8 @@ export const INITIAL_SYSTEM_LOGS: SystemAuditLogItem[] = [
     role: "DIRECTOR",
     action: "APPROVE_PLAN",
     recordId: "MoA/BREFONS/2018/APP-01",
-    details: "Procurement Director approved plan and submitted to Management Committee",
+    details:
+      "Procurement Director approved plan and submitted to Management Committee",
   },
   {
     id: "log-4",
@@ -55,15 +56,13 @@ interface SystemLogsViewProps {
   logs?: SystemAuditLogItem[];
 }
 
-export function SystemLogsView({ logs = INITIAL_SYSTEM_LOGS }: SystemLogsViewProps) {
+export function SystemLogsView({
+  logs = INITIAL_SYSTEM_LOGS,
+}: SystemLogsViewProps) {
   return (
     <div className="space-y-6">
       {/* Top Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-
-
-
-      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"></div>
 
       {/* Main Card Container */}
       <section className="rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-8 shadow-xs">
@@ -73,7 +72,8 @@ export function SystemLogsView({ logs = INITIAL_SYSTEM_LOGS }: SystemLogsViewPro
             System Audit Log Trail
           </h2>
           <p className="mt-0.5 text-xs text-[#64748b] font-medium">
-            Complete history of user logins, role actions, package edits, and approvals
+            Complete history of user logins, role actions, package edits, and
+            approvals
           </p>
         </div>
 

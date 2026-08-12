@@ -102,9 +102,12 @@ interface UserManagementViewProps {
   initialMode?: "list" | "invite";
 }
 
-export function UserManagementView({ initialMode = "list" }: UserManagementViewProps) {
+export function UserManagementView({
+  initialMode = "list",
+}: UserManagementViewProps) {
   const [viewMode, setViewMode] = useState<"list" | "invite">(initialMode);
-  const [users, setUsers] = useState<UserManagementRecord[]>(INITIAL_USER_RECORDS);
+  const [users, setUsers] =
+    useState<UserManagementRecord[]>(INITIAL_USER_RECORDS);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -126,7 +129,7 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
           return { ...user, status: nextStatus };
         }
         return user;
-      })
+      }),
     );
   };
 
@@ -146,7 +149,9 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
     };
 
     setUsers([newRecord, ...users]);
-    setSuccessMessage(`Invitation link sent successfully to ${inviteEmail.trim()}!`);
+    setSuccessMessage(
+      `Invitation link sent successfully to ${inviteEmail.trim()}!`,
+    );
 
     // Reset form
     setInviteFullName("");
@@ -167,8 +172,7 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.username.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRole =
-      selectedRole === "ALL" || u.role === selectedRole;
+    const matchesRole = selectedRole === "ALL" || u.role === selectedRole;
 
     const matchesStatus =
       selectedStatus === "ALL" || u.status === selectedStatus;
@@ -212,12 +216,10 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
               onClick={() => setViewMode("list")}
               className="text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              
               User Management
             </button>
             <ChevronRight size={13} className="text-slate-400" />
             <span className="text-[#0f172a] font-bold flex items-center gap-1.5">
-              
               Invite New User
             </span>
           </div>
@@ -232,15 +234,17 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
                   Invite New User
                 </h1>
                 <p className="mt-1 text-xs text-[#64748b] font-medium">
-                  Specify user credentials and assigned PTS role to generate an official registration invitation.
+                  Specify user credentials and assigned PTS role to generate an
+                  official registration invitation.
                 </p>
               </div>
-
-              
             </div>
 
             {/* Invite Form */}
-            <form onSubmit={handleSendInvitation} className="space-y-5 max-w-3xl">
+            <form
+              onSubmit={handleSendInvitation}
+              className="space-y-5 max-w-3xl"
+            >
               {/* Full Name */}
               <div>
                 <label className="text-xs font-bold text-[#0f172a] mb-1.5 block">
@@ -281,17 +285,23 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
                   onChange={(e) => setInviteRole(e.target.value)}
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl px-4 py-3 text-sm text-[#0f172a] w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all cursor-pointer"
                 >
-                  <option value="OFFICER">Officer (Procurement operations / workflow)</option>
-                  <option value="DIRECTOR">Director (Directorate Oversight)</option>
-                  <option value="ENDORSEMENT_COMMITTEE">Endorsement Committee (Committee Review)</option>
+                  <option value="OFFICER">
+                    Officer (Procurement operations / workflow)
+                  </option>
+                  <option value="DIRECTOR">
+                    Director (Directorate Oversight)
+                  </option>
+                  <option value="ENDORSEMENT_COMMITTEE">
+                    Endorsement Committee (Committee Review)
+                  </option>
                 </select>
 
                 <p className="text-xs text-[#64748b] font-medium mt-2 flex items-center gap-1.5">
                   <Info className="w-4 h-4 text-[#047857] shrink-0" />
-                  Admin roles are excluded from normal invitations. Creation of additional Admins is restricted to specialized Admin actions.
+                  Admin roles are excluded from normal invitations. Creation of
+                  additional Admins is restricted to specialized Admin actions.
                 </p>
               </div>
-
 
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4">
@@ -320,17 +330,15 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                
                 <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">
                   User Management
                 </h1>
               </div>
               <p className="mt-1 text-sm text-[#64748b] font-medium">
-                Manage system accounts, user permissions, and send user invitation links.
+                Manage system accounts, user permissions, and send user
+                invitation links.
               </p>
             </div>
-
-            
           </div>
 
           {/* User Management Table Card */}
@@ -342,7 +350,8 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
                   User Management Table
                 </h2>
                 <p className="mt-0.5 text-xs text-[#64748b] font-medium">
-                  Assign PTS roles, issue invitations, toggle suspension, and manage user security
+                  Assign PTS roles, issue invitations, toggle suspension, and
+                  manage user security
                 </p>
               </div>
 
@@ -380,7 +389,9 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
                   <option value="ALL">All Roles</option>
                   <option value="OFFICER">Officer</option>
                   <option value="DIRECTOR">Director</option>
-                  <option value="ENDORSEMENT_COMMITTEE">Endorsement Committee</option>
+                  <option value="ENDORSEMENT_COMMITTEE">
+                    Endorsement Committee
+                  </option>
                   <option value="ADMIN">Administrator</option>
                 </select>
 
@@ -401,12 +412,16 @@ export function UserManagementView({ initialMode = "list" }: UserManagementViewP
               <table className="w-full text-left border-collapse min-w-[750px]">
                 <thead>
                   <tr className="bg-[#f8fafc] text-[#334155] text-xs font-bold">
-                    <th className="py-3.5 px-4 font-bold">User Name & Details</th>
+                    <th className="py-3.5 px-4 font-bold">
+                      User Name & Details
+                    </th>
                     <th className="py-3.5 px-4 font-bold">Email Address</th>
                     <th className="py-3.5 px-4 font-bold">Assigned Role</th>
                     <th className="py-3.5 px-4 font-bold">Account Status</th>
                     <th className="py-3.5 px-4 font-bold">Last Login</th>
-                    <th className="py-3.5 px-4 font-bold text-center">Actions</th>
+                    <th className="py-3.5 px-4 font-bold text-center">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="text-xs">

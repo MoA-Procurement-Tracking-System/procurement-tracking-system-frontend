@@ -134,11 +134,9 @@ export function DashboardOverview({
                 </div>
               </article>
             );
-          }
+          },
         )}
       </section>
     </div>
   );
 }
-
-

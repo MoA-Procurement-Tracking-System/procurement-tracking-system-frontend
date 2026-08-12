@@ -5,7 +5,10 @@ import { History, ShieldCheck, UserCheck, Users, UserX } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
 import { getDashboardHeading } from "../../dashboard.config";
 import { DashboardOverview } from "../DashboardOverview";
-import { RecentAuditTrailTable, type DemoAuditLog } from "./RecentAuditTrailTable";
+import {
+  RecentAuditTrailTable,
+  type DemoAuditLog,
+} from "./RecentAuditTrailTable";
 import { UserAccessTable, type DemoUser } from "./UserAccessTable";
 
 // Initial Demo Data matching the reference screenshot
@@ -97,7 +100,8 @@ const INITIAL_DEMO_LOGS: DemoAuditLog[] = [
     userAndRole: "director (DIRECTOR)",
     action: "APPROVE_PLAN",
     recordId: "MoA/BREFONS/2018/APP-01",
-    details: "Procurement Director approved plan and submitted to Management Committee",
+    details:
+      "Procurement Director approved plan and submitted to Management Committee",
   },
   {
     id: "log-4",
@@ -122,14 +126,16 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
       prevUsers.map((u) =>
         u.id === userId
           ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" }
-          : u
-      )
+          : u,
+      ),
     );
   };
 
   const totalAccounts = users.length;
   const activeAccess = users.filter((u) => u.status === "Active").length;
-  const deactivatedAccounts = users.filter((u) => u.status === "Inactive").length;
+  const deactivatedAccounts = users.filter(
+    (u) => u.status === "Inactive",
+  ).length;
 
   const officersCount = users.filter((u) => u.role === "OFFICER").length;
   const directorsCount = users.filter((u) => u.role === "DIRECTOR").length;
@@ -178,14 +184,16 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
         workspaces={[
           {
             title: "User management",
-            description: "Create authorized users and send account invitations.",
+            description:
+              "Create authorized users and send account invitations.",
             href: "/admin/users",
             actionLabel: "Manage users",
             icon: Users,
           },
           {
             title: "System logs",
-            description: "Review timestamped authentication and system activity.",
+            description:
+              "Review timestamped authentication and system activity.",
             href: "/workspace/system-logs",
             actionLabel: "Review logs",
             icon: History,

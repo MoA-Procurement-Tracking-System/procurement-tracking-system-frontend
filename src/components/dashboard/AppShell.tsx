@@ -73,9 +73,7 @@ export function AppShell({
   const sidebar = (
     <aside className="flex h-full w-64 flex-col justify-between bg-[#0A3C2F] text-white border-r border-[#125442] shrink-0 z-20">
       <div>
-        
         <div className="p-4 flex items-center gap-3.5 border-b border-[#145241] bg-[#072F25]">
-          
           <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-white shadow-sm border border-emerald-300/30 relative">
             <Image
               src="/moa-logo.png"

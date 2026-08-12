@@ -16,7 +16,10 @@ interface UserAccessTableProps {
   onToggleStatus?: (userId: string) => void;
 }
 
-export function UserAccessTable({ users, onToggleStatus }: UserAccessTableProps) {
+export function UserAccessTable({
+  users,
+  onToggleStatus,
+}: UserAccessTableProps) {
   const renderRoleName = (role: string) => {
     switch (role.toUpperCase()) {
       case "OFFICER":
@@ -42,12 +45,12 @@ export function UserAccessTable({ users, onToggleStatus }: UserAccessTableProps)
             User Management Table
           </h2>
           <p className="mt-0.5 text-xs text-[#64748b] font-medium">
-            Assign PTS roles, issue invitations, toggle suspension, and manage user security
+            Assign PTS roles, issue invitations, toggle suspension, and manage
+            user security
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          
           <Link
             href="/admin/users"
             className="shrink-0 text-xs font-bold text-[#047857] hover:text-[#065f46] flex items-center gap-1 transition-colors ml-2"

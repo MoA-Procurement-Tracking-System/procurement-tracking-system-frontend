@@ -28,7 +28,8 @@ export function RecentAuditTrailTable({ logs }: RecentAuditTrailTableProps) {
             System Audit Log Trail
           </h2>
           <p className="text-xs text-[#64748b] font-medium mt-0.5">
-            Complete history of user logins, role actions, package edits, and approvals
+            Complete history of user logins, role actions, package edits, and
+            approvals
           </p>
         </div>
 
@@ -70,7 +71,9 @@ export function RecentAuditTrailTable({ logs }: RecentAuditTrailTableProps) {
                   <td className="py-4 px-4 font-bold text-[#0f172a] align-middle max-w-[140px]">
                     <div>
                       <span>{log.user}</span>{" "}
-                      <span className="inline-block">({log.role || "ADMIN"})</span>
+                      <span className="inline-block">
+                        ({log.role || "ADMIN"})
+                      </span>
                     </div>
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap align-middle">
