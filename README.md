@@ -60,8 +60,26 @@ backend's session cookie.
 | `/dashboard/director`            | Director dashboard                                      |
 | `/dashboard/endorsing-committee` | Endorsing Committee dashboard                           |
 | `/dashboard/admin`               | Administrator dashboard                                 |
+| `/workspace/[section]`           | Authorized role workspace                               |
+| `/access-denied`                 | Signed-in unauthorized-access response                  |
 | `/api/auth/[...path]`            | Same-origin proxy for approved authentication endpoints |
 | `/api/admin/users`               | Same-origin proxy for Administrator user invitations    |
+
+## Role navigation
+
+The reusable application sidebar is generated from a centralized permission
+matrix. Pages repeat the authorization check on the server so hiding a link is
+not the only access control.
+
+| Role                       | Sidebar links                                                     |
+| -------------------------- | ----------------------------------------------------------------- |
+| Officer                    | Dashboard, Projects, Contracts, Activity Tracker                  |
+| Director                   | Dashboard, Projects, Plan for Review, Committee Progress, Reports |
+| Endorsing Committee Member | Dashboard, Plan for Review, My Decisions                          |
+| Administrator              | Dashboard, User Management, System Logs (Timestamp)               |
+
+The signed-in user's name and role are displayed in the application header and
+sidebar account area.
 
 ## Prerequisites
 
@@ -99,6 +117,10 @@ backend's session cookie.
 
    `BACKEND_API_URL` is server-only. Do not rename it to a `NEXT_PUBLIC_*`
    variable or expose backend credentials through it.
+
+   Do not add `MAILERSEND_API_TOKEN`, `MAILERSEND_FROM_EMAIL`, or
+   `MAILERSEND_FROM_NAME` to the frontend. MailerSend is called only by the
+   backend after the Administrator's request has been authenticated.
 
 4. Start the development server:
 

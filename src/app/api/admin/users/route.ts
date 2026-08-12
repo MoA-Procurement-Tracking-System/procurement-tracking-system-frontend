@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const backendUrl = () =>
   (process.env.BACKEND_API_URL ?? "http://localhost:5000").replace(/\/$/, "");
+const BACKEND_TIMEOUT_MS = 15_000;
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       },
       cache: "no-store",
       body: requestBody,
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
 
     const contentType = backendResponse.headers.get("content-type");

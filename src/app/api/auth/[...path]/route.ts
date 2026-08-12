@@ -15,6 +15,7 @@ const allowedPaths = new Set([
 
 const backendUrl = () =>
   (process.env.BACKEND_API_URL ?? "http://localhost:5000").replace(/\/$/, "");
+const BACKEND_TIMEOUT_MS = 15_000;
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
@@ -54,6 +55,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
         },
         cache: "no-store",
         body: requestBody || undefined,
+        signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       },
     );
 
