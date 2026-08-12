@@ -28,7 +28,9 @@ async function proxy(request: NextRequest, context: RouteContext) {
 
   if (request.method !== "GET") {
     const origin = request.headers.get("origin");
-    if (origin && origin !== request.nextUrl.origin) {
+    const expectedOrigin =
+      process.env.APP_ORIGIN?.replace(/\/$/, "") ?? request.nextUrl.origin;
+    if (origin && origin !== expectedOrigin) {
       return Response.json(
         { message: "Request origin is not allowed." },
         { status: 403 },
