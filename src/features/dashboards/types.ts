@@ -1,6 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 
-export type DashboardTone = "blue" | "emerald" | "orange" | "slate" | "violet";
+export type DashboardTone =
+  | "blue"
+  | "emerald"
+  | "orange"
+  | "slate"
+  | "violet"
+  | "rose"
+  | "purple";
 
 export interface DashboardMetric {
   label: string;
@@ -8,6 +15,7 @@ export interface DashboardMetric {
   detail: string;
   icon: LucideIcon;
   tone: DashboardTone;
+  hasRightAccent?: boolean;
 }
 
 export interface DashboardWorkspace {
@@ -22,3 +30,4 @@ export interface DashboardFocusItem {
   title: string;
   description: string;
 }
+

@@ -1,3 +1,5 @@
+import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLogsView";
+import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -21,6 +23,14 @@ export default async function WorkspaceSectionPage({
   const session = await requireAuthenticatedSession();
   if (!canAccessWorkspaceSection(session.user.role, section)) {
     redirect("/access-denied");
+  }
+
+  if (section === "system-logs") {
+    return <SystemLogsView />;
+  }
+
+  if (section === "user-management") {
+    return <UserManagementView />;
   }
 
   return (

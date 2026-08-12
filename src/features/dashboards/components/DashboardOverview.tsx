@@ -1,21 +1,9 @@
-import { ArrowRight, DatabaseZap, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 import type { AuthUser } from "@/lib/authTypes";
-import { ROLE_LABELS } from "@/lib/authTypes";
 import type {
   DashboardFocusItem,
   DashboardMetric,
-  DashboardTone,
   DashboardWorkspace,
 } from "../types";
-
-const toneClasses: Record<DashboardTone, string> = {
-  blue: "bg-blue-50 text-blue-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  orange: "bg-orange-50 text-orange-700",
-  slate: "bg-slate-100 text-slate-700",
-  violet: "bg-violet-50 text-violet-700",
-};
 
 interface DashboardOverviewProps {
   user: AuthUser;
@@ -44,175 +32,113 @@ export function DashboardOverview({
 }: DashboardOverviewProps) {
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-2xl bg-[#064a3a] text-white shadow-lg">
-        <div className="grid gap-6 px-6 py-7 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
-              {eyebrow}
-            </p>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
-              Welcome, {user.displayName}
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-50">
-              {description}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-            <ShieldCheck
-              size={24}
-              className="shrink-0 text-lime-300"
-              aria-hidden="true"
-            />
-            <div>
-              <p className="text-xs text-emerald-100">Access verified</p>
-              <p className="text-sm font-bold">{ROLE_LABELS[user.role]}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section
         aria-label="Dashboard summary"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
-        {metrics.map(({ label, value, detail, icon: Icon, tone }) => (
-          <article
-            key={label}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-600">{label}</p>
-                <p className="mt-2 text-2xl font-extrabold text-slate-950">
-                  {value}
-                </p>
-              </div>
-              <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${toneClasses[tone]}`}
+        {metrics.map(
+          ({ label, value, detail, icon: Icon, tone, hasRightAccent }) => {
+            // Color and border mappings matching the reference
+            let titleColorClass = "text-slate-800";
+            let iconBgClass = "bg-blue-50 text-blue-600";
+            let detailColorClass = "text-slate-400";
+            let cardBorderClass = "border border-slate-200/80";
+
+            if (
+              tone === "emerald" ||
+              label.toLowerCase().includes("active access")
+            ) {
+              titleColorClass = "text-emerald-900";
+              iconBgClass = "bg-emerald-50 text-emerald-600";
+              detailColorClass = "text-emerald-900/80 font-medium";
+              cardBorderClass =
+                hasRightAccent !== false
+                  ? "border border-emerald-200/90 border-r-[5px] border-r-emerald-500"
+                  : "border border-emerald-200/90";
+            } else if (
+              tone === "rose" ||
+              label.toLowerCase().includes("deactivat") ||
+              label.toLowerCase().includes("suspended")
+            ) {
+              titleColorClass = "text-rose-950";
+              iconBgClass = "bg-rose-50 text-rose-500";
+              detailColorClass = "text-rose-900/80 font-medium";
+              cardBorderClass =
+                hasRightAccent !== false
+                  ? "border border-rose-200/90 border-r-[5px] border-r-rose-500"
+                  : "border border-rose-200/90";
+            } else if (
+              tone === "purple" ||
+              tone === "violet" ||
+              label.toLowerCase().includes("role")
+            ) {
+              titleColorClass = "text-slate-800";
+              iconBgClass = "bg-purple-50 text-purple-600";
+              detailColorClass = "text-slate-400 font-normal";
+              cardBorderClass = hasRightAccent
+                ? "border border-purple-200/90 border-r-[5px] border-r-purple-500"
+                : "border border-purple-100/90";
+            } else if (tone === "orange") {
+              titleColorClass = "text-orange-950";
+              iconBgClass = "bg-orange-50 text-orange-600";
+              detailColorClass = "text-slate-400";
+              cardBorderClass =
+                hasRightAccent !== false
+                  ? "border border-orange-200/90 border-r-[5px] border-r-orange-500"
+                  : "border border-orange-200/90";
+            } else {
+              // Default blue tone
+              titleColorClass = "text-slate-800";
+              iconBgClass = "bg-blue-50 text-blue-600";
+              detailColorClass = "text-slate-400 font-normal";
+              cardBorderClass = hasRightAccent
+                ? "border border-blue-200/90 border-r-[5px] border-r-blue-500"
+                : "border border-slate-200/80";
+            }
+
+            return (
+              <article
+                key={label}
+                className={`flex flex-col justify-between rounded-[20px] bg-white p-5 shadow-xs transition-all duration-200 hover:shadow-md min-h-[175px] ${cardBorderClass}`}
               >
-                <Icon size={21} aria-hidden="true" />
-              </div>
-            </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">{detail}</p>
-          </article>
-        ))}
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(19rem,0.8fr)]">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-950">
-              {workspaceTitle}
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              {workspaceDescription}
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {workspaces.map(
-              ({
-                title,
-                description: itemDescription,
-                href,
-                actionLabel,
-                icon: Icon,
-              }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="group rounded-xl border border-slate-200 p-4 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-sm"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-white">
-                      <Icon size={20} aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-slate-900">{title}</h3>
-                      <p className="mt-1 text-sm leading-5 text-slate-600">
-                        {itemDescription}
-                      </p>
-                      <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800">
-                        {actionLabel}
-                        <ArrowRight
-                          size={16}
-                          aria-hidden="true"
-                          className="transition-transform group-hover:translate-x-0.5"
-                        />
-                      </span>
-                    </div>
+                {/* 1. TOP ROW: Title on Left, Icon Badge on Right */}
+                <div className="flex items-start justify-between gap-3">
+                  <h3
+                    className={`text-[12px] font-bold uppercase tracking-wider leading-tight max-w-[150px] ${titleColorClass}`}
+                  >
+                    {label}
+                  </h3>
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${iconBgClass}`}
+                  >
+                    <Icon size={19} strokeWidth={2.2} aria-hidden="true" />
                   </div>
-                </Link>
-              ),
-            )}
-          </div>
-        </section>
+                </div>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-extrabold text-slate-950">
-            {focusTitle}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            {focusDescription}
-          </p>
-          <ul className="mt-5 space-y-4">
-            {focusItems.map((item) => (
-              <li key={item.title} className="flex gap-3">
-                <span
-                  className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                  aria-hidden="true"
-                />
-                <div>
-                  <p className="text-sm font-bold text-slate-900">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-sm leading-5 text-slate-600">
-                    {item.description}
+                {/* 2. MIDDLE ROW: Big Bold Metric Number */}
+                <div className="my-2">
+                  <p
+                    className={`text-4xl font-extrabold tracking-tight ${
+                      tone === "rose" ? "text-rose-950" : "text-slate-900"
+                    }`}
+                  >
+                    {value}
                   </p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
 
-      <section className="grid gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)] lg:items-center">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-            <DatabaseZap size={20} aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="font-extrabold text-slate-900">
-              Live dashboard totals are pending
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Summary values will populate automatically when the procurement
-              reporting endpoints are connected. No demonstration totals are
-              being presented as operational data.
-            </p>
-          </div>
-        </div>
-
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div className="rounded-lg bg-slate-50 px-4 py-3">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Signed in as
-            </dt>
-            <dd className="mt-1 break-all font-bold text-slate-900">
-              {user.email}
-            </dd>
-          </div>
-          <div className="rounded-lg bg-slate-50 px-4 py-3">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Assigned role
-            </dt>
-            <dd className="mt-1 font-bold text-slate-900">
-              {ROLE_LABELS[user.role]}
-            </dd>
-          </div>
-        </dl>
+                {/* 3. BOTTOM ROW: Divider line + Subtext detail */}
+                <div className="pt-3 border-t border-slate-100/90 flex items-center justify-between gap-2 text-xs">
+                  <span className={`line-clamp-1 ${detailColorClass}`}>
+                    {detail}
+                  </span>
+                </div>
+              </article>
+            );
+          }
+        )}
       </section>
     </div>
   );
 }
+
+
