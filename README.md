@@ -157,6 +157,7 @@ npm run build
 
 - Run the frontend and backend behind HTTPS.
 - Set `BACKEND_API_URL` to a URL reachable from the Next.js server.
+- Set `APP_ORIGIN` to the frontend's public HTTPS origin.
 - Keep `.env.local` and all deployment secrets out of Git.
 - Configure the backend's frontend URL, CORS origin, secure session settings,
   database, invitation delivery, and password-reset delivery for the deployed
