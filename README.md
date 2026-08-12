@@ -118,6 +118,10 @@ sidebar account area.
    `BACKEND_API_URL` is server-only. Do not rename it to a `NEXT_PUBLIC_*`
    variable or expose backend credentials through it.
 
+   Do not add `MAILERSEND_API_TOKEN`, `MAILERSEND_FROM_EMAIL`, or
+   `MAILERSEND_FROM_NAME` to the frontend. MailerSend is called only by the
+   backend after the Administrator's request has been authenticated.
+
 4. Start the development server:
 
    ```bash
