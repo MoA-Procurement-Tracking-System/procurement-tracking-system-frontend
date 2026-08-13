@@ -19,7 +19,6 @@ import {
 import { createInvitedUser } from "@/lib/authApi";
 import type { ProvisionableRole } from "@/lib/authTypes";
 
-
 export interface UserManagementRecord {
   id: string;
   fullName: string;
@@ -29,7 +28,6 @@ export interface UserManagementRecord {
   status: "Active" | "Inactive";
   lastLogin: string;
 }
-
 
 export const INITIAL_USER_RECORDS: UserManagementRecord[] = [
   {
@@ -127,7 +125,10 @@ export function UserManagementView({
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("OFFICER");
   const [isInviting, setIsInviting] = useState(false);
-  const [invitedInfo, setInvitedInfo] = useState<{ email: string; role: string } | null>(null);
+  const [invitedInfo, setInvitedInfo] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -168,14 +169,21 @@ export function UserManagementView({
       const newRecord: UserManagementRecord = {
         id: result.user.id || String(Date.now()),
         fullName: result.user.displayName || inviteFullName.trim(),
-        username: result.user.username || `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
+        username:
+          result.user.username ||
+          `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
         email: result.user.email || targetEmail,
-        role: (result.user.role as UserManagementRecord["role"]) || (targetRole as UserManagementRecord["role"]),
+        role:
+          (result.user.role as UserManagementRecord["role"]) ||
+          (targetRole as UserManagementRecord["role"]),
         status: "Active",
         lastLogin: "Pending Invitation",
       };
 
-      setUsers((prev) => [newRecord, ...prev.filter((u) => u.id !== newRecord.id)]);
+      setUsers((prev) => [
+        newRecord,
+        ...prev.filter((u) => u.id !== newRecord.id),
+      ]);
       setInvitedInfo({ email: targetEmail, role: targetRole });
 
       if (result.invitationLink) {
@@ -244,14 +252,18 @@ export function UserManagementView({
             </h3>
             <p className="text-[#046c50] font-medium leading-relaxed">
               An invitation has been generated for{" "}
-              <strong className="font-bold text-[#04382c]">{invitedInfo.email}</strong>{" "}
-              as <strong className="font-bold text-[#04382c]">{invitedInfo.role}</strong>.
+              <strong className="font-bold text-[#04382c]">
+                {invitedInfo.email}
+              </strong>{" "}
+              as{" "}
+              <strong className="font-bold text-[#04382c]">
+                {invitedInfo.role}
+              </strong>
+              .
             </p>
           </div>
         </div>
       )}
-
-
 
       {errorMessage && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs font-bold shadow-sm animate-in fade-in slide-in-from-top-2">

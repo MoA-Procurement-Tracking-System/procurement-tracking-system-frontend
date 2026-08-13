@@ -25,7 +25,6 @@ export interface InvitedUserResponse {
   invitationLink?: string;
 }
 
-
 export const ROLE_LABELS: Record<UserRole, string> = {
   OFFICER: "Officer",
   DIRECTOR: "Director",
