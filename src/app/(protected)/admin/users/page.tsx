@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CreateUserForm } from "@/components/admin/CreateUserForm";
+import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
 import { requireAuthenticatedSession } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +11,5 @@ export default async function UserManagementPage() {
     redirect("/access-denied");
   }
 
-  return (
-    <div className="mx-auto w-full max-w-3xl">
-      <CreateUserForm />
-    </div>
-  );
+  return <UserManagementView />;
 }
