@@ -25,6 +25,9 @@ export async function POST(request: NextRequest) {
       headers: {
         accept: "application/json",
         "content-type": "application/json",
+        ...(request.headers.get("authorization")
+          ? { authorization: request.headers.get("authorization")! }
+          : {}),
         ...(request.headers.get("cookie")
           ? { cookie: request.headers.get("cookie")! }
           : {}),
@@ -32,6 +35,7 @@ export async function POST(request: NextRequest) {
           ? { "user-agent": request.headers.get("user-agent")! }
           : {}),
       },
+
       cache: "no-store",
       body: requestBody,
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),

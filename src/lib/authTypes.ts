@@ -22,7 +22,9 @@ export interface InvitedUserResponse {
   user: AuthUser;
   invitationExpiresAt: string;
   message: string;
+  invitationLink?: string;
 }
+
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   OFFICER: "Officer",
