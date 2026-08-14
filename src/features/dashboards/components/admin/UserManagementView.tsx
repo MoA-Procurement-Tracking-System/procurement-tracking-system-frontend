@@ -11,7 +11,13 @@ import {
   Send,
   CheckCircle2,
   ChevronRight,
+  AlertCircle,
+  Copy,
+  ExternalLink,
+  Check,
 } from "lucide-react";
+import { createInvitedUser } from "@/lib/authApi";
+import type { ProvisionableRole } from "@/lib/authTypes";
 
 export interface UserManagementRecord {
   id: string;
@@ -118,7 +124,14 @@ export function UserManagementView({
   const [inviteFullName, setInviteFullName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("OFFICER");
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isInviting, setIsInviting] = useState(false);
+  const [invitedInfo, setInvitedInfo] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Toggle active/deactive user
   const handleToggleStatus = (userId: string) => {
@@ -134,35 +147,67 @@ export function UserManagementView({
   };
 
   // Submit invitation
-  const handleSendInvitation = (e: React.FormEvent) => {
+  const handleSendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteFullName.trim() || !inviteEmail.trim()) return;
 
-    const newRecord: UserManagementRecord = {
-      id: String(Date.now()),
-      fullName: inviteFullName.trim(),
-      username: `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
-      email: inviteEmail.trim(),
-      role: inviteRole as UserManagementRecord["role"],
-      status: "Active",
-      lastLogin: "Pending Invitation",
-    };
+    setIsInviting(true);
+    setErrorMessage(null);
+    setInvitedInfo(null);
+    setGeneratedLink(null);
 
-    setUsers([newRecord, ...users]);
-    setSuccessMessage(
-      `Invitation link sent successfully to ${inviteEmail.trim()}!`,
-    );
+    const targetEmail = inviteEmail.trim();
+    const targetRole = inviteRole;
 
-    // Reset form
-    setInviteFullName("");
-    setInviteEmail("");
-    setInviteRole("OFFICER");
+    try {
+      const result = await createInvitedUser(
+        inviteFullName.trim(),
+        targetEmail,
+        targetRole as ProvisionableRole,
+      );
 
-    // Return to list after short delay
-    setTimeout(() => {
-      setSuccessMessage(null);
-      setViewMode("list");
-    }, 2000);
+      const newRecord: UserManagementRecord = {
+        id: result.user.id || String(Date.now()),
+        fullName: result.user.displayName || inviteFullName.trim(),
+        username:
+          result.user.username ||
+          `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
+        email: result.user.email || targetEmail,
+        role:
+          (result.user.role as UserManagementRecord["role"]) ||
+          (targetRole as UserManagementRecord["role"]),
+        status: "Active",
+        lastLogin: "Pending Invitation",
+      };
+
+      setUsers((prev) => [
+        newRecord,
+        ...prev.filter((u) => u.id !== newRecord.id),
+      ]);
+      setInvitedInfo({ email: targetEmail, role: targetRole });
+
+      if (result.invitationLink) {
+        setGeneratedLink(result.invitationLink);
+      }
+
+      // Reset form fields
+      setInviteFullName("");
+      setInviteEmail("");
+      setInviteRole("OFFICER");
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to send user invitation.",
+      );
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!generatedLink) return;
+    navigator.clipboard.writeText(generatedLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // Filter users
@@ -198,11 +243,32 @@ export function UserManagementView({
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
-      {successMessage && (
-        <div className="flex items-center gap-2 bg-[#ecfdf5] border border-[#a7f3d0] text-[#047857] px-4 py-3 rounded-2xl text-xs font-bold shadow-sm animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 size={16} className="shrink-0 text-[#047857]" />
-          <span>{successMessage}</span>
+      {/* Toast / Success Notification matching screenshot */}
+      {invitedInfo && (
+        <div className="animate-in fade-in slide-in-from-top-2">
+          <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
+            <h3 className="text-base sm:text-lg font-extrabold text-[#044e3a] mb-1 tracking-tight">
+              Invitation Created Successfully
+            </h3>
+            <p className="text-[#046c50] font-medium leading-relaxed">
+              An invitation has been generated for{" "}
+              <strong className="font-bold text-[#04382c]">
+                {invitedInfo.email}
+              </strong>{" "}
+              as{" "}
+              <strong className="font-bold text-[#04382c]">
+                {invitedInfo.role}
+              </strong>
+              .
+            </p>
+          </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs font-bold shadow-sm animate-in fade-in slide-in-from-top-2">
+          <AlertCircle size={16} className="shrink-0 text-red-600" />
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -314,10 +380,11 @@ export function UserManagementView({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-full bg-[#04382c] hover:bg-[#032e25] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                  disabled={isInviting}
+                  className="px-6 py-2.5 rounded-full bg-[#04382c] hover:bg-[#032e25] disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  Send Invitation
+                  {isInviting ? "Sending Invitation…" : "Send Invitation"}
                 </button>
               </div>
             </form>
