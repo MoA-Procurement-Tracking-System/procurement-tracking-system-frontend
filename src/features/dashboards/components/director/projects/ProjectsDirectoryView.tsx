@@ -39,7 +39,10 @@ export function ProjectsDirectoryView({
       !query ||
       project.code.toLowerCase().includes(query) ||
       project.name.toLowerCase().includes(query) ||
+      (project.sapNumber && project.sapNumber.toLowerCase().includes(query)) ||
       project.fundingSource.toLowerCase().includes(query) ||
+      project.executingAgency.toLowerCase().includes(query) ||
+      project.region.toLowerCase().includes(query) ||
       project.sector.toLowerCase().includes(query) ||
       project.assignedOfficers.some((o) =>
         o.name.toLowerCase().includes(query),
@@ -83,8 +86,8 @@ export function ProjectsDirectoryView({
             </h1>
           </div>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Manage, search, assign multiple procurement officers, and set donor
-            funding sources for Ministry projects.
+            Highest procurement container. Stored project-level headers are
+            inherited by all procurement plans and activity items.
           </p>
         </div>
 
@@ -106,7 +109,7 @@ export function ProjectsDirectoryView({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by code, name, donor, officer, or sector..."
+            placeholder="Search by code, SAP ID, donor, agency, region, officer, sector..."
             className="w-full rounded-xl bg-slate-50/80 border border-slate-200/90 pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
           />
         </div>
@@ -121,8 +124,7 @@ export function ProjectsDirectoryView({
           >
             <option value="All Statuses">All Statuses</option>
             <option value="Active">Active</option>
-            <option value="Delayed">Delayed</option>
-            <option value="Completed">Completed</option>
+            <option value="Inactive">Inactive</option>
           </select>
 
           {/* Assigned Officer Filter */}
@@ -150,7 +152,6 @@ export function ProjectsDirectoryView({
             <option value="Government Treasury (መንግሥት)">
               Government Treasury
             </option>
-            <option value="World Bank / Grant">World Bank / Grant</option>
           </select>
         </div>
       </div>
@@ -158,22 +159,31 @@ export function ProjectsDirectoryView({
       {/* 4. Projects Directory Table Card */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[850px]">
+          <table className="w-full text-left border-collapse min-w-[1250px]">
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-4 text-center w-12">#</th>
-                <th className="py-3.5 px-4">Project Code</th>
-                <th className="py-3.5 px-4">Project Name</th>
-                <th className="py-3.5 px-4">Funding Source</th>
-                <th className="py-3.5 px-4">Sector</th>
-                <th className="py-3.5 px-4">Assigned Officers</th>
-                <th className="py-3.5 px-4 text-center">Actions</th>
+                <th className="py-3.5 px-4 min-w-[140px]">Code / SAP ID</th>
+                <th className="py-3.5 px-4 min-w-[300px] w-[28%]">
+                  Project / Program Name
+                </th>
+                <th className="py-3.5 px-4 min-w-[200px]">Donor & Type</th>
+                <th className="py-3.5 px-4 min-w-[250px]">
+                  Executing Agency / Region
+                </th>
+                <th className="py-3.5 px-4 min-w-[220px]">Assigned Officers</th>
+                <th className="py-3.5 px-4 text-center min-w-[100px]">
+                  Status
+                </th>
+                <th className="py-3.5 px-4 text-center min-w-[100px]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     <p className="font-semibold text-slate-700 text-sm">
                       No matching projects found
                     </p>
@@ -193,51 +203,103 @@ export function ProjectsDirectoryView({
                       {index + 1}
                     </td>
 
-                    {/* Code */}
-                    <td className="py-4 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                      {project.code}
+                    {/* Code & SAP ID */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <p
+                        className="font-mono font-extrabold text-slate-900 text-xs"
+                        title={`Project Code: ${project.code}`}
+                      >
+                        {project.code}
+                      </p>
+                      {project.sapNumber && (
+                        <p
+                          className="font-mono text-[10px] text-slate-500 mt-0.5"
+                          title={`SAP Identification No: ${project.sapNumber}`}
+                        >
+                          SAP: {project.sapNumber}
+                        </p>
+                      )}
                     </td>
 
-                    {/* Name */}
-                    <td className="py-4 px-4 font-bold text-slate-900 max-w-[280px]">
-                      <div className="leading-snug line-clamp-2">
+                    {/* Project Name (Expanded width & 3-line wrap + hover tooltip) */}
+                    <td
+                      className="py-4 px-4 font-bold text-slate-900 min-w-[300px] max-w-[380px]"
+                      title={project.name}
+                    >
+                      <div className="leading-snug line-clamp-3">
                         {project.name}
                       </div>
                     </td>
 
-                    {/* Funding Source Pill Badge */}
-                    <td className="py-4 px-4">
-                      <span className="inline-flex items-center px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                    {/* Donor & Funding Type */}
+                    <td className="py-4 px-4 space-y-1 min-w-[200px]">
+                      <span
+                        className="inline-block  px-2 py-0.5 text-[10px] font-semibold text-blue-800"
+                        title={`Funding Source: ${project.fundingSource}`}
+                      >
                         {project.fundingSource}
                       </span>
+                      <div>
+                        <span className="inline-block  px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          {project.fundingType} (
+                          {project.currency.split(" ")[0]})
+                        </span>
+                      </div>
                     </td>
 
-                    {/* Sector */}
-                    <td className="py-4 px-4 text-slate-600 font-medium max-w-[200px] leading-relaxed">
-                      {project.sector}
+                    {/* Agency & Region (Expanded width & full multi-line wrap + hover tooltip) */}
+                    <td
+                      className="py-4 px-4 min-w-[250px] max-w-[300px]"
+                      title={`Executing Agency: ${project.executingAgency} | Region: ${project.region}`}
+                    >
+                      <p className="font-semibold text-slate-900 text-[11px] leading-tight break-words">
+                        {project.executingAgency}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-medium mt-1">
+                        Region:{" "}
+                        <span className="text-slate-700 font-semibold">
+                          {project.region}
+                        </span>
+                      </p>
                     </td>
 
-                    {/* Assigned Officers List */}
-                    <td className="py-4 px-4">
+                    {/* Assigned Officers List (Expanded width, full name visibility + hover tooltip) */}
+                    <td className="py-4 px-4 min-w-[220px]">
                       <div className="space-y-1.5">
                         {project.assignedOfficers.map((off) => (
                           <div
                             key={off.id}
                             className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800"
+                            title={`${off.name} (${off.email})`}
                           >
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-500 shrink-0">
+                            <div className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-slate-500 shrink-0">
                               <UserCheck className="h-3 w-3" />
                             </div>
-                            <span>{off.name}</span>
+                            <span className="whitespace-normal leading-tight">
+                              {off.name}
+                            </span>
                           </div>
                         ))}
                       </div>
                     </td>
 
+                    {/* Status Badge */}
+                    <td className="py-4 px-4 text-center whitespace-nowrap min-w-[100px]">
+                      <span
+                        className={`inline-block px-2.5 py-0.5  text-[10px] font-extrabold ${
+                          project.status === "Active"
+                            ? "text-emerald-800"
+                            : "text-slate-600"
+                        }`}
+                      >
+                        {project.status}
+                      </span>
+                    </td>
+
                     {/* Action Buttons */}
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-4 text-center min-w-[100px]">
                       <div className="flex items-center justify-center gap-2">
-                        {/* Eye Icon -> Reserved for project plans page (placeholder) */}
+                        {/* Eye Icon -> View plans under project */}
                         <button
                           onClick={() => onViewPlansClick(project)}
                           title="View Plans Under Project"
