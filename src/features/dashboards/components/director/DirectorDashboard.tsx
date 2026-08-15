@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { useState } from "react";
 import Link from "next/link";
@@ -18,7 +19,7 @@ import {
   type CriticalDelay,
 } from "./directorData";
 
-export function DirectorDashboard({ user }: { user: AuthUser }) {
+export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
   // State for director data
   const [plans] = useState<DirectorPlan[]>(INITIAL_DIRECTOR_PLANS);
   const [delays] = useState<CriticalDelay[]>(INITIAL_CRITICAL_DELAYS);

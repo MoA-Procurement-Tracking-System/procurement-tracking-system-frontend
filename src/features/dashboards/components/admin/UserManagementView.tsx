@@ -2,19 +2,13 @@
 
 import { useState } from "react";
 import {
-  Users,
   Search,
   Plus,
   Mail,
-  ArrowLeft,
   Info,
   Send,
-  CheckCircle2,
   ChevronRight,
   AlertCircle,
-  Copy,
-  ExternalLink,
-  Check,
 } from "lucide-react";
 import { createInvitedUser } from "@/lib/authApi";
 import type { ProvisionableRole } from "@/lib/authTypes";
@@ -130,8 +124,6 @@ export function UserManagementView({
     role: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // Toggle active/deactive user
   const handleToggleStatus = (userId: string) => {
@@ -154,7 +146,6 @@ export function UserManagementView({
     setIsInviting(true);
     setErrorMessage(null);
     setInvitedInfo(null);
-    setGeneratedLink(null);
 
     const targetEmail = inviteEmail.trim();
     const targetRole = inviteRole;
@@ -186,10 +177,6 @@ export function UserManagementView({
       ]);
       setInvitedInfo({ email: targetEmail, role: targetRole });
 
-      if (result.invitationLink) {
-        setGeneratedLink(result.invitationLink);
-      }
-
       // Reset form fields
       setInviteFullName("");
       setInviteEmail("");
@@ -201,13 +188,6 @@ export function UserManagementView({
     } finally {
       setIsInviting(false);
     }
-  };
-
-  const handleCopyLink = () => {
-    if (!generatedLink) return;
-    navigator.clipboard.writeText(generatedLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // Filter users

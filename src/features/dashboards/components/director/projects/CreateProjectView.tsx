@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Home,
   ChevronRight,
-  FolderKanban,
-  ArrowLeft,
   Users,
   CheckCircle2,
   AlertCircle,
@@ -35,6 +33,12 @@ export function CreateProjectView({
 }: CreateProjectViewProps) {
   const isEditing = Boolean(initialData);
 
+  // Known funding sources check for pre-filling
+  const knownFundingLabels = FUNDING_SOURCE_OPTIONS.map((f) => f.label);
+  const isStandardFunding =
+    initialData?.fundingSource &&
+    knownFundingLabels.includes(initialData.fundingSource);
+
   // Form State initialized with initialData if editing
   const [code, setCode] = useState(initialData?.code || "");
   const [name, setName] = useState(initialData?.name || "");
@@ -44,12 +48,6 @@ export function CreateProjectView({
   const [sector, setSector] = useState(
     initialData?.sector || SECTOR_OPTIONS[0],
   );
-
-  // Check funding source matching
-  const knownFundingLabels = FUNDING_SOURCE_OPTIONS.map((f) => f.label);
-  const isStandardFunding =
-    initialData?.fundingSource &&
-    knownFundingLabels.includes(initialData.fundingSource);
 
   const [fundingSource, setFundingSource] = useState(
     isEditing
@@ -73,27 +71,6 @@ export function CreateProjectView({
 
   // Error validation states
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Sync if initialData changes
-  useEffect(() => {
-    if (initialData) {
-      setCode(initialData.code);
-      setName(initialData.name);
-      setBudgetYear(initialData.budgetYear);
-      setSector(initialData.sector);
-      setDescription(initialData.description);
-      setSelectedOfficerIds(initialData.assignedOfficers.map((o) => o.id));
-
-      const isKnown = knownFundingLabels.includes(initialData.fundingSource);
-      if (isKnown) {
-        setFundingSource(initialData.fundingSource);
-        setCustomFundingSource("");
-      } else {
-        setFundingSource("Other (Specify Custom Funding Source...)");
-        setCustomFundingSource(initialData.fundingSource);
-      }
-    }
-  }, [initialData]);
 
   // Filter officers by search
   const filteredOfficers = INITIAL_OFFICERS.filter(
@@ -147,8 +124,11 @@ export function CreateProjectView({
       ? customFundingSource.trim() || "Custom Funding Source"
       : fundingSource;
 
+    // eslint-disable-next-line react-hooks/purity
+    const projectId = initialData?.id ? initialData.id : `proj-${Date.now()}`;
+
     const updatedProject: ProjectItem = {
-      id: initialData?.id || `proj-${Date.now()}`,
+      id: projectId,
       code: code.trim(),
       name: name.trim(),
       budgetYear,
@@ -194,13 +174,10 @@ export function CreateProjectView({
       <div className="rounded-2xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shrink-0">
-              <FolderKanban className="h-5 w-5" />
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight">
               {isEditing
-                ? `Edit Sector Project (${initialData?.code})`
-                : "Create New Project"}
+                ? `Edit Project (${initialData?.code})`
+                : "Create New  Project"}
             </h1>
           </div>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-2xl">
@@ -209,6 +186,13 @@ export function CreateProjectView({
               : "Register sector project, assign multiple procurement officers, and configure standard or custom donor funding."}
           </p>
         </div>
+
+        <button
+          onClick={onBackClick}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm px-4.5 py-2.5 rounded-xl transition-colors cursor-pointer flex items-center gap-2 shrink-0 self-start sm:self-auto"
+        >
+          <span>Back to Projects List</span>
+        </button>
       </div>
 
       {/* Error Alert */}
@@ -325,7 +309,7 @@ export function CreateProjectView({
                   (f) => f.category === "Custom",
                 ).map((f) => (
                   <option key={f.label} value={f.label}>
-                    {f.label}
+                    🤙 {f.label}
                   </option>
                 ))}
               </optgroup>

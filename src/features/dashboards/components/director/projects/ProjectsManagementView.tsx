@@ -80,6 +80,7 @@ export function ProjectsManagementView() {
         />
       ) : (
         <CreateProjectView
+          key={editingProject?.id || "new"}
           initialData={editingProject}
           onBackClick={() => {
             setEditingProject(null);

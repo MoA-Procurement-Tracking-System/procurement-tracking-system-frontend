@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
@@ -21,16 +22,16 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({
-  user,
-  eyebrow,
-  description,
+  user: _user,
+  eyebrow: _eyebrow,
+  description: _description,
   metrics,
-  workspaceTitle,
-  workspaceDescription,
-  workspaces,
-  focusTitle,
-  focusDescription,
-  focusItems,
+  workspaceTitle: _workspaceTitle,
+  workspaceDescription: _workspaceDescription,
+  workspaces: _workspaces,
+  focusTitle: _focusTitle,
+  focusDescription: _focusDescription,
+  focusItems: _focusItems,
 }: DashboardOverviewProps) {
   return (
     <div className="space-y-5 sm:space-y-6">

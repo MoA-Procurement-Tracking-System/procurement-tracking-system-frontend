@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Home,
   ChevronRight,
-  FolderKanban,
   Plus,
   Search,
   Eye,
