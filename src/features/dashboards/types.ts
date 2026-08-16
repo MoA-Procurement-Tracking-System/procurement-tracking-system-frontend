@@ -10,6 +10,10 @@ export interface DashboardMetric {
   icon: LucideIcon;
   tone: DashboardTone;
   hasRightAccent?: boolean;
+  actionLabel?: string;
+  actionHref?: string;
+  detailLines?: readonly string[];
+  actionLines?: readonly string[];
 }
 
 export interface DashboardWorkspace {

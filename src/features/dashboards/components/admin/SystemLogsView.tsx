@@ -1,7 +1,5 @@
 "use client";
 
-import { History } from "lucide-react";
-
 export interface SystemAuditLogItem {
   id: string;
   timestamp: string;
