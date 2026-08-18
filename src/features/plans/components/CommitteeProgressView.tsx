@@ -13,9 +13,6 @@ import {
   Clock,
   Users,
   FileText,
-  Building2,
-  DollarSign,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -575,7 +572,7 @@ export function CommitteeProgressView() {
 
             {selectedPlan.description && (
               <p className="text-xs text-slate-600 italic leading-relaxed">
-                "{selectedPlan.description}"
+                &quot;{selectedPlan.description}&quot;
               </p>
             )}
           </section>
@@ -643,7 +640,7 @@ export function CommitteeProgressView() {
                         Comments / Feedback:
                       </span>
                       <p className="text-slate-800 font-semibold italic">
-                        "{member.feedback}"
+                        &quot;{member.feedback}&quot;
                       </p>
                     </div>
                   )}

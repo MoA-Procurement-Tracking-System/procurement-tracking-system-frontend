@@ -1,23 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  FileSpreadsheet,
-  ChevronRight,
-  Filter,
-  Search,
-  Calendar,
-  Layers,
-  Building2,
-  DollarSign,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  Home,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { FileSpreadsheet, ChevronRight, Filter, Home } from "lucide-react";
 import Link from "next/link";
 import {
   MOCK_ANNUAL_PLAN_REPORT,
@@ -60,7 +44,6 @@ export function ReportsView() {
   const [officer, setOfficer] = useState("ALL");
   const [delayRange, setDelayRange] = useState("ALL");
   const [currency, setCurrency] = useState("ETB");
-  const [supplier, setSupplier] = useState("ALL");
   const [region, setRegion] = useState("ALL");
 
   const handleExportExcel = () => {
@@ -933,7 +916,7 @@ export function ReportsView() {
                           {row.delayDays} Days
                         </td>
                         <td className="py-2.5 px-3 text-slate-600 italic">
-                          "{row.replanningReason}"
+                          &quot;{row.replanningReason}&quot;
                         </td>
                         <td className="py-2.5 px-3 font-medium">
                           {row.officer}

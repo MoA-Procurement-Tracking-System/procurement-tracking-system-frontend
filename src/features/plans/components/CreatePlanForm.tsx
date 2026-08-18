@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Calendar,
   CheckCircle2,
@@ -90,15 +90,25 @@ export function CreatePlanForm({
 
   const [dateError, setDateError] = useState<string | null>(null);
 
-  // Auto-generate suggested plan name when project, category, or budgetYear changes (only for new officer plans)
-  useEffect(() => {
+  const handleCategoryChange = (newCategory: PlanCategory) => {
+    setCategory(newCategory);
     if (!initialData && !isDirector) {
       const yearShort = budgetYear.split(" ")[0] || "2018 EFY";
+      setPlanName(
+        `${project.code} - ${newCategory} Procurement Plan - ${yearShort}`,
+      );
+    }
+  };
+
+  const handleBudgetYearChange = (newYear: string) => {
+    setBudgetYear(newYear);
+    if (!initialData && !isDirector) {
+      const yearShort = newYear.split(" ")[0] || "2018 EFY";
       setPlanName(
         `${project.code} - ${category} Procurement Plan - ${yearShort}`,
       );
     }
-  }, [category, budgetYear, project.code, initialData, isDirector]);
+  };
 
   const selectedCategoryInfo = PLAN_CATEGORY_CHOICES.find(
     (c) => c.category === category,
@@ -248,7 +258,9 @@ export function CreatePlanForm({
             </div>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as PlanCategory)}
+              onChange={(e) =>
+                handleCategoryChange(e.target.value as PlanCategory)
+              }
               disabled={isDirector || isDraftPlanForDirector}
               className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
                 isDirector
@@ -314,7 +326,7 @@ export function CreatePlanForm({
               </div>
               <select
                 value={budgetYear}
-                onChange={(e) => setBudgetYear(e.target.value)}
+                onChange={(e) => handleBudgetYearChange(e.target.value)}
                 disabled={isDirector || isDraftPlanForDirector}
                 className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
                   isDirector

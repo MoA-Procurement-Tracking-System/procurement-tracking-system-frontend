@@ -34,7 +34,7 @@ export default async function WorkspaceSectionPage({
   }
 
   if (section === "plan-for-review") {
-    return <PlanForReviewView userRole={session.user.role as any} />;
+    return <PlanForReviewView />;
   }
 
   if (section === "committee-progress") {

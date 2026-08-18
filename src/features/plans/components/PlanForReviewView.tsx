@@ -6,16 +6,13 @@ import {
   CheckCircle2,
   RotateCcw,
   Send,
-  Edit,
   ListChecks,
   Search,
   FileText,
-  Lock,
   ArrowLeft,
   ChevronRight,
   Home,
   ShieldCheck,
-  Layers,
 } from "lucide-react";
 import Link from "next/link";
 import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
@@ -30,9 +27,7 @@ interface PlanForReviewViewProps {
   userRole?: "DIRECTOR" | "ENDORSING_COMMITTEE" | "ADMIN";
 }
 
-export function PlanForReviewView({
-  userRole = "DIRECTOR",
-}: PlanForReviewViewProps) {
+export function PlanForReviewView({}: PlanForReviewViewProps) {
   const [plans, setPlans] = useState<ProcurementPlan[]>(INITIAL_PLANS);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
 
@@ -193,7 +188,6 @@ export function PlanForReviewView({
 
   // VIEW 3: FULL-SCREEN PLAN REVIEW VIEW (Replaces Slide-over Drawer)
   if (selectedPlanForReview) {
-    const proj = getProjectForPlan(selectedPlanForReview.projectCode);
     return (
       <div className="space-y-6 animate-in fade-in duration-200 pb-12">
         {/* Toast Notification */}
@@ -301,7 +295,7 @@ export function PlanForReviewView({
                     Plan Description & Scope Overview
                   </span>
                   <p className="text-sm text-slate-800 italic leading-relaxed">
-                    "{selectedPlanForReview.description}"
+                    &quot;{selectedPlanForReview.description}&quot;
                   </p>
                 </div>
               )}

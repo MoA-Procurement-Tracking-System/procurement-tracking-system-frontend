@@ -14,7 +14,6 @@ import {
   MapPin,
   CheckCircle2,
   Lock,
-  Layers,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +35,6 @@ interface ActivitiesListViewProps {
 export function ActivitiesListView({
   plan,
   project,
-  userRole = "OFFICER",
   parentSection = "projects",
   onBackClick,
 }: ActivitiesListViewProps) {
@@ -204,7 +202,7 @@ export function ActivitiesListView({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveDetailTab(tab.id as any)}
+                    onClick={() => setActiveDetailTab(tab.id as 1 | 2 | 3 | 4)}
                     className={`py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                       isActive
                         ? "bg-[#0A3C2F] text-white shadow-2xs"

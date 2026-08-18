@@ -400,8 +400,7 @@ export function CreateProjectView({
           <div className="flex items-center justify-between min-w-[540px] max-w-3xl mx-auto">
             {WIZARD_STEPS.map((step, index) => {
               const IconComponent = step.icon;
-              const isCompleted =
-                currentStep > step.id || (isEditing && currentStep !== step.id);
+              const isCompleted = currentStep > step.id;
               const isActive = currentStep === step.id;
               const isClickable =
                 isEditing || step.id <= currentStep + 1 || isCompleted;
@@ -1141,14 +1140,27 @@ export function CreateProjectView({
 
             {/* Next Step / Save Project Submit */}
             {currentStep < 4 ? (
-              <button
-                type="button"
-                onClick={handleNextStep}
-                className="bg-[#0A3C2F] hover:bg-[#072b22] text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-98"
-              >
-                <span>Next Step: {WIZARD_STEPS[currentStep].label}</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isEditing && (
+                  <button
+                    type="submit"
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-98"
+                  >
+                    <Check className="h-4 w-4 stroke-[2.5]" />
+                    <span>Save Changes</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="bg-[#0A3C2F] hover:bg-[#072b22] text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-98"
+                >
+                  <span>
+                    Next Step: {WIZARD_STEPS[currentStep]?.label || "Next"}
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             ) : (
               <button
                 type="submit"

@@ -63,7 +63,6 @@ export function ProjectPlansView({
   plans,
   userRole = "OFFICER",
   onBackToProjects,
-  onCreatePlanClick,
   onEditPlanClick,
   onViewActivitiesClick,
 }: ProjectPlansViewProps) {
@@ -227,8 +226,8 @@ export function ProjectPlansView({
                       No procurement plans found for this project
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Click "Create Procurement Plan" to add a new plan for{" "}
-                      {project.code}.
+                      Click &quot;Create Procurement Plan&quot; to add a new
+                      plan for {project.code}.
                     </p>
                   </td>
                 </tr>
