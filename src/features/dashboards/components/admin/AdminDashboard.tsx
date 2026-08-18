@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { History, ShieldCheck, UserCheck, Users, UserX } from "lucide-react";
+import {
+  History,
+  ShieldCheck,
+  Sliders,
+  UserCheck,
+  Users,
+  UserX,
+} from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
 import { getDashboardHeading } from "../../dashboard.config";
 import { DashboardOverview } from "../DashboardOverview";
@@ -189,6 +196,14 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
             href: "/admin/users",
             actionLabel: "Manage users",
             icon: Users,
+          },
+          {
+            title: "Threshold rules",
+            description:
+              "Configure donor-based procurement method thresholds and review limits.",
+            href: "/workspace/threshold-rules",
+            actionLabel: "Configure thresholds",
+            icon: Sliders,
           },
           {
             title: "System logs",
