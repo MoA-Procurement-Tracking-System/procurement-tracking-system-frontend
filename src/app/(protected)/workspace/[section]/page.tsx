@@ -1,5 +1,8 @@
 import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLogsView";
 import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
+import { OfficerContractsView } from "@/features/contracts/components/OfficerContractsView";
+import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
+import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -13,10 +16,19 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkspaceSectionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ section: string }>;
+  searchParams: Promise<{
+    activity?: string | string[];
+    contract?: string | string[];
+    mode?: string | string[];
+    plan?: string | string[];
+    project?: string | string[];
+  }>;
 }) {
   const { section } = await params;
+  const query = await searchParams;
   const definition = getWorkspaceSection(section);
   if (!definition) notFound();
 
@@ -31,6 +43,59 @@ export default async function WorkspaceSectionPage({
 
   if (section === "user-management") {
     return <UserManagementView />;
+  }
+
+  if (section === "projects" && session.user.role === "OFFICER") {
+    const selectedProjectCode =
+      typeof query.project === "string" ? query.project : undefined;
+    const selectedPlanReference =
+      typeof query.plan === "string" ? query.plan : undefined;
+    const selectedActivityReference =
+      typeof query.activity === "string" ? query.activity : undefined;
+    const mode =
+      query.mode === "create-plan" || query.mode === "create-activity"
+        ? query.mode
+        : undefined;
+
+    return (
+      <OfficerProjectsView
+        mode={mode}
+        selectedActivityReference={selectedActivityReference}
+        selectedPlanReference={selectedPlanReference}
+        selectedProjectCode={selectedProjectCode}
+      />
+    );
+  }
+
+  if (section === "contracts" && session.user.role === "OFFICER") {
+    const selectedContractNumber =
+      typeof query.contract === "string" ? query.contract : undefined;
+    const mode =
+      query.mode === "register" || query.mode === "add-payment"
+        ? query.mode
+        : undefined;
+    return (
+      <OfficerContractsView
+        mode={mode}
+        selectedContractNumber={selectedContractNumber}
+      />
+    );
+  }
+
+  if (section === "activity-tracker" && session.user.role === "OFFICER") {
+    return (
+      <OfficerActivityTrackerView
+        selectedActivityReference={
+          typeof query.activity === "string" ? query.activity : undefined
+        }
+        selectedPlanReference={
+          typeof query.plan === "string" ? query.plan : undefined
+        }
+        selectedProjectCode={
+          typeof query.project === "string" ? query.project : undefined
+        }
+      />
+    );
   }
 
   return (
