@@ -1,8 +1,12 @@
+import { ReportsView } from "@/features/reports/components/ReportsView";
+import { CommitteeProgressView } from "@/features/plans/components/CommitteeProgressView";
 import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLogsView";
 import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
 import { OfficerContractsView } from "@/features/contracts/components/OfficerContractsView";
 import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
+import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
+import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -35,6 +39,22 @@ export default async function WorkspaceSectionPage({
   const session = await requireAuthenticatedSession();
   if (!canAccessWorkspaceSection(session.user.role, section)) {
     redirect("/access-denied");
+  }
+
+  if (section === "projects") {
+    return <ProjectsManagementView />;
+  }
+
+  if (section === "plan-for-review") {
+    return <PlanForReviewView />;
+  }
+
+  if (section === "committee-progress") {
+    return <CommitteeProgressView />;
+  }
+
+  if (section === "reports") {
+    return <ReportsView />;
   }
 
   if (section === "system-logs") {

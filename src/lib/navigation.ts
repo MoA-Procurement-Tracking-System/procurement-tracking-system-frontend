@@ -11,6 +11,7 @@ export type NavigationIconName =
   | "progress"
   | "projects"
   | "reports"
+  | "sliders"
   | "users";
 
 export interface NavigationItem {
@@ -64,7 +65,7 @@ const workspaceSections = {
     href: "/workspace/committee-progress",
     icon: "progress",
     description: "Monitor the progress of plans submitted to the committee.",
-    allowedRoles: ["DIRECTOR"],
+    allowedRoles: ["DIRECTOR", "ENDORSING_COMMITTEE", "ADMIN", "OFFICER"],
   },
   reports: {
     section: "reports",
@@ -72,7 +73,7 @@ const workspaceSections = {
     href: "/workspace/reports",
     icon: "reports",
     description: "Open directorate procurement reports and summaries.",
-    allowedRoles: ["DIRECTOR"],
+    allowedRoles: ["DIRECTOR", "OFFICER", "ENDORSING_COMMITTEE", "ADMIN"],
   },
   "my-decisions": {
     section: "my-decisions",

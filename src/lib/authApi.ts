@@ -1,5 +1,6 @@
 import type {
   AuthSession,
+  AuthUser,
   InvitedUserResponse,
   ProvisionableRole,
 } from "./authTypes";
@@ -30,11 +31,15 @@ function errorMessage(payload: unknown, fallback: string): string {
   return fallback;
 }
 
-async function apiRequest<T>(path: string, body?: object): Promise<T> {
+async function apiRequest<T>(
+  path: string,
+  body?: object,
+  method?: string,
+): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, {
-      method: body ? "POST" : "GET",
+      method: method || (body ? "POST" : "GET"),
       headers: body ? { "Content-Type": "application/json" } : undefined,
       credentials: "same-origin",
       cache: "no-store",
@@ -55,8 +60,12 @@ async function apiRequest<T>(path: string, body?: object): Promise<T> {
   return payload as T;
 }
 
-function authRequest<T>(path: string, body?: object): Promise<T> {
-  return apiRequest<T>(`/api/auth/${path}`, body);
+function authRequest<T>(
+  path: string,
+  body?: object,
+  method?: string,
+): Promise<T> {
+  return apiRequest<T>(`/api/auth/${path}`, body, method);
 }
 
 export function authenticate(
@@ -87,6 +96,16 @@ export function changePassword(
     newPassword,
     confirmPassword,
   });
+}
+
+export function updateProfile(
+  displayName: string,
+): Promise<{ message: string; user?: AuthUser }> {
+  return authRequest<{ message: string; user?: AuthUser }>(
+    "profile",
+    { displayName },
+    "PATCH",
+  );
 }
 
 export async function resetPassword(

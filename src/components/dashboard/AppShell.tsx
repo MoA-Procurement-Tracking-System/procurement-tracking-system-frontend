@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Menu,
+  Sliders,
   Users,
   X,
   type LucideIcon,
@@ -39,6 +40,7 @@ const navigationIcons: Record<NavigationIconName, LucideIcon> = {
   progress: ListChecks,
   projects: FolderKanban,
   reports: BarChart3,
+  sliders: Sliders,
   users: Users,
 };
 
@@ -134,21 +136,30 @@ export function AppShell({
       </div>
 
       {/* User Footer Card */}
-      <div className="p-4 border-t border-[#145241] bg-[#072F25]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#82C899] text-[#062D23] font-bold text-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs">
+      <div className="p-3.5 border-t border-[#145241] bg-[#072F25]">
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href="/profile"
+            onClick={() => setIsMobileMenuOpen(false)}
+            title="View & Edit Profile"
+            className={`flex items-center gap-2.5 min-w-0 flex-1 group rounded-xl p-1.5 transition-all ${
+              pathname === "/profile"
+                ? "bg-[#125241] ring-1 ring-[#A3E635]/40"
+                : "hover:bg-[#125241]/70"
+            }`}
+          >
+            <div className="w-9 h-9 rounded-full bg-[#82C899] text-[#062D23] font-bold text-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs group-hover:scale-105 transition-transform">
               {userInitials}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">
+              <p className="text-xs font-semibold text-white truncate group-hover:text-[#A3E635] transition-colors">
                 {user.displayName}
               </p>
               <p className="text-[11px] text-[#83CDB5] truncate capitalize">
                 {ROLE_LABELS[user.role]}
               </p>
             </div>
-          </div>
+          </Link>
           <SignOutButton compact />
         </div>
       </div>
