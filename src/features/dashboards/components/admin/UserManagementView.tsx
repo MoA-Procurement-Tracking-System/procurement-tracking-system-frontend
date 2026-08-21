@@ -18,7 +18,7 @@ export interface UserManagementRecord {
   fullName: string;
   username: string;
   email: string;
-  role: "OFFICER" | "DIRECTOR" | "ENDORSEMENT_COMMITTEE" | "ADMIN";
+  role: ProvisionableRole | "ADMIN";
   status: "Active" | "Inactive";
   lastLogin: string;
 }
@@ -47,7 +47,7 @@ export const INITIAL_USER_RECORDS: UserManagementRecord[] = [
     fullName: "Ato Solomon Tadesse",
     username: "@management",
     email: "management@moa.gov.et",
-    role: "ENDORSEMENT_COMMITTEE",
+    role: "ENDORSING_COMMITTEE",
     status: "Active",
     lastLogin: "7/28/2026, 7:20:00 PM",
   },
@@ -83,7 +83,7 @@ export const INITIAL_USER_RECORDS: UserManagementRecord[] = [
     fullName: "Hana Girma",
     username: "@hana",
     email: "hana@moa.gov.et",
-    role: "ENDORSEMENT_COMMITTEE",
+    role: "ENDORSING_COMMITTEE",
     status: "Inactive",
     lastLogin: "6/30/2026, 4:45:00 PM",
   },
@@ -117,7 +117,7 @@ export function UserManagementView({
   // Invite Form State
   const [inviteFullName, setInviteFullName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("OFFICER");
+  const [inviteRole, setInviteRole] = useState<ProvisionableRole>("OFFICER");
   const [isInviting, setIsInviting] = useState(false);
   const [invitedInfo, setInvitedInfo] = useState<{
     email: string;
@@ -154,7 +154,7 @@ export function UserManagementView({
       const result = await createInvitedUser(
         inviteFullName.trim(),
         targetEmail,
-        targetRole as ProvisionableRole,
+        targetRole,
       );
 
       const newRecord: UserManagementRecord = {
@@ -164,9 +164,7 @@ export function UserManagementView({
           result.user.username ||
           `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
         email: result.user.email || targetEmail,
-        role:
-          (result.user.role as UserManagementRecord["role"]) ||
-          (targetRole as UserManagementRecord["role"]),
+        role: (result.user.role as UserManagementRecord["role"]) || targetRole,
         status: "Active",
         lastLogin: "Pending Invitation",
       };
@@ -212,7 +210,7 @@ export function UserManagementView({
         return "Officer";
       case "DIRECTOR":
         return "Director";
-      case "ENDORSEMENT_COMMITTEE":
+      case "ENDORSING_COMMITTEE":
         return "Endorsement Committee";
       case "ADMIN":
         return "Administrator";
@@ -328,7 +326,9 @@ export function UserManagementView({
                 </label>
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
+                  onChange={(e) =>
+                    setInviteRole(e.target.value as ProvisionableRole)
+                  }
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl px-4 py-3 text-sm text-[#0f172a] w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all cursor-pointer"
                 >
                   <option value="OFFICER">
@@ -337,7 +337,7 @@ export function UserManagementView({
                   <option value="DIRECTOR">
                     Director (Directorate Oversight)
                   </option>
-                  <option value="ENDORSEMENT_COMMITTEE">
+                  <option value="ENDORSING_COMMITTEE">
                     Endorsement Committee (Committee Review)
                   </option>
                 </select>
@@ -436,7 +436,7 @@ export function UserManagementView({
                   <option value="ALL">All Roles</option>
                   <option value="OFFICER">Officer</option>
                   <option value="DIRECTOR">Director</option>
-                  <option value="ENDORSEMENT_COMMITTEE">
+                  <option value="ENDORSING_COMMITTEE">
                     Endorsement Committee
                   </option>
                   <option value="ADMIN">Administrator</option>

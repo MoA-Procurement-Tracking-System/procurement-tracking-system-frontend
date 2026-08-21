@@ -26,7 +26,7 @@ export function UserAccessTable({
         return "Officer";
       case "DIRECTOR":
         return "Director";
-      case "ENDORSEMENT_COMMITTEE":
+      case "ENDORSING_COMMITTEE":
       case "MANAGEMENT":
         return "Endorsement Committee";
       case "ADMIN":

@@ -178,4 +178,40 @@ describe("auth API", () => {
       }),
     );
   });
+
+  it("uses the backend enum when provisioning an endorsing committee user", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: "3",
+            email: "committee@moa.gov.et",
+            username: null,
+            displayName: "Committee Member",
+            role: "ENDORSING_COMMITTEE",
+          },
+          invitationExpiresAt: new Date().toISOString(),
+          message: "Invitation sent.",
+        }),
+        { status: 201 },
+      ),
+    );
+
+    await createInvitedUser(
+      "Committee Member",
+      "committee@moa.gov.et",
+      "ENDORSING_COMMITTEE",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/users",
+      expect.objectContaining({
+        body: JSON.stringify({
+          displayName: "Committee Member",
+          email: "committee@moa.gov.et",
+          role: "ENDORSING_COMMITTEE",
+        }),
+      }),
+    );
+  });
 });
