@@ -1,13 +1,8 @@
-import type {
-  OfficerProject,
-  ProcurementPlanStatus,
-} from "@/features/projects/data/officerProjects";
+import { StatusText } from "../../../components/dashboard/StatusText";
+import type { OfficerProject } from "@/features/projects/data/officerProjects";
 import {
   Building2,
   CalendarRange,
-  CheckCircle2,
-  CircleDot,
-  Clock3,
   FileText,
   HandCoins,
   House,
@@ -15,34 +10,9 @@ import {
   Landmark,
   MapPin,
   Plus,
-  RotateCcw,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-
-const statusStyles: Record<
-  ProcurementPlanStatus,
-  { background: string; border: string; color: string; icon: typeof Clock3 }
-> = {
-  Approved: {
-    background: "#ecfdf5",
-    border: "#a7f3d0",
-    color: "#047857",
-    icon: CheckCircle2,
-  },
-  Draft: {
-    background: "#f1f5f9",
-    border: "#cbd5e1",
-    color: "#475569",
-    icon: Clock3,
-  },
-  Returned: {
-    background: "#fff7ed",
-    border: "#fed7aa",
-    color: "#c2410c",
-    icon: RotateCcw,
-  },
-};
 
 function formatProjectPeriod(project: OfficerProject): string | undefined {
   const from = project.projectPeriod?.from?.trim();
@@ -164,10 +134,7 @@ export function OfficerProjectDetailView({
               <h1 className="text-2xl font-extrabold tracking-tight text-[#10243f]">
                 {project.name}
               </h1>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#a7d7c7] bg-[#edf7f3] px-2.5 py-1 text-xs font-bold text-[#176c55]">
-                <CircleDot aria-hidden="true" className="h-3.5 w-3.5" />
-                {project.status}
-              </span>
+              <StatusText className="text-xs" label={project.status} />
             </div>
             <p className="mt-2 inline-flex rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-semibold text-slate-600">
               {project.code}
@@ -241,7 +208,7 @@ export function OfficerProjectDetailView({
                   Fiscal year
                 </th>
                 <th className="w-[27%] px-5 py-3" scope="col">
-                  Categories
+                  Category
                 </th>
                 <th className="w-[10%] px-5 py-3 text-center" scope="col">
                   Activities
@@ -253,9 +220,6 @@ export function OfficerProjectDetailView({
             </thead>
             <tbody className="divide-y divide-slate-200">
               {project.plans.map((plan) => {
-                const tone = statusStyles[plan.status];
-                const StatusIcon = tone.icon;
-
                 return (
                   <tr key={plan.reference} className="hover:bg-[#f8fbf9]">
                     <td className="px-5 py-4">
@@ -281,35 +245,15 @@ export function OfficerProjectDetailView({
                       {plan.budgetYear}
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {plan.categories.map((category) => (
-                          <span
-                            className="rounded-md border border-[#c7d7d0] bg-[#edf5f1] px-2 py-1 text-[11px] font-semibold text-[#176c55]"
-                            key={category}
-                          >
-                            {category}
-                          </span>
-                        ))}
-                      </div>
+                      <span className="text-xs font-semibold text-slate-700">
+                        {plan.category}
+                      </span>
                     </td>
                     <td className="px-5 py-4 text-center text-sm font-bold text-slate-800">
                       {plan.activities}
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className="inline-flex min-w-24 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-bold"
-                        style={{
-                          backgroundColor: tone.background,
-                          borderColor: tone.border,
-                          color: tone.color,
-                        }}
-                      >
-                        <StatusIcon
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5"
-                        />
-                        {plan.status}
-                      </span>
+                      <StatusText className="text-xs" label={plan.status} />
                     </td>
                   </tr>
                 );

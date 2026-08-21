@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import type { OfficerTrackedActivityItem } from "./OfficerActivityTrackerView";
 import {
   calculateDelayDays,
@@ -389,7 +390,10 @@ function RoadmapTrackingSection({
                       <DateValue date={tracking.actualDate ?? emptyDate()} />
                     </td>
                     <td className="px-4 py-3">
-                      <StageStatusBadge status={tracking.status} />
+                      <StatusText
+                        className="text-[9px]"
+                        label={tracking.status}
+                      />
                     </td>
                     <td className="px-4 py-3 text-center">
                       {delay === null ? (
@@ -820,43 +824,6 @@ function FieldSelect({
         ))}
       </select>
     </label>
-  );
-}
-
-function StageStatusBadge({ status }: { status: ActivityStageStatus }) {
-  const tone = {
-    Completed: {
-      background: "#ecfdf5",
-      borderColor: "#a7f3d0",
-      color: "#047857",
-    },
-    "In Progress": {
-      background: "#eff6ff",
-      borderColor: "#bfdbfe",
-      color: "#1d4ed8",
-    },
-    "Not Applicable": {
-      background: "#f8fafc",
-      borderColor: "#cbd5e1",
-      color: "#475569",
-    },
-    "Not Started": {
-      background: "#f8fafc",
-      borderColor: "#cbd5e1",
-      color: "#475569",
-    },
-  }[status];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-bold"
-      style={tone}
-    >
-      <span
-        aria-hidden="true"
-        className="h-1.5 w-1.5 rounded-full bg-current"
-      />
-      {status}
-    </span>
   );
 }
 

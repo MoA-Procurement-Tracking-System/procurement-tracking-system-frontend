@@ -23,7 +23,9 @@ describe("CreateProcurementActivityView", () => {
     expect(markup).toContain("Additional Details");
     expect(markup).toContain("Roadmap");
     expect(markup).toContain(plan.name);
-    expect(markup).toContain("Inherited category");
+    expect(markup).toContain("Inherited from the procurement plan");
+    expect(markup).toContain(plan.category);
+    expect(markup).not.toContain("legacy multi-category plan");
   });
 
   it("filters procurement methods by the inherited plan category", () => {

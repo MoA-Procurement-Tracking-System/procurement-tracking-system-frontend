@@ -1,6 +1,9 @@
 "use client";
 
-import type { OfficerProject } from "../data/officerProjects";
+import type {
+  OfficerProject,
+  ProcurementCategory,
+} from "../data/officerProjects";
 import type { ProcurementPlanDraftInput } from "../data/officerPlanDrafts";
 import {
   daysInEthiopianMonth,
@@ -39,9 +42,6 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 type WizardStep = 1 | 2 | 3;
 type SaveAction = "activity" | "draft" | null;
-type ProcurementCategory =
-  "Goods" | "Works" | "Non-Consulting Services" | "Consultancy Services";
-
 interface PlanFormState {
   budgetYear: string;
   generalProcurementNoticeDate: string;

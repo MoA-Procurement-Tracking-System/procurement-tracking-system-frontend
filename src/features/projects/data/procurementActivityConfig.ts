@@ -1,7 +1,10 @@
-import type { OfficerProject, ProcurementPlanSummary } from "./officerProjects";
+import type {
+  OfficerProject,
+  ProcurementCategory,
+  ProcurementPlanSummary,
+} from "./officerProjects";
 
-export type ProcurementActivityCategory =
-  "Goods" | "Works" | "Non-Consulting Services" | "Consultancy Services";
+export type ProcurementActivityCategory = ProcurementCategory;
 
 export type ProcurementMethodKey =
   | "rfb-international"

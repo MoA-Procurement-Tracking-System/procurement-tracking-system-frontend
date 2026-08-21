@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import {
   Banknote,
   Check,
@@ -39,65 +40,6 @@ const amountFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
-const statusStyles: Record<
-  ContractStatus,
-  {
-    backgroundColor: string;
-    borderColor: string;
-    color: string;
-    dotColor: string;
-  }
-> = {
-  Active: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
-    color: "#1d4ed8",
-    dotColor: "#2563eb",
-  },
-  "Active / Under Implementation": {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
-    color: "#1d4ed8",
-    dotColor: "#2563eb",
-  },
-  Completed: {
-    backgroundColor: "#ecfdf5",
-    borderColor: "#a7f3d0",
-    color: "#047857",
-    dotColor: "#10b981",
-  },
-  Delayed: {
-    backgroundColor: "#fff1f0",
-    borderColor: "#fecaca",
-    color: "#b42318",
-    dotColor: "#dc2626",
-  },
-  "Partially Terminated": {
-    backgroundColor: "#fff7ed",
-    borderColor: "#fed7aa",
-    color: "#c2410c",
-    dotColor: "#f97316",
-  },
-  "Planned / Prepared": {
-    backgroundColor: "#f8fafc",
-    borderColor: "#cbd5e1",
-    color: "#475569",
-    dotColor: "#64748b",
-  },
-  Signed: {
-    backgroundColor: "#ecfeff",
-    borderColor: "#a5f3fc",
-    color: "#0e7490",
-    dotColor: "#0891b2",
-  },
-  Terminated: {
-    backgroundColor: "#fff1f2",
-    borderColor: "#fecdd3",
-    color: "#be123c",
-    dotColor: "#e11d48",
-  },
-};
 
 export function OfficerContractsView({
   mode,
@@ -426,7 +368,6 @@ export function OfficerContractsView({
             <tbody className="divide-y divide-slate-200">
               {filteredContracts.length > 0 ? (
                 filteredContracts.map((contract) => {
-                  const statusStyle = statusStyles[contract.status];
                   const isDelayed = contract.status === "Delayed";
 
                   return (
@@ -477,21 +418,10 @@ export function OfficerContractsView({
                         delayed={isDelayed}
                       />
                       <td className="px-3 py-2.5 align-top">
-                        <span
-                          className="inline-flex min-w-[6.25rem] items-center justify-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold leading-none"
-                          style={{
-                            backgroundColor: statusStyle.backgroundColor,
-                            borderColor: statusStyle.borderColor,
-                            color: statusStyle.color,
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: statusStyle.dotColor }}
-                          />
-                          {contract.status}
-                        </span>
+                        <StatusText
+                          className="text-xs"
+                          label={contract.status}
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-center align-top">
                         <Link

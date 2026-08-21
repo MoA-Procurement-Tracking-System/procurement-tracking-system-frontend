@@ -77,16 +77,7 @@ export function CreateProcurementActivityView({
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
-  const planCategories = useMemo(
-    () =>
-      Array.from(
-        new Set(plan.categories.map((item) => normalizeActivityCategory(item))),
-      ),
-    [plan.categories],
-  );
-  const [category, setCategory] = useState<ProcurementActivityCategory>(
-    planCategories[0] ?? "Goods",
-  );
+  const category = normalizeActivityCategory(plan.category);
   const [step, setStep] = useState<WizardStep>(1);
   const [attemptedStep, setAttemptedStep] = useState<WizardStep | null>(null);
   const [saved, setSaved] = useState(false);
@@ -192,18 +183,6 @@ export function CreateProcurementActivityView({
     );
   }
 
-  function selectCategory(value: ProcurementActivityCategory) {
-    setCategory(value);
-    setForm((current) => ({
-      ...current,
-      contractType: "",
-      method: "",
-      pricingBasis: value === "Works" ? "" : "Not Applicable",
-      requiresUnAgency: false,
-    }));
-    setRoadmap([]);
-  }
-
   function moveTo(nextStep: WizardStep) {
     setAttemptedStep(null);
     setStep(nextStep);
@@ -260,7 +239,7 @@ export function CreateProcurementActivityView({
   };
 
   const stepDescriptions: Record<WizardStep, string> = {
-    1: "Define the procurement category, method, and applicable review controls.",
+    1: "Confirm the inherited plan category and select the applicable procurement method and controls.",
     2: "Enter identification, financial, funding, lot, and scope information.",
     3: "Complete allocation, procurement classification, and location details.",
     4: "Review and finalize the procurement schedule baseline.",
@@ -290,11 +269,9 @@ export function CreateProcurementActivityView({
                 <KeyDetailsStep
                   attempted={attemptedStep === 1}
                   category={category}
-                  categoryOptions={planCategories}
                   form={form}
                   methodOptions={methodOptions}
                   onChange={updateField}
-                  onCategoryChange={selectCategory}
                   onMethodChange={selectMethod}
                   project={project}
                 />
@@ -880,21 +857,17 @@ function SavedPanel({
 function KeyDetailsStep({
   attempted,
   category,
-  categoryOptions,
   form,
   methodOptions,
   onChange,
-  onCategoryChange,
   onMethodChange,
   project,
 }: {
   attempted: boolean;
   category: ProcurementActivityCategory;
-  categoryOptions: readonly ProcurementActivityCategory[];
   form: ActivityFormState;
   methodOptions: ReturnType<typeof methodsForCategory>;
   onChange: UpdateActivityField;
-  onCategoryChange: (value: ProcurementActivityCategory) => void;
   onMethodChange: (value: string) => void;
   project: OfficerProject;
 }) {
@@ -937,37 +910,20 @@ function KeyDetailsStep({
     >
       <div className="grid gap-4 md:grid-cols-2">
         <Field
-          hint={
-            categoryOptions.length > 1
-              ? "Inherited category options from this legacy multi-category plan."
-              : "Inherited from the procurement plan and cannot be changed here."
-          }
+          hint="Inherited from the procurement plan and cannot be changed here."
           label="Procurement Category"
         >
-          {categoryOptions.length > 1 ? (
-            <SelectControl
-              onChange={(value) =>
-                onCategoryChange(value as ProcurementActivityCategory)
-              }
-              value={category}
-            >
-              {categoryOptions.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </SelectControl>
-          ) : (
-            <div
-              className={
-                inputClasses + " flex items-center justify-between bg-slate-50"
-              }
-            >
-              <span className="font-semibold">{category}</span>
-              <LockKeyhole
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-slate-400"
-              />
-            </div>
-          )}
+          <div
+            className={
+              inputClasses + " flex items-center justify-between bg-slate-50"
+            }
+          >
+            <span className="font-semibold">{category}</span>
+            <LockKeyhole
+              aria-hidden="true"
+              className="h-3.5 w-3.5 text-slate-400"
+            />
+          </div>
         </Field>
 
         <Field

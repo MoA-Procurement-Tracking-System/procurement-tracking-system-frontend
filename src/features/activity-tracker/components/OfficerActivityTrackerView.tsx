@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import {
   calculateDelayDays,
   createInitialActivityTrackingRecord,
@@ -64,42 +65,6 @@ const processStatusOptions: readonly ActivityProcessStatus[] = [
   "Completed",
   "Canceled",
 ];
-
-const statusTone: Record<
-  TrackerDisplayStatus,
-  { background: string; border: string; color: string; dot: string }
-> = {
-  Canceled: {
-    background: "#f8fafc",
-    border: "#cbd5e1",
-    color: "#475569",
-    dot: "#64748b",
-  },
-  Completed: {
-    background: "#ecfdf5",
-    border: "#a7f3d0",
-    color: "#047857",
-    dot: "#059669",
-  },
-  Delayed: {
-    background: "#fff1f0",
-    border: "#fecaca",
-    color: "#b42318",
-    dot: "#dc2626",
-  },
-  "In Progress": {
-    background: "#eff6ff",
-    border: "#bfdbfe",
-    color: "#1d4ed8",
-    dot: "#2563eb",
-  },
-  "Not Started": {
-    background: "#f8fafc",
-    border: "#cbd5e1",
-    color: "#475569",
-    dot: "#64748b",
-  },
-};
 
 export function OfficerActivityTrackerView({
   selectedActivityReference,
@@ -558,7 +523,6 @@ function ActivityTrackerList({
 
 function TrackerRow({ item }: { item: OfficerTrackedActivityItem }) {
   const status = trackerDisplayStatus(item);
-  const tone = statusTone[status];
   const activeStage = currentRoadmapStage(item);
   const stageTracking = item.tracking.stages.find(
     (stage) => stage.stageName === activeStage?.name,
@@ -642,21 +606,7 @@ function TrackerRow({ item }: { item: OfficerTrackedActivityItem }) {
         <p className="mt-1 text-[10px] text-slate-500">
           {item.tracking.activityStatus}
         </p>
-        <span
-          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-bold"
-          style={{
-            backgroundColor: tone.background,
-            borderColor: tone.border,
-            color: tone.color,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: tone.dot }}
-          />
-          {status}
-        </span>
+        <StatusText className="mt-1.5 text-[10px]" label={status} />
       </td>
       <td className="px-4 py-3.5 text-center">
         <Link

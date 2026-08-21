@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { OfficerProcurementPlanDetailView } from "./OfficerProcurementPlanDetailView";
+import {
+  getPlanActivities,
+  OfficerProcurementPlanDetailView,
+} from "./OfficerProcurementPlanDetailView";
 import { officerProjects } from "../data/officerProjects";
 
 describe("OfficerProcurementPlanDetailView", () => {
@@ -37,6 +40,41 @@ describe("OfficerProcurementPlanDetailView", () => {
         ).toBe(plan.activities);
       }
     }
+  });
+
+  it("keeps every generated activity in its plan category", () => {
+    for (const project of officerProjects) {
+      for (const plan of project.plans) {
+        const activities = getPlanActivities(project, plan);
+        expect(
+          activities.every((activity) => activity.category === plan.category),
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("normalizes previously saved activities to their parent plan category", () => {
+    const project = officerProjects[0];
+    const plan = {
+      ...project.plans[0],
+      activities: 0,
+      completedActivities: 0,
+      delayedActivities: 0,
+      inProgressActivities: 0,
+    };
+    const [activity] = getPlanActivities(project, plan, [
+      {
+        category: "Works",
+        currentStage: "Draft",
+        description: "Legacy activity",
+        estimatedAmount: 1,
+        method: "RFB",
+        reference: "LEGACY-001",
+        status: "Not Started",
+      },
+    ]);
+
+    expect(activity.category).toBe(plan.category);
   });
 
   it("shows a browser-saved activity in its plan table", () => {
