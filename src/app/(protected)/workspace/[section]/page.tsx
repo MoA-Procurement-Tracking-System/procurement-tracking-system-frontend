@@ -7,7 +7,6 @@ import { OfficerActivityTrackerView } from "@/features/activity-tracker/componen
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
 import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
-import { CommitteeDashboard } from "@/features/dashboards/components/committee/CommitteeDashboard";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -56,10 +55,6 @@ export default async function WorkspaceSectionPage({
 
   if (section === "reports") {
     return <ReportsView />;
-  }
-
-  if (section === "my-decisions") {
-    return <CommitteeDashboard user={session.user} />;
   }
 
   if (section === "system-logs") {
