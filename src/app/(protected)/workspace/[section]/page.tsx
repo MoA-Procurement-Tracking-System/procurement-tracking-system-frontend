@@ -41,7 +41,29 @@ export default async function WorkspaceSectionPage({
     redirect("/access-denied");
   }
 
-  if (section === "projects") {
+  if (section === "projects" && session.user.role === "OFFICER") {
+    const selectedProjectCode =
+      typeof query.project === "string" ? query.project : undefined;
+    const selectedPlanReference =
+      typeof query.plan === "string" ? query.plan : undefined;
+    const selectedActivityReference =
+      typeof query.activity === "string" ? query.activity : undefined;
+    const mode =
+      query.mode === "create-plan" || query.mode === "create-activity"
+        ? query.mode
+        : undefined;
+
+    return (
+      <OfficerProjectsView
+        mode={mode}
+        selectedActivityReference={selectedActivityReference}
+        selectedPlanReference={selectedPlanReference}
+        selectedProjectCode={selectedProjectCode}
+      />
+    );
+  }
+
+  if (section === "projects" && session.user.role === "DIRECTOR") {
     return <ProjectsManagementView />;
   }
 
@@ -63,28 +85,6 @@ export default async function WorkspaceSectionPage({
 
   if (section === "user-management") {
     return <UserManagementView />;
-  }
-
-  if (section === "projects" && session.user.role === "OFFICER") {
-    const selectedProjectCode =
-      typeof query.project === "string" ? query.project : undefined;
-    const selectedPlanReference =
-      typeof query.plan === "string" ? query.plan : undefined;
-    const selectedActivityReference =
-      typeof query.activity === "string" ? query.activity : undefined;
-    const mode =
-      query.mode === "create-plan" || query.mode === "create-activity"
-        ? query.mode
-        : undefined;
-
-    return (
-      <OfficerProjectsView
-        mode={mode}
-        selectedActivityReference={selectedActivityReference}
-        selectedPlanReference={selectedPlanReference}
-        selectedProjectCode={selectedProjectCode}
-      />
-    );
   }
 
   if (section === "contracts" && session.user.role === "OFFICER") {
