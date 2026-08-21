@@ -66,7 +66,7 @@ const INITIAL_DEMO_USERS: DemoUser[] = [
     id: "7",
     fullName: "Hana Girma",
     email: "hana@moa.gov.et",
-    role: "ENDORSEMENT_COMMITTEE",
+    role: "ENDORSING_COMMITTEE",
     status: "Inactive",
   },
   {
