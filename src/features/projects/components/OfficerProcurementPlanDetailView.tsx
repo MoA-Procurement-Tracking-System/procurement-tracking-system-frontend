@@ -623,19 +623,27 @@ export function getPlanActivities(
   savedActivities: readonly ProcurementActivitySummary[] = [],
 ) {
   const generated = createPlanActivities(project, plan);
+  const normalizedSaved = savedActivities.map((savedActivity) => ({
+    ...savedActivity,
+    category: plan.category,
+  }));
+  const savedByReference = new Map(
+    normalizedSaved.map((savedActivity) => [
+      savedActivity.reference,
+      savedActivity,
+    ]),
+  );
+  const generatedReferences = new Set(
+    generated.map((activity) => activity.reference),
+  );
+
   return [
-    ...generated,
-    ...savedActivities
-      .filter(
-        (savedActivity) =>
-          !generated.some(
-            (activity) => activity.reference === savedActivity.reference,
-          ),
-      )
-      .map((savedActivity) => ({
-        ...savedActivity,
-        category: plan.category,
-      })),
+    ...generated.map(
+      (activity) => savedByReference.get(activity.reference) ?? activity,
+    ),
+    ...Array.from(savedByReference.values()).filter(
+      (savedActivity) => !generatedReferences.has(savedActivity.reference),
+    ),
   ];
 }
 

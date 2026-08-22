@@ -9,7 +9,7 @@ import {
   OFFICER_ACTIVITY_TRACKING_STORAGE_KEY,
   parseActivityTrackingRecords,
   upsertActivityTrackingRecord,
-  type ActivityProcessStatus,
+  type ActivityStageTracking,
   type OfficerActivityTrackingRecord,
   type TrackingDateValue,
 } from "../data/officerActivityTracking";
@@ -33,13 +33,14 @@ import {
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
 import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
+  ArrowUpDown,
+  CalendarDays,
   ChevronDown,
-  Clock3,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   House,
+  RotateCcw,
   Search,
 } from "lucide-react";
 import Link from "next/link";
@@ -52,19 +53,22 @@ export interface OfficerTrackedActivityItem {
   tracking: OfficerActivityTrackingRecord;
 }
 
-type TrackerDisplayStatus =
-  "Canceled" | "Completed" | "Delayed" | "In Progress" | "Not Started";
+export type TrackerDisplayStatus =
+  | "Completed"
+  | "Contracted"
+  | "Delayed"
+  | "In Progress"
+  | "Not Started"
+  | "Terminated";
 
-const processStatusOptions: readonly ActivityProcessStatus[] = [
-  "Pending Implementation",
-  "Under Implementation",
-  "Bid Opened / Under Evaluation",
-  "Supplier Shortlisted",
-  "Draft Contract / Negotiation",
-  "Signed",
-  "Completed",
-  "Canceled",
-];
+type TrackerQuickFilter =
+  "all" | "completed" | "delayed" | "due-soon" | "in-progress";
+
+type TrackerSort =
+  "attention" | "delay-desc" | "reference" | "stage" | "status" | "target-asc";
+
+const DUE_SOON_DAYS = 7;
+const PAGE_SIZE = 10;
 
 export function OfficerActivityTrackerView({
   selectedActivityReference,
@@ -190,18 +194,326 @@ export function collectTrackableActivities(
   return items;
 }
 
+interface TrackerStageSnapshot {
+  delayDays: number | null;
+  name: string;
+  originalDate: TrackingDateValue;
+  status: ActivityStageTracking["status"];
+  targetDate: TrackingDateValue;
+}
+
+export function trackerCurrentStage(
+  item: OfficerTrackedActivityItem,
+  todayIso = new Date().toISOString().slice(0, 10),
+): TrackerStageSnapshot {
+  const roadmap = item.activity.details?.roadmap ?? [];
+
+  if (roadmap.length === 0) {
+    return {
+      delayDays: null,
+      name: item.activity.currentStage,
+      originalDate: emptyTrackingDate(),
+      status:
+        item.activity.status === "Completed"
+          ? "Completed"
+          : item.activity.status === "Not Started"
+            ? "Not Started"
+            : "In Progress",
+      targetDate: emptyTrackingDate(),
+    };
+  }
+
+  const inProgressStage = roadmap.find(
+    (stage) => resolvedStageTracking(item, stage).status === "In Progress",
+  );
+  const declaredStage = roadmap.find(
+    (stage) => stage.name === item.activity.currentStage,
+  );
+  const usableDeclaredStage =
+    declaredStage &&
+    !["Completed", "Not Applicable"].includes(
+      resolvedStageTracking(item, declaredStage).status,
+    )
+      ? declaredStage
+      : undefined;
+  const firstIncompleteStage = roadmap.find(
+    (stage) =>
+      !["Completed", "Not Applicable"].includes(
+        resolvedStageTracking(item, stage).status,
+      ),
+  );
+  const selectedStage =
+    inProgressStage ??
+    usableDeclaredStage ??
+    firstIncompleteStage ??
+    [...roadmap].reverse().find((stage) => !stage.notApplicable) ??
+    roadmap[roadmap.length - 1];
+  const tracking = resolvedStageTracking(item, selectedStage);
+  const originalDate = dateFromStage(selectedStage);
+
+  return {
+    delayDays: calculateDelayDays(originalDate, tracking, todayIso),
+    name: selectedStage.name,
+    originalDate,
+    status: tracking.status,
+    targetDate: effectiveTargetDate(originalDate, tracking),
+  };
+}
+
+export function trackerDisplayStatus(
+  item: OfficerTrackedActivityItem,
+  todayIso = new Date().toISOString().slice(0, 10),
+): TrackerDisplayStatus {
+  if (
+    item.tracking.processStatus === "Canceled" ||
+    hasCompletedRoadmapStage(item, "contract termination")
+  ) {
+    return "Terminated";
+  }
+
+  if (
+    item.tracking.processStatus === "Completed" ||
+    item.tracking.progressPercent === 100 ||
+    item.activity.status === "Completed" ||
+    hasCompletedRoadmapStage(item, "contract completion")
+  ) {
+    return "Completed";
+  }
+
+  if (
+    item.tracking.processStatus === "Signed" ||
+    hasCompletedRoadmapStage(item, "signed contract")
+  ) {
+    return "Contracted";
+  }
+
+  if (
+    (trackerMaximumActiveDelay(item, todayIso) ?? 0) > 0 ||
+    item.activity.status === "Delayed"
+  ) {
+    return "Delayed";
+  }
+
+  if (
+    item.tracking.progressPercent > 0 ||
+    item.tracking.processStatus !== "Pending Implementation" ||
+    item.activity.status === "In Progress"
+  ) {
+    return "In Progress";
+  }
+
+  return "Not Started";
+}
+
+export function trackerIsDueSoon(
+  item: OfficerTrackedActivityItem,
+  todayIso = new Date().toISOString().slice(0, 10),
+) {
+  const status = trackerDisplayStatus(item, todayIso);
+  if (status !== "In Progress" && status !== "Not Started") return false;
+
+  const target = trackerCurrentStage(item, todayIso).targetDate.gregorian;
+  if (!target) return false;
+  const remainingDays = differenceInIsoDays(todayIso, target);
+  return remainingDays >= 0 && remainingDays <= DUE_SOON_DAYS;
+}
+
+export function trackerStageProgress(item: OfficerTrackedActivityItem) {
+  const roadmap = item.activity.details?.roadmap ?? [];
+  if (roadmap.length === 0) {
+    return {
+      completed: Math.round(item.tracking.progressPercent / 100),
+      percent: item.tracking.progressPercent,
+      total: 1,
+    };
+  }
+
+  const applicableStages = roadmap.filter(
+    (stage) => resolvedStageTracking(item, stage).status !== "Not Applicable",
+  );
+  const completed = applicableStages.filter(
+    (stage) => resolvedStageTracking(item, stage).status === "Completed",
+  ).length;
+
+  return {
+    completed,
+    percent:
+      applicableStages.length === 0
+        ? 0
+        : Math.round((completed / applicableStages.length) * 100),
+    total: applicableStages.length,
+  };
+}
+
+function resolvedStageTracking(
+  item: OfficerTrackedActivityItem,
+  stage: NonNullable<ProcurementActivitySummary["details"]>["roadmap"][number],
+): ActivityStageTracking {
+  return (
+    item.tracking.stages.find(
+      (tracking) => tracking.stageName === stage.name,
+    ) ?? {
+      remarks: stage.remarks,
+      revisions: [],
+      stageName: stage.name,
+      status: stage.notApplicable
+        ? "Not Applicable"
+        : item.activity.status === "Completed"
+          ? "Completed"
+          : stage.name === item.activity.currentStage &&
+              item.activity.status !== "Not Started"
+            ? "In Progress"
+            : "Not Started",
+    }
+  );
+}
+
+function trackerMaximumActiveDelay(
+  item: OfficerTrackedActivityItem,
+  todayIso: string,
+) {
+  const delays = (item.activity.details?.roadmap ?? [])
+    .map((stage) => {
+      const tracking = resolvedStageTracking(item, stage);
+      if (["Completed", "Not Applicable"].includes(tracking.status)) {
+        return 0;
+      }
+      return calculateDelayDays(dateFromStage(stage), tracking, todayIso) ?? 0;
+    })
+    .filter((delay) => delay > 0);
+
+  return delays.length > 0 ? Math.max(...delays) : null;
+}
+
+function hasCompletedRoadmapStage(
+  item: OfficerTrackedActivityItem,
+  stageName: string,
+) {
+  return (item.activity.details?.roadmap ?? []).some(
+    (stage) =>
+      stage.name.toLowerCase().includes(stageName) &&
+      resolvedStageTracking(item, stage).status === "Completed",
+  );
+}
+
+function dateFromStage(
+  stage: NonNullable<ProcurementActivitySummary["details"]>["roadmap"][number],
+): TrackingDateValue {
+  return {
+    ethiopian: stage.ethiopianDate,
+    gregorian: stage.gregorianDate,
+  };
+}
+
+function emptyTrackingDate(): TrackingDateValue {
+  return { ethiopian: "", gregorian: "" };
+}
+
+function differenceInIsoDays(fromIso: string, toIso: string) {
+  const from = Date.parse(`${fromIso}T00:00:00Z`);
+  const to = Date.parse(`${toIso}T00:00:00Z`);
+  if (Number.isNaN(from) || Number.isNaN(to)) return Number.POSITIVE_INFINITY;
+  return Math.floor((to - from) / 86_400_000);
+}
+
+function organizationForTrackerItem(item: OfficerTrackedActivityItem) {
+  return (
+    item.plan.organizationRegion?.trim() ||
+    item.project.organizationRegion?.trim() ||
+    item.project.countryOrganisation
+  );
+}
+
+function matchesQuickFilter(
+  item: OfficerTrackedActivityItem,
+  filter: TrackerQuickFilter,
+  todayIso: string,
+) {
+  const status = trackerDisplayStatus(item, todayIso);
+  if (filter === "all") return true;
+  if (filter === "delayed") return status === "Delayed";
+  if (filter === "due-soon") return trackerIsDueSoon(item, todayIso);
+  if (filter === "in-progress") return status === "In Progress";
+  if (filter === "completed") return status === "Completed";
+  return false;
+}
+
+function compareTrackerItems(
+  left: OfficerTrackedActivityItem,
+  right: OfficerTrackedActivityItem,
+  sortBy: TrackerSort,
+  todayIso: string,
+) {
+  const leftStatus = trackerDisplayStatus(left, todayIso);
+  const rightStatus = trackerDisplayStatus(right, todayIso);
+  const leftStage = trackerCurrentStage(left, todayIso);
+  const rightStage = trackerCurrentStage(right, todayIso);
+
+  if (sortBy === "attention") {
+    const difference =
+      attentionPriority(leftStatus, trackerIsDueSoon(left, todayIso)) -
+      attentionPriority(rightStatus, trackerIsDueSoon(right, todayIso));
+    if (difference !== 0) return difference;
+  }
+
+  if (sortBy === "delay-desc") {
+    const difference =
+      (trackerMaximumActiveDelay(right, todayIso) ?? 0) -
+      (trackerMaximumActiveDelay(left, todayIso) ?? 0);
+    if (difference !== 0) return difference;
+  }
+
+  if (sortBy === "target-asc" || sortBy === "attention") {
+    const leftTarget = leftStage.targetDate.gregorian || "9999-12-31";
+    const rightTarget = rightStage.targetDate.gregorian || "9999-12-31";
+    const difference = leftTarget.localeCompare(rightTarget);
+    if (difference !== 0) return difference;
+  }
+
+  if (sortBy === "stage") {
+    const difference = leftStage.name.localeCompare(rightStage.name);
+    if (difference !== 0) return difference;
+  }
+
+  if (sortBy === "status") {
+    const difference = leftStatus.localeCompare(rightStatus);
+    if (difference !== 0) return difference;
+  }
+
+  return left.activity.reference.localeCompare(right.activity.reference);
+}
+
+function attentionPriority(status: TrackerDisplayStatus, dueSoon: boolean) {
+  if (status === "Delayed") return 0;
+  if (dueSoon) return 1;
+  if (status === "In Progress") return 2;
+  if (status === "Contracted") return 3;
+  if (status === "Not Started") return 4;
+  if (status === "Completed") return 5;
+  return 6;
+}
 function ActivityTrackerList({
   items,
 }: {
   items: readonly OfficerTrackedActivityItem[];
 }) {
+  const todayIso = new Date().toISOString().slice(0, 10);
   const [category, setCategory] = useState("all");
+  const [currentStage, setCurrentStage] = useState("all");
+  const [delayStatus, setDelayStatus] = useState("all");
   const [displayStatus, setDisplayStatus] = useState("all");
+  const [fiscalYear, setFiscalYear] = useState("all");
+  const [method, setMethod] = useState("all");
+  const [organization, setOrganization] = useState("all");
+  const [page, setPage] = useState(1);
   const [planReference, setPlanReference] = useState("all");
-  const [processStatus, setProcessStatus] = useState("all");
   const [projectCode, setProjectCode] = useState("all");
+  const [quickFilter, setQuickFilter] = useState<TrackerQuickFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<TrackerSort>("attention");
+  const [targetDateFrom, setTargetDateFrom] = useState("");
+  const [targetDateTo, setTargetDateTo] = useState("");
 
   const projectOptions = useMemo(
     () =>
@@ -215,7 +527,12 @@ function ActivityTrackerList({
   const planOptions = useMemo(
     () =>
       Array.from(
-        new Map(items.map((item) => [item.plan.reference, item.plan.name])),
+        new Map(
+          items.map((item) => [
+            item.plan.reference,
+            `${item.plan.name} (${item.plan.reference})`,
+          ]),
+        ),
       ),
     [items],
   );
@@ -223,19 +540,49 @@ function ActivityTrackerList({
     () => Array.from(new Set(items.map((item) => item.activity.category))),
     [items],
   );
+  const methodOptions = useMemo(
+    () => Array.from(new Set(items.map((item) => item.activity.method))),
+    [items],
+  );
+  const fiscalYearOptions = useMemo(
+    () => Array.from(new Set(items.map((item) => item.plan.budgetYear))),
+    [items],
+  );
+  const organizationOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((item) => organizationForTrackerItem(item))),
+      ).filter(Boolean),
+    [items],
+  );
+  const currentStageOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((item) => trackerCurrentStage(item, todayIso).name)),
+      ).filter(Boolean),
+    [items, todayIso],
+  );
 
   const filteredItems = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
     return items.filter((item) => {
-      const status = trackerDisplayStatus(item);
+      const status = trackerDisplayStatus(item, todayIso);
+      const stage = trackerCurrentStage(item, todayIso);
+      const dueSoon = trackerIsDueSoon(item, todayIso);
+      const delayed = status === "Delayed";
       const searchable = [
         item.activity.reference,
         item.activity.description,
-        item.activity.currentStage,
+        item.activity.category,
+        item.activity.method,
+        stage.name,
+        item.plan.budgetYear,
         item.plan.name,
         item.plan.reference,
         item.project.name,
         item.project.code,
+        item.project.shortName,
+        organizationForTrackerItem(item),
       ]
         .join(" ")
         .toLowerCase();
@@ -245,39 +592,104 @@ function ActivityTrackerList({
         (projectCode === "all" || item.project.code === projectCode) &&
         (planReference === "all" || item.plan.reference === planReference) &&
         (category === "all" || item.activity.category === category) &&
-        (processStatus === "all" ||
-          item.tracking.processStatus === processStatus) &&
-        (displayStatus === "all" || status === displayStatus)
+        (method === "all" || item.activity.method === method) &&
+        (!targetDateFrom ||
+          (stage.targetDate.gregorian &&
+            stage.targetDate.gregorian >= targetDateFrom)) &&
+        (!targetDateTo ||
+          (stage.targetDate.gregorian &&
+            stage.targetDate.gregorian <= targetDateTo)) &&
+        (fiscalYear === "all" || item.plan.budgetYear === fiscalYear) &&
+        (organization === "all" ||
+          organizationForTrackerItem(item) === organization) &&
+        (currentStage === "all" || stage.name === currentStage) &&
+        (displayStatus === "all" || status === displayStatus) &&
+        (delayStatus === "all" ||
+          (delayStatus === "delayed" && delayed) ||
+          (delayStatus === "due-soon" && dueSoon) ||
+          (delayStatus === "on-schedule" && !delayed && !dueSoon)) &&
+        matchesQuickFilter(item, quickFilter, todayIso)
       );
     });
   }, [
     category,
+    currentStage,
+    delayStatus,
     displayStatus,
+    fiscalYear,
     items,
+    method,
+    organization,
     planReference,
-    processStatus,
     projectCode,
+    quickFilter,
     searchQuery,
+    targetDateFrom,
+    targetDateTo,
+    todayIso,
   ]);
 
+  const orderedItems = useMemo(
+    () =>
+      [...filteredItems].sort((left, right) =>
+        compareTrackerItems(left, right, sortBy, todayIso),
+      ),
+    [filteredItems, sortBy, todayIso],
+  );
+  const totalPages = Math.max(1, Math.ceil(orderedItems.length / PAGE_SIZE));
+  const currentPageNumber = Math.min(page, totalPages);
+  const firstVisibleIndex = (currentPageNumber - 1) * PAGE_SIZE;
+  const visibleItems = orderedItems.slice(
+    firstVisibleIndex,
+    firstVisibleIndex + PAGE_SIZE,
+  );
+
   const completedCount = items.filter(
-    (item) => trackerDisplayStatus(item) === "Completed",
+    (item) => trackerDisplayStatus(item, todayIso) === "Completed",
   ).length;
   const delayedCount = items.filter(
-    (item) => trackerDisplayStatus(item) === "Delayed",
+    (item) => trackerDisplayStatus(item, todayIso) === "Delayed",
   ).length;
   const inProgressCount = items.filter(
-    (item) => trackerDisplayStatus(item) === "In Progress",
+    (item) => trackerDisplayStatus(item, todayIso) === "In Progress",
+  ).length;
+  const dueSoonCount = items.filter((item) =>
+    trackerIsDueSoon(item, todayIso),
   ).length;
   const additionalFilterCount =
     Number(planReference !== "all") +
-    Number(category !== "all") +
-    Number(displayStatus !== "all");
+    Number(fiscalYear !== "all") +
+    Number(displayStatus !== "all") +
+    Number(delayStatus !== "all") +
+    Number(currentStage !== "all") +
+    Number(organization !== "all") +
+    Number(Boolean(targetDateFrom)) +
+    Number(Boolean(targetDateTo)) +
+    Number(sortBy !== "attention");
   const hasFilters =
     Boolean(searchQuery.trim()) ||
     projectCode !== "all" ||
-    processStatus !== "all" ||
+    category !== "all" ||
+    method !== "all" ||
+    quickFilter !== "all" ||
     additionalFilterCount > 0;
+
+  function resetFilters() {
+    setCategory("all");
+    setCurrentStage("all");
+    setDelayStatus("all");
+    setDisplayStatus("all");
+    setFiscalYear("all");
+    setMethod("all");
+    setOrganization("all");
+    setPlanReference("all");
+    setProjectCode("all");
+    setQuickFilter("all");
+    setSearchQuery("");
+    setSortBy("attention");
+    setTargetDateFrom("");
+    setTargetDateTo("");
+  }
 
   return (
     <div className="w-full min-w-0 space-y-5 overflow-x-hidden pb-6">
@@ -305,45 +717,51 @@ function ActivityTrackerList({
           Activity Tracker
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Update execution milestones for activities in finally approved plans.
+          Monitor approved procurement activities, milestones, and delays.
         </p>
       </header>
 
-      <section
-        aria-label="Activity tracking summary"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      <nav
+        aria-label="Activity tracker views"
+        className="flex gap-6 overflow-x-auto border-b border-slate-200"
       >
-        <SummaryCard
-          icon={<Activity aria-hidden="true" className="h-4 w-4" />}
-          label="Approved-plan activities"
-          tone="navy"
-          value={items.length}
+        <QuickFilterButton
+          active={quickFilter === "all"}
+          count={items.length}
+          label="All Activities"
+          onClick={() => setQuickFilter("all")}
         />
-        <SummaryCard
-          icon={<Clock3 aria-hidden="true" className="h-4 w-4" />}
-          label="In progress"
-          tone="blue"
-          value={inProgressCount}
-        />
-        <SummaryCard
-          icon={<AlertTriangle aria-hidden="true" className="h-4 w-4" />}
+        <QuickFilterButton
+          active={quickFilter === "delayed"}
+          count={delayedCount}
           label="Delayed"
-          tone="red"
-          value={delayedCount}
+          onClick={() => setQuickFilter("delayed")}
         />
-        <SummaryCard
-          icon={<CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
+        <QuickFilterButton
+          active={quickFilter === "due-soon"}
+          count={dueSoonCount}
+          label="Due Soon"
+          onClick={() => setQuickFilter("due-soon")}
+        />
+        <QuickFilterButton
+          active={quickFilter === "in-progress"}
+          count={inProgressCount}
+          label="In Progress"
+          onClick={() => setQuickFilter("in-progress")}
+        />
+        <QuickFilterButton
+          active={quickFilter === "completed"}
+          count={completedCount}
           label="Completed"
-          tone="green"
-          value={completedCount}
+          onClick={() => setQuickFilter("completed")}
         />
-      </section>
+      </nav>
 
       <section
         aria-label="Activity tracker filters"
         className="w-full rounded-md border border-slate-300 bg-white p-3 shadow-sm"
       >
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(21rem,1fr)_10rem_14rem_auto]">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(20rem,1fr)_10rem_11rem_11rem_auto]">
           <label className="relative block min-w-0 sm:col-span-2 xl:col-span-1">
             <span className="sr-only">Search tracked activities</span>
             <Search
@@ -353,7 +771,7 @@ function ActivityTrackerList({
             <input
               className="h-10 w-full rounded-sm border border-slate-300 bg-[#fbfcfd] pr-3 pl-10 text-xs text-slate-800 outline-none transition placeholder:text-slate-500 hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search activity #, description, plan, or stage..."
+              placeholder="Search reference, activity, project, or stage..."
               type="search"
               value={searchQuery}
             />
@@ -362,19 +780,28 @@ function ActivityTrackerList({
             label="Project"
             onChange={setProjectCode}
             options={[
-              { label: "Project", value: "all" },
+              { label: "All Projects", value: "all" },
               ...projectOptions.map(([value, label]) => ({ label, value })),
             ]}
             value={projectCode}
           />
           <CompactSelect
-            label="Process Status"
-            onChange={setProcessStatus}
+            label="Category"
+            onChange={setCategory}
             options={[
-              { label: "Process Status", value: "all" },
-              ...processStatusOptions.map((value) => ({ label: value, value })),
+              { label: "All Categories", value: "all" },
+              ...categoryOptions.map((value) => ({ label: value, value })),
             ]}
-            value={processStatus}
+            value={category}
+          />
+          <CompactSelect
+            label="Method"
+            onChange={setMethod}
+            options={[
+              { label: "All Methods", value: "all" },
+              ...methodOptions.map((value) => ({ label: value, value })),
+            ]}
+            value={method}
           />
           <button
             aria-expanded={showMoreFilters}
@@ -388,61 +815,113 @@ function ActivityTrackerList({
           >
             <Filter aria-hidden="true" className="h-3.5 w-3.5" />
             More Filters
-            {additionalFilterCount > 0 ? (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#176c55] px-1 text-[9px] text-white">
-                {additionalFilterCount}
-              </span>
-            ) : null}
+            {additionalFilterCount > 0 ? ` (${additionalFilterCount})` : null}
           </button>
         </div>
 
         {showMoreFilters ? (
-          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 xl:grid-cols-[minmax(13rem,1fr)_11rem_10rem_auto]">
+          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
             <CompactSelect
-              label="Plan"
+              label="Procurement Plan"
               onChange={setPlanReference}
               options={[
-                { label: "All Approved Plans", value: "all" },
+                { label: "All Procurement Plans", value: "all" },
                 ...planOptions.map(([value, label]) => ({ label, value })),
               ]}
               value={planReference}
             />
             <CompactSelect
-              label="Category"
-              onChange={setCategory}
+              label="Fiscal Year"
+              onChange={setFiscalYear}
               options={[
-                { label: "All Categories", value: "all" },
-                ...categoryOptions.map((value) => ({ label: value, value })),
+                { label: "All Fiscal Years", value: "all" },
+                ...fiscalYearOptions.map((value) => ({ label: value, value })),
               ]}
-              value={category}
+              value={fiscalYear}
             />
             <CompactSelect
-              label="Status"
+              label="Overall Status"
               onChange={setDisplayStatus}
               options={[
                 { label: "All Statuses", value: "all" },
                 { label: "Not Started", value: "Not Started" },
                 { label: "In Progress", value: "In Progress" },
                 { label: "Delayed", value: "Delayed" },
+                { label: "Contracted", value: "Contracted" },
                 { label: "Completed", value: "Completed" },
-                { label: "Canceled", value: "Canceled" },
+                { label: "Terminated", value: "Terminated" },
               ]}
               value={displayStatus}
             />
+            <CompactSelect
+              label="Delay Status"
+              onChange={setDelayStatus}
+              options={[
+                { label: "All Delay Statuses", value: "all" },
+                { label: "Delayed", value: "delayed" },
+                { label: "Due Soon", value: "due-soon" },
+                { label: "On Schedule", value: "on-schedule" },
+              ]}
+              value={delayStatus}
+            />
+            <CompactSelect
+              label="Current Stage"
+              onChange={setCurrentStage}
+              options={[
+                { label: "All Current Stages", value: "all" },
+                ...currentStageOptions.map((value) => ({
+                  label: value,
+                  value,
+                })),
+              ]}
+              value={currentStage}
+            />
+            <CompactDateInput
+              label="Target Date From"
+              max={targetDateTo || undefined}
+              onChange={setTargetDateFrom}
+              value={targetDateFrom}
+            />
+            <CompactDateInput
+              label="Target Date To"
+              min={targetDateFrom || undefined}
+              onChange={setTargetDateTo}
+              value={targetDateTo}
+            />
+            <CompactSelect
+              label="Organization or Region"
+              onChange={setOrganization}
+              options={[
+                { label: "All Organizations", value: "all" },
+                ...organizationOptions.map((value) => ({
+                  label: value,
+                  value,
+                })),
+              ]}
+              value={organization}
+            />
+            <CompactSelect
+              icon={<ArrowUpDown aria-hidden="true" className="h-3.5 w-3.5" />}
+              label="Sort By"
+              onChange={(value) => setSortBy(value as TrackerSort)}
+              options={[
+                { label: "Attention Priority", value: "attention" },
+                { label: "Target Date", value: "target-asc" },
+                { label: "Delay Days", value: "delay-desc" },
+                { label: "Current Stage", value: "stage" },
+                { label: "Reference", value: "reference" },
+                { label: "Overall Status", value: "status" },
+              ]}
+              value={sortBy}
+            />
             {hasFilters ? (
               <button
-                className="h-10 justify-self-start px-2 text-xs font-bold text-slate-500 underline-offset-2 hover:text-[#176c55] hover:underline"
-                onClick={() => {
-                  setCategory("all");
-                  setDisplayStatus("all");
-                  setPlanReference("all");
-                  setProcessStatus("all");
-                  setProjectCode("all");
-                  setSearchQuery("");
-                }}
+                className="inline-flex h-9 items-center gap-2 justify-self-start text-xs font-bold text-slate-500 hover:text-[#176c55] xl:col-span-3 2xl:col-span-5 2xl:justify-self-end"
+                onClick={resetFilters}
                 type="button"
               >
-                Clear filters
+                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                Reset filters
               </button>
             ) : null}
           </div>
@@ -456,52 +935,59 @@ function ActivityTrackerList({
           role="region"
           tabIndex={0}
         >
-          <table className="w-[94rem] min-w-[94rem] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[92rem] table-fixed border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-300 bg-[#edf5f1] text-[10px] font-extrabold uppercase tracking-[0.05em] text-slate-600">
+                <th className="w-48 px-4 py-3" scope="col">
+                  Reference No.
+                </th>
                 <th className="w-72 px-4 py-3" scope="col">
-                  Activity / Reference
-                </th>
-                <th className="w-56 px-4 py-3" scope="col">
-                  Project / Plan
-                </th>
-                <th className="w-40 px-4 py-3" scope="col">
-                  Category / Method
-                </th>
-                <th className="w-52 px-4 py-3" scope="col">
-                  Current Stage
-                </th>
-                <th className="w-40 px-4 py-3" scope="col">
-                  Current Target
+                  Activity
                 </th>
                 <th className="w-36 px-4 py-3" scope="col">
-                  Progress
+                  Project
                 </th>
-                <th className="w-24 px-4 py-3 text-center" scope="col">
+                <th className="w-44 px-4 py-3" scope="col">
+                  Category
+                </th>
+                <th className="w-28 px-4 py-3" scope="col">
+                  Method
+                </th>
+                <th className="w-56 px-4 py-3" scope="col">
+                  Current Stage
+                </th>
+                <th className="w-44 px-4 py-3" scope="col">
+                  Effective Target
+                </th>
+                <th className="w-32 px-4 py-3" scope="col">
                   Delay
                 </th>
-                <th className="w-52 px-4 py-3" scope="col">
-                  Process / Status
+                <th className="w-36 px-4 py-3" scope="col">
+                  Overall Status
                 </th>
-                <th className="w-20 px-4 py-3 text-center" scope="col">
+                <th className="w-28 px-4 py-3 text-right" scope="col">
                   Action
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
-                  <TrackerRow item={item} key={trackerItemKey(item)} />
+              {visibleItems.length > 0 ? (
+                visibleItems.map((item) => (
+                  <TrackerRow
+                    item={item}
+                    key={trackerItemKey(item)}
+                    todayIso={todayIso}
+                  />
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-14 text-center" colSpan={9}>
+                  <td className="px-4 py-14 text-center" colSpan={10}>
                     <Search className="mx-auto h-6 w-6 text-slate-300" />
                     <p className="mt-2 text-sm font-bold text-slate-700">
                       No activities match these filters
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Clear a filter or search using another reference.
+                      Reset a filter or search using another reference.
                     </p>
                   </td>
                 </tr>
@@ -509,30 +995,63 @@ function ActivityTrackerList({
             </tbody>
           </table>
         </div>
-        <footer className="flex items-center justify-between border-t border-slate-200 bg-[#fafbfc] px-4 py-3 text-xs text-slate-500">
+        <footer className="flex flex-col gap-3 border-t border-slate-200 bg-[#fafbfc] px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <span>
-            Showing {filteredItems.length} of {items.length} approved-plan
-            activities
+            {orderedItems.length === 0
+              ? "Showing 0 activities"
+              : `Showing ${firstVisibleIndex + 1} to ${Math.min(
+                  firstVisibleIndex + PAGE_SIZE,
+                  orderedItems.length,
+                )} of ${orderedItems.length} matching activities`}
           </span>
-          <span>Original baseline dates remain locked</span>
+          <div className="flex items-center gap-3">
+            <span>
+              Page {currentPageNumber} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label="Previous page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:border-[#8db7a6] hover:text-[#176c55] disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={currentPageNumber === 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                type="button"
+              >
+                <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+              </button>
+              <button
+                aria-label="Next page"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:border-[#8db7a6] hover:text-[#176c55] disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={currentPageNumber === totalPages}
+                onClick={() =>
+                  setPage((current) => Math.min(totalPages, current + 1))
+                }
+                type="button"
+              >
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </footer>
       </section>
     </div>
   );
 }
 
-function TrackerRow({ item }: { item: OfficerTrackedActivityItem }) {
-  const status = trackerDisplayStatus(item);
-  const activeStage = currentRoadmapStage(item);
-  const stageTracking = item.tracking.stages.find(
-    (stage) => stage.stageName === activeStage?.name,
-  );
-  const originalDate: TrackingDateValue = {
-    ethiopian: activeStage?.ethiopianDate ?? "",
-    gregorian: activeStage?.gregorianDate ?? "",
-  };
-  const target = effectiveTargetDate(originalDate, stageTracking);
-  const delay = calculateDelayDays(originalDate, stageTracking);
+function TrackerRow({
+  item,
+  todayIso,
+}: {
+  item: OfficerTrackedActivityItem;
+  todayIso: string;
+}) {
+  const status = trackerDisplayStatus(item, todayIso);
+  const stage = trackerCurrentStage(item, todayIso);
+  const dueSoon = trackerIsDueSoon(item, todayIso);
+  const remainingDays = stage.targetDate.gregorian
+    ? differenceInIsoDays(todayIso, stage.targetDate.gregorian)
+    : null;
+  const progress = trackerStageProgress(item);
+  const delay = stage.delayDays;
   const href =
     "/workspace/activity-tracker?project=" +
     encodeURIComponent(item.project.code) +
@@ -542,134 +1061,143 @@ function TrackerRow({ item }: { item: OfficerTrackedActivityItem }) {
     encodeURIComponent(item.activity.reference);
 
   return (
-    <tr className="align-middle text-xs text-slate-700 hover:bg-slate-50/70">
+    <tr className="align-middle text-xs text-slate-700 transition hover:bg-slate-50/70">
       <td className="px-4 py-3.5">
-        <p className="font-bold leading-5 text-[#10243f]">
-          {item.activity.description}
-        </p>
-        <p className="mt-1 font-mono text-[10px] text-[#1261a8]">
+        <Link
+          className="font-mono text-[10px] font-bold text-[#1261a8] hover:text-[#07523f] hover:underline"
+          href={href}
+        >
           {item.activity.reference}
-        </p>
+        </Link>
+      </td>
+      <td className="px-4 py-3.5">
+        <Link
+          className="font-bold leading-5 text-[#10243f] hover:text-[#07523f] hover:underline"
+          href={href}
+        >
+          {item.activity.description}
+        </Link>
+        {item.activity.details?.roadmap.length ? (
+          <p className="mt-1 text-[10px] text-slate-500">
+            {progress.completed} of {progress.total} stages completed
+          </p>
+        ) : null}
       </td>
       <td className="px-4 py-3.5">
         <p className="font-bold text-slate-700">{item.project.shortName}</p>
-        <p
-          className="mt-1 truncate text-[10px] text-slate-500"
-          title={item.plan.name}
-        >
-          {item.plan.name}
-        </p>
-      </td>
-      <td className="px-4 py-3.5">
-        <p className="font-semibold text-slate-700">{item.activity.category}</p>
         <p className="mt-1 text-[10px] text-slate-500">
-          {item.activity.method}
+          {item.plan.budgetYear}
         </p>
       </td>
-      <td className="px-4 py-3.5">
-        <p className="font-semibold leading-5 text-slate-700">
-          {activeStage?.name ?? item.activity.currentStage}
-        </p>
-        <p className="mt-1 text-[10px] text-slate-500">
-          {stageTracking?.status ?? "Baseline stage"}
-        </p>
+      <td className="px-4 py-3.5 font-semibold text-slate-700">
+        {item.activity.category}
+      </td>
+      <td className="px-4 py-3.5 font-semibold text-slate-700">
+        {item.activity.method}
       </td>
       <td className="px-4 py-3.5">
-        <DateValue date={target} />
+        <p className="font-semibold leading-5 text-slate-700">{stage.name}</p>
+        <p className="mt-1 text-[10px] text-slate-500">{stage.status}</p>
       </td>
       <td className="px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-[#176c55]"
-              style={{ width: `${item.tracking.progressPercent}%` }}
-            />
-          </div>
-          <span className="w-8 text-right font-bold tabular-nums text-slate-700">
-            {item.tracking.progressPercent}%
-          </span>
-        </div>
+        <DateValue date={stage.targetDate} />
       </td>
       <td className="px-4 py-3.5 text-center">
-        {delay === null ? (
+        {dueSoon && remainingDays !== null ? (
+          <span className="font-bold text-[#b45309]">
+            {remainingDays === 0 ? "Due today" : `${remainingDays} days left`}
+          </span>
+        ) : delay === null ? (
           <span className="text-slate-400">—</span>
         ) : delay > 0 ? (
-          <span className="font-bold text-[#b42318]">{delay}d</span>
+          <span className="font-bold text-[#b91c1c]">{delay} days delayed</span>
         ) : (
-          <span className="font-semibold text-[#047857]">On time</span>
+          <span className="font-semibold text-[#166534]">On schedule</span>
         )}
       </td>
       <td className="px-4 py-3.5">
-        <p className="font-semibold text-slate-700">
-          {item.tracking.processStatus}
-        </p>
-        <p className="mt-1 text-[10px] text-slate-500">
-          {item.tracking.activityStatus}
-        </p>
-        <StatusText className="mt-1.5 text-[10px]" label={status} />
+        <StatusText className="text-[10px]" label={status} />
       </td>
-      <td className="px-4 py-3.5 text-center">
+      <td className="px-4 py-3.5 text-right">
         <Link
           className="font-bold text-[#1261a8] hover:text-[#07523f] hover:underline"
           href={href}
         >
-          Open
+          View / Update
         </Link>
       </td>
     </tr>
   );
 }
 
-function SummaryCard({
-  icon,
+function QuickFilterButton({
+  active,
+  count,
   label,
-  tone,
+  onClick,
+}: {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={active}
+      className={`shrink-0 border-b-2 px-0.5 pt-1 pb-3 text-xs font-bold transition ${
+        active
+          ? "border-[#176c55] text-[#07523f]"
+          : "border-transparent text-slate-500 hover:text-slate-800"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {label} <span className="font-semibold text-slate-400">{count}</span>
+    </button>
+  );
+}
+
+function CompactDateInput({
+  label,
+  max,
+  min,
+  onChange,
   value,
 }: {
-  icon: React.ReactNode;
   label: string;
-  tone: "blue" | "green" | "navy" | "red";
-  value: number;
+  max?: string;
+  min?: string;
+  onChange: (value: string) => void;
+  value: string;
 }) {
-  const colors = {
-    blue: { accent: "#2563eb", border: "#bfdbfe", icon: "#eff6ff" },
-    green: { accent: "#047857", border: "#b8dfcf", icon: "#ecfdf5" },
-    navy: { accent: "#10243f", border: "#d7e0ea", icon: "#f1f5f9" },
-    red: { accent: "#b42318", border: "#fecaca", icon: "#fff1f0" },
-  }[tone];
-
   return (
-    <article
-      className="flex min-h-24 items-center gap-4 rounded-lg border bg-white px-4 py-4 shadow-sm"
-      style={{ borderColor: colors.border }}
-    >
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: colors.icon, color: colors.accent }}
-      >
-        {icon}
-      </span>
-      <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500">
-          {label}
-        </p>
-        <p
-          className="mt-1 text-2xl font-extrabold"
-          style={{ color: colors.accent }}
-        >
-          {value}
-        </p>
-      </div>
-    </article>
+    <label className="relative block min-w-0">
+      <span className="sr-only">{label}</span>
+      <CalendarDays
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+      />
+      <input
+        aria-label={label}
+        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
+        max={max}
+        min={min}
+        onChange={(event) => onChange(event.target.value)}
+        type="date"
+        value={value}
+      />
+    </label>
   );
 }
 
 function CompactSelect({
+  icon,
   label,
   onChange,
   options,
   value,
 }: {
+  icon?: React.ReactNode;
   label: string;
   onChange: (value: string) => void;
   options: readonly { label: string; value: string }[];
@@ -678,8 +1206,13 @@ function CompactSelect({
   return (
     <label className="relative block min-w-0">
       <span className="sr-only">{label}</span>
+      {icon ? (
+        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500">
+          {icon}
+        </span>
+      ) : null}
       <select
-        className="h-10 w-full cursor-pointer appearance-none truncate rounded-sm border border-slate-300 bg-[#fbfcfd] py-2 pr-9 pl-3 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
+        className={`h-10 w-full cursor-pointer appearance-none truncate rounded-sm border border-slate-300 bg-[#fbfcfd] py-2 pr-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15 ${icon ? "pl-9" : "pl-3"}`}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -708,49 +1241,6 @@ function DateValue({ date }: { date: TrackingDateValue }) {
         <p className="mt-1 text-[10px] text-slate-500">{date.ethiopian}</p>
       ) : null}
     </div>
-  );
-}
-
-function trackerDisplayStatus(
-  item: OfficerTrackedActivityItem,
-): TrackerDisplayStatus {
-  if (item.tracking.processStatus === "Canceled") return "Canceled";
-  if (
-    item.tracking.processStatus === "Completed" ||
-    item.tracking.progressPercent === 100
-  ) {
-    return "Completed";
-  }
-  const activeStage = currentRoadmapStage(item);
-  const tracking = item.tracking.stages.find(
-    (stage) => stage.stageName === activeStage?.name,
-  );
-  const delay = calculateDelayDays(
-    {
-      ethiopian: activeStage?.ethiopianDate ?? "",
-      gregorian: activeStage?.gregorianDate ?? "",
-    },
-    tracking,
-  );
-  if ((delay ?? 0) > 0 || item.activity.status === "Delayed") return "Delayed";
-  if (
-    item.tracking.progressPercent > 0 ||
-    item.tracking.processStatus !== "Pending Implementation"
-  ) {
-    return "In Progress";
-  }
-  return "Not Started";
-}
-
-function currentRoadmapStage(item: OfficerTrackedActivityItem) {
-  const roadmap = item.activity.details?.roadmap ?? [];
-  const inProgressStage = item.tracking.stages.find(
-    (stage) => stage.status === "In Progress",
-  );
-  return (
-    roadmap.find((stage) => stage.name === inProgressStage?.stageName) ??
-    roadmap.find((stage) => stage.name === item.activity.currentStage) ??
-    roadmap.find((stage) => !stage.notApplicable)
   );
 }
 

@@ -77,6 +77,75 @@ describe("OfficerProcurementPlanDetailView", () => {
     expect(activity.category).toBe(plan.category);
   });
 
+  it("uses saved activity details when a generated reference already exists", () => {
+    const project = officerProjects.find(
+      (candidate) => candidate.code === "PRJ-24-042",
+    )!;
+    const plan = project.plans.find(
+      (candidate) => candidate.reference === "PP-BREFONS-2016-02",
+    )!;
+    const generatedActivity = getPlanActivities(project, plan).find(
+      (activity) => activity.reference === "MOA/BREFONS/W/02",
+    )!;
+    const roadmap = [
+      {
+        allowNotApplicable: false,
+        days: "0",
+        ethiopianDate: "01-Hamle-2018",
+        gregorianDate: "08-Jul-2026",
+        name: "Preparation of Specification",
+        notApplicable: false,
+        remarks: "Approved baseline",
+      },
+    ];
+    const savedActivity = {
+      ...generatedActivity,
+      details: {
+        componentAllocations: [],
+        financingAllocations: [],
+        form: {
+          activityDescription: generatedActivity.description,
+          classificationCode: "72141100",
+          comments: "Saved activity details",
+          contractType: "Lump Sum",
+          currency: "UA",
+          domesticPreference: "No",
+          estimatedAmount: String(generatedActivity.estimatedAmount),
+          evaluationOptionCode: "Most Advantageous Bid",
+          fundingSource: "AfDB Grant",
+          highRiskCode: "No",
+          inProcess: false,
+          invitationReference: "BREFONS/W/02",
+          latitude: "",
+          location: "Oromia",
+          longitude: "",
+          lotRequired: false,
+          marketApproach: "Open International",
+          method: generatedActivity.method,
+          oversightClassification: "Substantial",
+          pricingBasis: "Fixed Price",
+          procurementDocumentType: "Request for Bids",
+          procurementProcess: "Single Stage - One Envelope",
+          qualificationApproach: "Postqualification",
+          requiresUnAgency: false,
+          reviewType: "Prior Review",
+          scopeNotes: "Regional storage construction",
+          specificMethod: "International Competitive Procurement",
+          subcomponent: "Resilient food systems infrastructure",
+        },
+        lots: [],
+        roadmap,
+      },
+    };
+
+    const resolved = getPlanActivities(project, plan, [savedActivity]).find(
+      (activity) => activity.reference === savedActivity.reference,
+    );
+
+    expect(resolved).toEqual(savedActivity);
+    expect(resolved?.details?.roadmap).toEqual(roadmap);
+  });
+
   it("shows a browser-saved activity in its plan table", () => {
     const project = officerProjects[0];
     const emptyPlan = {

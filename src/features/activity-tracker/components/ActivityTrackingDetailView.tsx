@@ -1,22 +1,28 @@
 "use client";
 
 import { StatusText } from "../../../components/dashboard/StatusText";
+import {
+  OFFICER_CONTRACTS_STORAGE_KEY,
+  officerContracts,
+  parseSavedContracts,
+  type OfficerContract,
+} from "../../contracts/data/officerContracts";
 import type { OfficerTrackedActivityItem } from "./OfficerActivityTrackerView";
 import {
   calculateDelayDays,
   effectiveTargetDate,
-  type ActivityProcessStatus,
   type ActivityStageStatus,
   type ActivityStageTracking,
-  type ActivityWorkflowStatus,
   type OfficerActivityTrackingRecord,
   type TrackingDateValue,
 } from "../data/officerActivityTracking";
 import { DualCalendarField } from "../../projects/components/CreateProcurementPlanView";
 import type { ProcurementActivityRoadmapStage } from "../../projects/data/officerActivityDrafts";
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
+  BriefcaseBusiness,
   CalendarClock,
   CheckCircle2,
   CircleDot,
@@ -30,26 +36,25 @@ import {
   Save,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const processStatuses: readonly ActivityProcessStatus[] = [
-  "Pending Implementation",
-  "Under Implementation",
-  "Bid Opened / Under Evaluation",
-  "Supplier Shortlisted",
-  "Draft Contract / Negotiation",
-  "Signed",
-  "Completed",
-  "Canceled",
+type ActivityDetailTab = "contract" | "overview" | "roadmap";
+
+const activityDetailTabs: readonly {
+  id: ActivityDetailTab;
+  label: string;
+}[] = [
+  { id: "overview", label: "Overview" },
+  { id: "roadmap", label: "Roadmap" },
+  { id: "contract", label: "Contract" },
 ];
 
-const workflowStatuses: readonly ActivityWorkflowStatus[] = [
-  "New",
-  "Submitted",
-  "Under Review",
-  "Cleared",
-  "Modified / Cleared",
-];
+function activityDetailTabFromHash(hash: string): ActivityDetailTab {
+  const tab = hash.replace(/^#/, "");
+  return tab === "roadmap" || tab === "contract" || tab === "overview"
+    ? tab
+    : "overview";
+}
 
 export function ActivityTrackingDetailView({
   item,
@@ -59,8 +64,39 @@ export function ActivityTrackingDetailView({
   onSave: (record: OfficerActivityTrackingRecord) => void;
 }) {
   const roadmap = useMemo(() => trackingRoadmap(item), [item]);
+  const [activeTab, setActiveTab] = useState<ActivityDetailTab>("overview");
   const [record, setRecord] = useState(item.tracking);
   const [savedMessage, setSavedMessage] = useState("");
+  const [savedContracts, setSavedContracts] = useState<OfficerContract[]>([]);
+
+  useEffect(() => {
+    const loadContracts = window.setTimeout(() => {
+      setSavedContracts(
+        parseSavedContracts(
+          window.localStorage.getItem(OFFICER_CONTRACTS_STORAGE_KEY),
+        ),
+      );
+    }, 0);
+    return () => window.clearTimeout(loadContracts);
+  }, []);
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      setActiveTab(activityDetailTabFromHash(window.location.hash));
+    };
+    const initialSync = window.setTimeout(syncTabFromHash, 0);
+    window.addEventListener("hashchange", syncTabFromHash);
+
+    return () => {
+      window.clearTimeout(initialSync);
+      window.removeEventListener("hashchange", syncTabFromHash);
+    };
+  }, []);
+
+  const overallStatus = detailOverallStatus(item, record, roadmap);
+  const activeStageName = detailCurrentStageName(item, record, roadmap);
+  const activityForm = item.activity.details?.form;
+  const progress = detailStageProgress(item, record, roadmap);
   const projectActivityHref =
     "/workspace/projects?project=" +
     encodeURIComponent(item.project.code) +
@@ -69,16 +105,46 @@ export function ActivityTrackingDetailView({
     "&activity=" +
     encodeURIComponent(item.activity.reference);
 
+  const registeredContract = useMemo(() => {
+    const contracts = [
+      ...savedContracts,
+      ...officerContracts.filter(
+        (fixture) =>
+          !savedContracts.some(
+            (saved) => saved.contractNumber === fixture.contractNumber,
+          ),
+      ),
+    ];
+    return contracts.find(
+      (contract) =>
+        (contract.details?.projectCode === item.project.code &&
+          contract.details.planReference === item.plan.reference &&
+          contract.details.activityReference === item.activity.reference) ||
+        (contract.project === item.project.shortName &&
+          contract.procurementActivity === item.activity.description),
+    );
+  }, [item, savedContracts]);
+  const contractReady =
+    Boolean(registeredContract) || overallStatus === "Contracted";
+  const contractHref = registeredContract
+    ? `/workspace/contracts?contract=${encodeURIComponent(
+        registeredContract.contractNumber,
+      )}`
+    : "/workspace/contracts?mode=register" +
+      "&project=" +
+      encodeURIComponent(item.project.code) +
+      "&plan=" +
+      encodeURIComponent(item.plan.reference) +
+      "&activity=" +
+      encodeURIComponent(item.activity.reference);
+
+  function selectTab(tab: ActivityDetailTab) {
+    setActiveTab(tab);
+    window.history.replaceState(window.history.state, "", `#${tab}`);
+  }
+
   function updateRecord(
-    changes: Partial<
-      Pick<
-        OfficerActivityTrackingRecord,
-        | "activityStatus"
-        | "generalRemarks"
-        | "processStatus"
-        | "progressPercent"
-      >
-    >,
+    changes: Partial<Pick<OfficerActivityTrackingRecord, "generalRemarks">>,
   ) {
     setSavedMessage("");
     setRecord((current) => ({ ...current, ...changes }));
@@ -89,6 +155,22 @@ export function ActivityTrackingDetailView({
     setRecord(savedRecord);
     onSave(savedRecord);
     setSavedMessage(message);
+  }
+
+  function handleTabKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    tab: ActivityDetailTab,
+  ) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const currentIndex = activityDetailTabs.findIndex(({ id }) => id === tab);
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex =
+      (currentIndex + direction + activityDetailTabs.length) %
+      activityDetailTabs.length;
+    const nextTab = activityDetailTabs[nextIndex].id;
+    selectTab(nextTab);
+    document.getElementById(`${nextTab}-tab`)?.focus();
   }
 
   return (
@@ -141,6 +223,15 @@ export function ActivityTrackingDetailView({
               <span aria-hidden="true">•</span>
               <span>{item.plan.name}</span>
             </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <StatusText className="text-xs" label={overallStatus} />
+              <span className="text-xs text-slate-500">
+                Current stage:{" "}
+                <strong className="font-bold text-slate-700">
+                  {activeStageName}
+                </strong>
+              </span>
+            </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <Link
@@ -170,104 +261,363 @@ export function ActivityTrackingDetailView({
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <SectionHeading
-          icon={<CircleDot className="h-4 w-4" />}
-          title="Activity Execution Status"
-        />
-        <div className="grid gap-5 p-4 lg:grid-cols-[1fr_1fr_1fr_1.5fr]">
-          <FieldSelect
-            label="Process Status"
-            onChange={(value) => {
-              const processStatus = value as ActivityProcessStatus;
-              updateRecord({
-                processStatus,
-                ...(processStatus === "Completed"
-                  ? { progressPercent: 100 }
-                  : {}),
-              });
-            }}
-            options={processStatuses}
-            value={record.processStatus}
-          />
-          <FieldSelect
-            label="Activity Status"
-            onChange={(value) =>
-              updateRecord({ activityStatus: value as ActivityWorkflowStatus })
-            }
-            options={workflowStatuses}
-            value={record.activityStatus}
-          />
-          <label className="block">
-            <span className="mb-2 block text-[11px] font-bold text-slate-600">
-              Performance / Progress %
-            </span>
-            <div className="flex h-10 items-center gap-3 rounded border border-slate-300 bg-white px-3 focus-within:border-[#176c55] focus-within:ring-2 focus-within:ring-[#176c55]/15">
-              <input
-                aria-label="Performance progress percentage"
-                className="min-w-0 flex-1 accent-[#176c55]"
-                max={100}
-                min={0}
-                onChange={(event) =>
-                  updateRecord({ progressPercent: Number(event.target.value) })
-                }
-                type="range"
-                value={record.progressPercent}
-              />
-              <span className="w-10 text-right text-xs font-extrabold tabular-nums text-[#10243f]">
-                {record.progressPercent}%
-              </span>
-            </div>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-[11px] font-bold text-slate-600">
-              General Remarks
-            </span>
-            <input
-              className="h-10 w-full rounded border border-slate-300 px-3 text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
-              onChange={(event) =>
-                updateRecord({ generalRemarks: event.target.value })
-              }
-              placeholder="Execution note, issue, or follow-up..."
-              value={record.generalRemarks}
-            />
-          </label>
-        </div>
-        <div className="flex items-center justify-between gap-4 border-t border-slate-200 bg-[#fafbfc] px-4 py-3">
-          <p className="text-[10px] text-slate-500">
-            {record.updatedAt
-              ? `Last saved ${formatDateTime(record.updatedAt)}`
-              : "No execution update has been saved yet."}
-          </p>
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-[#176c55] px-4 text-xs font-bold text-white hover:bg-[#125442]"
-            onClick={() => persist(record, "Activity execution status saved.")}
-            type="button"
-          >
-            <Save aria-hidden="true" className="h-3.5 w-3.5" /> Save Activity
-            Update
-          </button>
-        </div>
-      </section>
-
-      <RoadmapTrackingSection
-        item={item}
-        onRecordChange={setRecord}
-        onSave={persist}
-        record={record}
-        roadmap={roadmap}
-      />
-
-      <div className="flex items-start gap-2 rounded-md border border-[#cbd8e6] bg-[#f4f7fb] px-4 py-3 text-[10px] leading-5 text-slate-600">
-        <Info
-          aria-hidden="true"
-          className="mt-0.5 h-4 w-4 shrink-0 text-[#1261a8]"
-        />
-        Delay uses the latest revised target when one exists; otherwise it uses
-        the approved original date. Historical revisions remain available for
-        baseline-variance reporting.
+      <div
+        aria-label="Activity tracking sections"
+        className="flex gap-6 overflow-x-auto border-b border-slate-200 px-1 pt-1"
+        role="tablist"
+      >
+        {activityDetailTabs.map((tab) => {
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              aria-controls={tab.id}
+              aria-selected={selected}
+              className={`shrink-0 border-b-2 px-0.5 pb-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#176c55]/30 ${
+                selected
+                  ? "border-[#176c55] text-[#07523f]"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+              id={`${tab.id}-tab`}
+              key={tab.id}
+              onClick={() => selectTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
+              role="tab"
+              tabIndex={selected ? 0 : -1}
+              type="button"
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
+
+      <div
+        aria-labelledby="overview-tab"
+        className="space-y-5"
+        hidden={activeTab !== "overview"}
+        id="overview"
+        role="tabpanel"
+      >
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <SectionHeading
+            icon={<CircleDot className="h-4 w-4" />}
+            title="Approved Activity Overview"
+          />
+          <div className="grid gap-x-8 gap-y-5 p-4 sm:grid-cols-2 xl:grid-cols-4">
+            <OverviewValue
+              label="Reference No."
+              mono
+              value={item.activity.reference}
+            />
+            <OverviewValue
+              label="Activity Description"
+              value={item.activity.description}
+            />
+            <OverviewValue label="Project" value={item.project.shortName} />
+            <OverviewValue label="Plan" value={item.plan.name} />
+            <OverviewValue label="Fiscal Year" value={item.plan.budgetYear} />
+            <OverviewValue
+              label="Procurement Category"
+              value={item.activity.category}
+            />
+            <OverviewValue label="Method" value={item.activity.method} />
+            <OverviewValue
+              label="Estimated Amount"
+              value={`${formatAmount(item.activity.estimatedAmount)} ${
+                activityForm?.currency || item.plan.currency
+              }`}
+            />
+            <OverviewValue
+              label="Funding Source"
+              value={activityForm?.fundingSource || item.project.fundingSource}
+            />
+            <OverviewValue
+              label="Market Approach"
+              value={activityForm?.marketApproach || "Not recorded"}
+            />
+            <OverviewValue
+              label="Review Type"
+              value={activityForm?.reviewType || "Not recorded"}
+            />
+            <OverviewValue
+              label="Project Component"
+              value={activityForm?.subcomponent || "Not recorded"}
+            />
+            <OverviewValue
+              label="Organization / Region"
+              value={
+                item.plan.organizationRegion || item.project.organizationRegion
+              }
+            />
+            <OverviewValue
+              label="Assigned Officer"
+              value={item.project.assignedOfficers.join(", ")}
+            />
+          </div>
+          <div className="flex items-start gap-2 border-t border-slate-200 bg-[#fafbfc] px-4 py-3 text-[10px] leading-5 text-slate-500">
+            <LockKeyhole
+              aria-hidden="true"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+            />
+            {activityForm
+              ? "Approved category, method, scope, and original roadmap dates remain read-only in Activity Tracker."
+              : "Only the approved summary is available for this activity. Fields not captured in the source record are marked Not recorded."}
+          </div>
+        </section>
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <SectionHeading
+            icon={<Activity className="h-4 w-4" />}
+            title="Execution Summary"
+          />
+          <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)_minmax(18rem,2fr)]">
+            <div className="border-l-2 border-[#8db7a6] pl-3">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+                Overall Status
+              </p>
+              <StatusText className="mt-2 text-xs" label={overallStatus} />
+            </div>
+            <div className="border-l-2 border-slate-200 pl-3">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+                Current Stage
+              </p>
+              <p className="mt-2 text-xs font-bold leading-5 text-[#10243f]">
+                {activeStageName}
+              </p>
+            </div>
+            <div className="border-l-2 border-slate-200 pl-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+                  Roadmap Progress
+                </p>
+                {roadmap.length > 0 ? (
+                  <strong className="text-xs tabular-nums text-[#10243f]">
+                    {progress.percent}%
+                  </strong>
+                ) : null}
+              </div>
+              {roadmap.length > 0 ? (
+                <>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-[#176c55]"
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[9px] text-slate-500">
+                    {progress.completed} of {progress.total} applicable stages
+                    complete
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-xs font-bold text-slate-500">
+                  Schedule not recorded
+                </p>
+              )}
+            </div>
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-bold text-slate-600">
+                General Execution Note
+              </span>
+              <div className="flex min-w-0 gap-2">
+                <input
+                  className="h-9 min-w-0 flex-1 rounded border border-slate-300 px-3 text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
+                  onChange={(event) =>
+                    updateRecord({ generalRemarks: event.target.value })
+                  }
+                  placeholder="Issue, follow-up, or execution note..."
+                  value={record.generalRemarks}
+                />
+                <button
+                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-[#176c55] px-3 text-xs font-bold text-white hover:bg-[#125442]"
+                  onClick={() => persist(record, "Execution note saved.")}
+                  type="button"
+                >
+                  <Save aria-hidden="true" className="h-3.5 w-3.5" /> Save note
+                </button>
+              </div>
+              <span className="mt-1 block text-[9px] text-slate-400">
+                {record.updatedAt
+                  ? `Last saved ${formatDateTime(record.updatedAt)}`
+                  : "No execution note has been saved yet."}
+              </span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <div
+        aria-labelledby="roadmap-tab"
+        className="space-y-5"
+        hidden={activeTab !== "roadmap"}
+        id="roadmap"
+        role="tabpanel"
+      >
+        {roadmap.length > 0 ? (
+          <RoadmapTrackingSection
+            item={item}
+            onRecordChange={setRecord}
+            onSave={persist}
+            record={record}
+            roadmap={roadmap}
+          />
+        ) : (
+          <MissingRoadmapState
+            currentStage={item.activity.currentStage}
+            projectActivityHref={projectActivityHref}
+          />
+        )}
+        <div className="flex items-start gap-2 rounded-md border border-[#cbd8e6] bg-[#f4f7fb] px-4 py-3 text-[10px] leading-5 text-slate-600">
+          <Info
+            aria-hidden="true"
+            className="mt-0.5 h-4 w-4 shrink-0 text-[#1261a8]"
+          />
+          Delay uses the latest revised target when one exists; otherwise it
+          uses the approved original date. Historical revisions remain available
+          for baseline-variance reporting.
+        </div>
+      </div>
+
+      <section
+        aria-labelledby="contract-tab"
+        className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        hidden={activeTab !== "contract"}
+        id="contract"
+        role="tabpanel"
+      >
+        <SectionHeading
+          icon={<BriefcaseBusiness className="h-4 w-4" />}
+          title="Contract Transition"
+        />
+        {registeredContract ? (
+          <>
+            <div className="grid gap-x-8 gap-y-5 p-4 sm:grid-cols-2 xl:grid-cols-4">
+              <OverviewValue
+                label="Contract Number"
+                mono
+                value={registeredContract.contractNumber}
+              />
+              <OverviewValue
+                label="Supplier / Contractor"
+                value={registeredContract.supplier}
+              />
+              <OverviewValue
+                label="Current Amount"
+                value={`${formatAmount(registeredContract.currentAmount)} ${registeredContract.currency}`}
+              />
+              <div>
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+                  Contract Status
+                </p>
+                <StatusText
+                  className="mt-2 text-xs"
+                  label={registeredContract.status}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-[#fafbfc] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] leading-5 text-slate-500">
+                Payment records remain in Contract Registry; Activity Tracker
+                only shows the execution handoff.
+              </p>
+              <Link
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-[#176c55] px-4 text-xs font-bold text-white hover:bg-[#125442]"
+                href={contractHref}
+              >
+                View Contract
+                <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </>
+        ) : contractReady ? (
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-extrabold text-[#10243f]">
+                Signed contract milestone completed
+              </p>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
+                Continue to Contract Registry to record the contract. Payment
+                entry remains in the registry after registration.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-[#176c55] px-4 text-xs font-bold text-white hover:bg-[#125442]"
+              href={contractHref}
+            >
+              Register Contract
+              <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-start gap-3 p-4">
+            <LockKeyhole
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
+            />
+            <div>
+              <p className="text-xs font-bold text-slate-700">
+                Contract registration is not available yet.
+              </p>
+              <p className="mt-1 text-[10px] leading-5 text-slate-500">
+                Complete the Signed Contract roadmap stage to enable the
+                Contract Registry handoff.
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function MissingRoadmapState({
+  currentStage,
+  projectActivityHref,
+}: {
+  currentStage: string;
+  projectActivityHref: string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <SectionHeading
+        icon={<Route className="h-4 w-4" />}
+        title="Procurement Roadmap Tracking"
+      />
+      <div className="p-5">
+        <div className="flex items-start gap-3">
+          <FileClock
+            aria-hidden="true"
+            className="mt-0.5 h-5 w-5 shrink-0 text-slate-400"
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-extrabold text-[#10243f]">
+              Approved roadmap schedule not recorded
+            </p>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
+              This activity has an approved summary, but no original roadmap
+              stages or planned dates are stored with it. Tracking remains
+              read-only until that approved schedule is available.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+              Summary Current Stage
+            </p>
+            <p className="mt-1 text-xs font-bold text-[#10243f]">
+              {currentStage || "Not recorded"}
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-bold text-slate-600 hover:border-[#8db7a6] hover:text-[#176c55]"
+            href={projectActivityHref}
+          >
+            Open full activity details
+            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -304,7 +654,7 @@ function RoadmapTrackingSection({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <section className="scroll-mt-24 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-2 border-b border-[#c7d8cf] bg-[#edf5f1] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Route aria-hidden="true" className="h-4 w-4 text-[#176c55]" />
@@ -444,20 +794,136 @@ function RoadmapTrackingSection({
   );
 }
 
+function detailCurrentStageName(
+  item: OfficerTrackedActivityItem,
+  record: OfficerActivityTrackingRecord,
+  roadmap: readonly ProcurementActivityRoadmapStage[],
+) {
+  if (roadmap.length === 0) return item.activity.currentStage || "Not started";
+
+  const inProgress = roadmap.find(
+    (stage) => trackingForStage(record, stage, item).status === "In Progress",
+  );
+  if (inProgress) return inProgress.name;
+
+  const declared = roadmap.find(
+    (stage) => stage.name === item.activity.currentStage,
+  );
+  if (
+    declared &&
+    !["Completed", "Not Applicable"].includes(
+      trackingForStage(record, declared, item).status,
+    )
+  ) {
+    return declared.name;
+  }
+
+  const firstIncomplete = roadmap.find(
+    (stage) =>
+      !["Completed", "Not Applicable"].includes(
+        trackingForStage(record, stage, item).status,
+      ),
+  );
+  if (firstIncomplete) return firstIncomplete.name;
+
+  return (
+    [...roadmap].reverse().find((stage) => !stage.notApplicable)?.name ??
+    roadmap[roadmap.length - 1]?.name ??
+    "Completed"
+  );
+}
+
+function detailOverallStatus(
+  item: OfficerTrackedActivityItem,
+  record: OfficerActivityTrackingRecord,
+  roadmap: readonly ProcurementActivityRoadmapStage[],
+) {
+  if (
+    record.processStatus === "Canceled" ||
+    detailHasCompletedStage(item, record, roadmap, "contract termination")
+  ) {
+    return "Terminated";
+  }
+
+  const progress = detailStageProgress(item, record, roadmap);
+  if (
+    record.processStatus === "Completed" ||
+    item.activity.status === "Completed" ||
+    progress.percent === 100 ||
+    detailHasCompletedStage(item, record, roadmap, "contract completion")
+  ) {
+    return "Completed";
+  }
+
+  if (
+    record.processStatus === "Signed" ||
+    detailHasCompletedStage(item, record, roadmap, "signed contract")
+  ) {
+    return "Contracted";
+  }
+
+  const isDelayed = roadmap.some((stage) => {
+    const tracking = trackingForStage(record, stage, item);
+    if (["Completed", "Not Applicable"].includes(tracking.status)) return false;
+    return (calculateDelayDays(dateFromRoadmap(stage), tracking) ?? 0) > 0;
+  });
+  if (isDelayed || item.activity.status === "Delayed") return "Delayed";
+
+  if (
+    progress.percent > 0 ||
+    record.processStatus !== "Pending Implementation" ||
+    item.activity.status === "In Progress"
+  ) {
+    return "In Progress";
+  }
+  return "Not Started";
+}
+
+function detailStageProgress(
+  item: OfficerTrackedActivityItem,
+  record: OfficerActivityTrackingRecord,
+  roadmap: readonly ProcurementActivityRoadmapStage[],
+) {
+  if (roadmap.length === 0) {
+    return {
+      completed: Math.round(record.progressPercent / 100),
+      percent: record.progressPercent,
+      total: 1,
+    };
+  }
+
+  const applicable = roadmap.filter(
+    (stage) =>
+      trackingForStage(record, stage, item).status !== "Not Applicable",
+  );
+  const completed = applicable.filter(
+    (stage) => trackingForStage(record, stage, item).status === "Completed",
+  ).length;
+  return {
+    completed,
+    percent:
+      applicable.length === 0
+        ? 0
+        : Math.round((completed / applicable.length) * 100),
+    total: applicable.length,
+  };
+}
+
+function detailHasCompletedStage(
+  item: OfficerTrackedActivityItem,
+  record: OfficerActivityTrackingRecord,
+  roadmap: readonly ProcurementActivityRoadmapStage[],
+  stageName: string,
+) {
+  return roadmap.some(
+    (stage) =>
+      stage.name.toLowerCase().includes(stageName) &&
+      trackingForStage(record, stage, item).status === "Completed",
+  );
+}
+
 function trackingRoadmap(item: OfficerTrackedActivityItem) {
-  if (item.activity.details?.roadmap.length)
-    return item.activity.details.roadmap;
-  return [
-    {
-      allowNotApplicable: false,
-      days: "",
-      ethiopianDate: "",
-      gregorianDate: "",
-      name: item.activity.currentStage,
-      notApplicable: false,
-      remarks: "",
-    },
-  ] satisfies ProcurementActivityRoadmapStage[];
+  return item.activity.details?.roadmap ?? [];
 }
 
 function trackingForStage(
@@ -781,6 +1247,33 @@ function stageStatusOptions(stage: ProcurementActivityRoadmapStage) {
   return values;
 }
 
+function OverviewValue({
+  label,
+  mono = false,
+  value,
+}: {
+  label: string;
+  mono?: boolean;
+  value: string | undefined;
+}) {
+  if (!value?.trim()) return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[9px] font-extrabold uppercase tracking-[0.06em] text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1.5 text-xs font-bold leading-5 text-[#10243f] ${
+          mono ? "font-mono" : ""
+        }`}
+        title={value}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function SectionHeading({
   icon,
   title,
@@ -898,6 +1391,13 @@ function ErrorMessage({ children }: { children: React.ReactNode }) {
       {children}
     </p>
   );
+}
+
+function formatAmount(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  }).format(value);
 }
 
 function formatGregorianDate(value: string) {
