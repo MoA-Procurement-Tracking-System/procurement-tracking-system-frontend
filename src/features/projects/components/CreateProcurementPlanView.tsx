@@ -371,7 +371,9 @@ export function CreateProcurementPlanView({
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="sm:col-span-2">
                 <CompactFormField
-                  errorMessage={nameError ? "Plan name is required." : undefined}
+                  errorMessage={
+                    nameError ? "Plan name is required." : undefined
+                  }
                   htmlFor="plan-name"
                   label="Plan Name"
                   required

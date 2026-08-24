@@ -130,9 +130,9 @@ describe("officer activity tracking", () => {
     expect(record.stages.some((stage) => stage.status === "In Progress")).toBe(
       true,
     );
-    expect(
-      record.stages.some((stage) => stage.status === "Not Started"),
-    ).toBe(true);
+    expect(record.stages.some((stage) => stage.status === "Not Started")).toBe(
+      true,
+    );
   });
 
   it("uses the latest revision as the effective target and preserves history", () => {
