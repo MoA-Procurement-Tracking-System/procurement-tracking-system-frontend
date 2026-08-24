@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -8,111 +8,97 @@ import {
   Info,
   Send,
   ChevronRight,
+  ChevronLeft,
   AlertCircle,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { createInvitedUser } from "@/lib/authApi";
+import {
+  fetchUsers,
+  updateUser,
+  type ApiUser,
+  type PaginatedResponse,
+} from "@/lib/adminApi";
 import type { ProvisionableRole } from "@/lib/authTypes";
-
-export interface UserManagementRecord {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
-  role: ProvisionableRole | "ADMIN";
-  status: "Active" | "Inactive";
-  lastLogin: string;
-}
-
-export const INITIAL_USER_RECORDS: UserManagementRecord[] = [
-  {
-    id: "1",
-    fullName: "Demelash Worku",
-    username: "@officer",
-    email: "officer@moa.gov.et",
-    role: "OFFICER",
-    status: "Active",
-    lastLogin: "8/2/2026, 5:30:00 PM",
-  },
-  {
-    id: "2",
-    fullName: "Dr. Yared Worku",
-    username: "@director",
-    email: "director@moa.gov.et",
-    role: "DIRECTOR",
-    status: "Active",
-    lastLogin: "8/1/2026, 12:15:00 PM",
-  },
-  {
-    id: "3",
-    fullName: "Ato Solomon Tadesse",
-    username: "@management",
-    email: "management@moa.gov.et",
-    role: "ENDORSING_COMMITTEE",
-    status: "Active",
-    lastLogin: "7/28/2026, 7:20:00 PM",
-  },
-  {
-    id: "4",
-    fullName: "Tewodros Kassaye",
-    username: "@admin",
-    email: "admin@moa.gov.et",
-    role: "ADMIN",
-    status: "Active",
-    lastLogin: "8/12/2026, 11:09:01 PM",
-  },
-  {
-    id: "5",
-    fullName: "Abebe Kebede",
-    username: "@newuser",
-    email: "newuser@moa.gov.et",
-    role: "OFFICER",
-    status: "Active",
-    lastLogin: "7/20/2026, 2:10:00 PM",
-  },
-  {
-    id: "6",
-    fullName: "Sara Hailu",
-    username: "@sara",
-    email: "sara@moa.gov.et",
-    role: "DIRECTOR",
-    status: "Active",
-    lastLogin: "7/15/2026, 10:00:00 AM",
-  },
-  {
-    id: "7",
-    fullName: "Hana Girma",
-    username: "@hana",
-    email: "hana@moa.gov.et",
-    role: "ENDORSING_COMMITTEE",
-    status: "Inactive",
-    lastLogin: "6/30/2026, 4:45:00 PM",
-  },
-  {
-    id: "8",
-    fullName: "Dawit Mekonnen",
-    username: "@dawit",
-    email: "dawit@moa.gov.et",
-    role: "OFFICER",
-    status: "Inactive",
-    lastLogin: "6/12/2026, 9:20:00 AM",
-  },
-];
 
 interface UserManagementViewProps {
   initialMode?: "list" | "invite";
 }
 
+const AUTH_ROLE_LABELS: Record<string, string> = {
+  OFFICER: "Officer",
+  DIRECTOR: "Director",
+  ENDORSING_COMMITTEE: "Endorsement Committee",
+  ADMIN: "Administrator",
+};
+
+const PRISMA_ROLE_LABELS: Record<string, string> = {
+  ProcurementOfficer: "Officer",
+  ProcurementDirector: "Director",
+  Administrator: "Administrator",
+  ManagementTeam: "Management Team",
+  ProjectManager: "Project Manager",
+};
+
+function displayRole(user: ApiUser): string {
+  return (
+    AUTH_ROLE_LABELS[user.authRole] ??
+    PRISMA_ROLE_LABELS[user.role] ??
+    user.authRole ??
+    user.role
+  );
+}
+
+function displayStatus(
+  user: ApiUser,
+): "Active" | "Inactive" | "Pending Invitation" {
+  if (user.status === "PENDING_INVITATION") return "Pending Invitation";
+  return user.isActive ? "Active" : "Inactive";
+}
+
+function renderLastLogin(lastLoginAt: string | null, status: string) {
+  if (status === "PENDING_INVITATION") {
+    return (
+      <span className="text-[#64748b] font-medium whitespace-nowrap">
+        Awaiting Registration
+      </span>
+    );
+  }
+  if (!lastLoginAt) {
+    return (
+      <span className="text-[#64748b] font-medium whitespace-nowrap">
+        Never
+      </span>
+    );
+  }
+  return (
+    <span className="text-[#64748b] font-medium whitespace-nowrap">
+      {new Date(lastLoginAt).toLocaleString()}
+    </span>
+  );
+}
+
+const PAGE_SIZE = 15;
+
 export function UserManagementView({
   initialMode = "list",
 }: UserManagementViewProps) {
   const [viewMode, setViewMode] = useState<"list" | "invite">(initialMode);
-  const [users, setUsers] =
-    useState<UserManagementRecord[]>(INITIAL_USER_RECORDS);
+
+  // Data state
+  const [usersResponse, setUsersResponse] =
+    useState<PaginatedResponse<ApiUser> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Invite Form State
   const [inviteFullName, setInviteFullName] = useState("");
@@ -122,23 +108,148 @@ export function UserManagementView({
   const [invitedInfo, setInvitedInfo] = useState<{
     email: string;
     role: string;
+    isResend?: boolean;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Toggle active/deactive user
-  const handleToggleStatus = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((user) => {
-        if (user.id === userId) {
-          const nextStatus = user.status === "Active" ? "Inactive" : "Active";
-          return { ...user, status: nextStatus };
+  // Action state (toggling status or resending invitation)
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
+
+  // ─── Fetch Users ────────────────────────────────────────────────────────
+  const loadUsers = useCallback(async () => {
+    try {
+      const roleFilterMap: Record<string, string | undefined> = {
+        ALL: undefined,
+        OFFICER: "ProcurementOfficer",
+        DIRECTOR: "ProcurementDirector",
+        ENDORSING_COMMITTEE: "ManagementTeam",
+        ADMIN: "Administrator",
+      };
+
+      const result = await fetchUsers({
+        page: currentPage,
+        pageSize: PAGE_SIZE,
+        search: searchQuery || undefined,
+        role: roleFilterMap[selectedRole],
+        isActive:
+          selectedStatus === "ALL"
+            ? undefined
+            : selectedStatus === "Active"
+              ? true
+              : false,
+      });
+      setUsersResponse(result);
+    } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to load users.",
+      );
+    }
+  }, [currentPage, searchQuery, selectedRole, selectedStatus]);
+
+  useEffect(() => {
+    let active = true;
+
+    const roleFilterMap: Record<string, string | undefined> = {
+      ALL: undefined,
+      OFFICER: "ProcurementOfficer",
+      DIRECTOR: "ProcurementDirector",
+      ENDORSING_COMMITTEE: "ManagementTeam",
+      ADMIN: "Administrator",
+    };
+
+    fetchUsers({
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+      search: searchQuery || undefined,
+      role: roleFilterMap[selectedRole],
+      isActive:
+        selectedStatus === "ALL"
+          ? undefined
+          : selectedStatus === "Active"
+            ? true
+            : false,
+    })
+      .then((result) => {
+        if (active) {
+          setUsersResponse(result);
+          setLoadError(null);
         }
-        return user;
-      }),
-    );
+      })
+      .catch((err) => {
+        if (active) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load users.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPage, searchQuery, selectedRole, selectedStatus]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setCurrentPage(1);
   };
 
-  // Submit invitation
+  const handleRoleChange = (val: string) => {
+    setSelectedRole(val);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (val: string) => {
+    setSelectedStatus(val);
+    setCurrentPage(1);
+  };
+
+  // ─── Toggle Active/Inactive ─────────────────────────────────────────────
+  const handleToggleStatus = async (user: ApiUser) => {
+    setActionUserId(user.id);
+    try {
+      await updateUser(user.id, { isActive: !user.isActive });
+      await loadUsers();
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to update user status.",
+      );
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  // ─── Resend Invitation ──────────────────────────────────────────────────
+  const handleResendInvitation = async (user: ApiUser) => {
+    setActionUserId(user.id);
+    setErrorMessage(null);
+    setInvitedInfo(null);
+
+    const role = (user.authRole as ProvisionableRole) || "OFFICER";
+
+    try {
+      await createInvitedUser(
+        user.displayName || user.name || user.email,
+        user.email,
+        role,
+      );
+
+      setInvitedInfo({ email: user.email, role, isResend: true });
+      await loadUsers();
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Failed to resend invitation email.",
+      );
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  // ─── Submit Invitation Form ──────────────────────────────────────────────
   const handleSendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteFullName.trim() || !inviteEmail.trim()) return;
@@ -151,34 +262,16 @@ export function UserManagementView({
     const targetRole = inviteRole;
 
     try {
-      const result = await createInvitedUser(
-        inviteFullName.trim(),
-        targetEmail,
-        targetRole,
-      );
+      await createInvitedUser(inviteFullName.trim(), targetEmail, targetRole);
 
-      const newRecord: UserManagementRecord = {
-        id: result.user.id || String(Date.now()),
-        fullName: result.user.displayName || inviteFullName.trim(),
-        username:
-          result.user.username ||
-          `@${inviteFullName.trim().toLowerCase().replace(/\s+/g, "")}`,
-        email: result.user.email || targetEmail,
-        role: (result.user.role as UserManagementRecord["role"]) || targetRole,
-        status: "Active",
-        lastLogin: "Pending Invitation",
-      };
-
-      setUsers((prev) => [
-        newRecord,
-        ...prev.filter((u) => u.id !== newRecord.id),
-      ]);
-      setInvitedInfo({ email: targetEmail, role: targetRole });
+      setInvitedInfo({ email: targetEmail, role: targetRole, isResend: false });
 
       // Reset form fields
       setInviteFullName("");
       setInviteEmail("");
       setInviteRole("OFFICER");
+
+      await loadUsers();
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "Failed to send user invitation.",
@@ -188,58 +281,60 @@ export function UserManagementView({
     }
   };
 
-  // Filter users
-  const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchQuery.toLowerCase());
+  // Auto-dismiss success notification after 15 seconds
+  useEffect(() => {
+    if (!invitedInfo) return;
+    const timer = setTimeout(() => {
+      setInvitedInfo(null);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [invitedInfo]);
 
-    const matchesRole = selectedRole === "ALL" || u.role === selectedRole;
-
-    const matchesStatus =
-      selectedStatus === "ALL" || u.status === selectedStatus;
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  // Helper for rendering Role Name (clean text without background box)
-  const renderRoleName = (role: UserManagementRecord["role"]) => {
-    switch (role) {
-      case "OFFICER":
-        return "Officer";
-      case "DIRECTOR":
-        return "Director";
-      case "ENDORSING_COMMITTEE":
-        return "Endorsement Committee";
-      case "ADMIN":
-        return "Administrator";
-      default:
-        return role;
-    }
-  };
+  const users = usersResponse?.data ?? [];
+  const meta = usersResponse?.meta;
 
   return (
     <div className="space-y-6">
-      {/* Toast / Success Notification */}
+      {/* Premium Dismissable Success Notification Banner with Auto-Dismiss */}
       {invitedInfo && (
         <div className="animate-in fade-in slide-in-from-top-2">
-          <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
-            <h3 className="text-base sm:text-lg font-extrabold text-[#044e3a] mb-1 tracking-tight">
-              Invitation Email Sent Successfully
-            </h3>
-            <p className="text-[#046c50] font-medium leading-relaxed">
-              An official registration email has been delivered to{" "}
-              <strong className="font-bold text-[#04382c]">
-                {invitedInfo.email}
-              </strong>{" "}
-              for the role of{" "}
-              <strong className="font-bold text-[#04382c]">
-                {invitedInfo.role}
-              </strong>
-              . The user can now click the invitation link in their email to
-              create their password and access the system.
-            </p>
+          <div className="relative overflow-hidden bg-gradient-to-r from-[#ecfdf5] via-[#f0fdf4] to-[#e6f4ea] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#044e3a] text-white shrink-0 shadow-2xs mt-0.5">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <h3 className="text-base font-extrabold text-[#044e3a] tracking-tight">
+                    {invitedInfo.isResend
+                      ? "Invitation Email Resent Successfully"
+                      : "Invitation Email Sent Successfully"}
+                  </h3>
+                  <p className="text-[#046c50] font-medium leading-relaxed">
+                    An official registration email has been delivered to{" "}
+                    <strong className="font-bold text-[#04382c] underline decoration-emerald-300">
+                      {invitedInfo.email}
+                    </strong>{" "}
+                    for the role of{" "}
+                    <strong className="font-bold text-[#04382c]">
+                      {invitedInfo.role}
+                    </strong>
+                    . The recipient can click the link in their inbox to setup
+                    their password.
+                  </p>
+                </div>
+              </div>
+
+              {/* Dismiss Button */}
+              <button
+                type="button"
+                onClick={() => setInvitedInfo(null)}
+                className="text-[#046c50] hover:text-[#04382c] hover:bg-[#d1fae5] p-1.5 rounded-full transition-colors shrink-0 cursor-pointer"
+                title="Dismiss banner"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -254,7 +349,6 @@ export function UserManagementView({
       {/* VIEW MODE 1: INVITE NEW USER FORM */}
       {viewMode === "invite" ? (
         <div className="space-y-6">
-          {/* Clean Navigation Line (as seen in screenshot 2) */}
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500 px-0.5">
             <button
               type="button"
@@ -269,9 +363,7 @@ export function UserManagementView({
             </span>
           </div>
 
-          {/* Form Card Container */}
           <section className="rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-8 shadow-xs">
-            {/* Form Card Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h1 className="text-xl font-extrabold text-[#0f172a] tracking-tight flex items-center gap-2">
@@ -285,12 +377,10 @@ export function UserManagementView({
               </div>
             </div>
 
-            {/* Invite Form */}
             <form
               onSubmit={handleSendInvitation}
               className="space-y-5 max-w-3xl"
             >
-              {/* Full Name */}
               <div>
                 <label className="text-xs font-bold text-[#0f172a] mb-1.5 block">
                   Full Name
@@ -305,7 +395,6 @@ export function UserManagementView({
                 />
               </div>
 
-              {/* Email Address */}
               <div>
                 <label className="text-xs font-bold text-[#0f172a] mb-1.5 block">
                   Email Address
@@ -320,7 +409,6 @@ export function UserManagementView({
                 />
               </div>
 
-              {/* PTS Role Assignment */}
               <div>
                 <label className="text-xs font-bold text-[#0f172a] mb-1.5 block">
                   PTS Role Assignment
@@ -345,12 +433,10 @@ export function UserManagementView({
 
                 <p className="text-xs text-[#64748b] font-medium mt-2 flex items-center gap-1.5">
                   <Info className="w-4 h-4 text-[#047857] shrink-0" />
-                  Admin roles are excluded from normal invitations. Creation of
-                  additional Admins is restricted to specialized Admin actions.
+                  Admin roles are excluded from normal invitations.
                 </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4">
                 <button
                   type="button"
@@ -374,7 +460,6 @@ export function UserManagementView({
       ) : (
         /* VIEW MODE 2: USER MANAGEMENT MAIN TABLE */
         <div className="space-y-6">
-          {/* Top Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -389,17 +474,15 @@ export function UserManagementView({
             </div>
           </div>
 
-          {/* User Management Table Card */}
           <section className="rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-8 shadow-xs space-y-6">
-            {/* Header Row with Single Plus Invite Button */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[#0f172a] tracking-tight">
-                  User Management Table
+                  User Management Directory
                 </h2>
                 <p className="mt-0.5 text-xs text-[#64748b] font-medium">
-                  Assign PTS roles, issue invitations, toggle suspension, and
-                  manage user security
+                  Assign PTS roles, issue invitations, resend pending links, and
+                  manage access
                 </p>
               </div>
 
@@ -413,25 +496,23 @@ export function UserManagementView({
               </button>
             </div>
 
-            {/* Controls: Search and Role/Status Filters */}
+            {/* Controls: Search and Filters */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
-              {/* Search Bar */}
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="Search by name or email..."
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full pl-9 pr-4 py-2 text-xs text-[#0f172a] placeholder-slate-400 w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium transition-all"
                 />
               </div>
 
-              {/* Filters */}
               <div className="flex items-center gap-3 self-end md:self-auto">
                 <select
                   value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-bold text-[#334155] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">All Roles</option>
@@ -445,7 +526,7 @@ export function UserManagementView({
 
                 <select
                   value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  onChange={(e) => handleStatusChange(e.target.value)}
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-bold text-[#334155] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">All Statuses</option>
@@ -455,99 +536,221 @@ export function UserManagementView({
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[750px]">
-                <thead>
-                  <tr className="bg-[#f8fafc] text-[#334155] text-xs font-bold">
-                    <th className="py-3.5 px-4 font-bold">
-                      User Name & Details
-                    </th>
-                    <th className="py-3.5 px-4 font-bold">Email Address</th>
-                    <th className="py-3.5 px-4 font-bold">Assigned Role</th>
-                    <th className="py-3.5 px-4 font-bold">Account Status</th>
-                    <th className="py-3.5 px-4 font-bold">Last Login</th>
-                    <th className="py-3.5 px-4 font-bold text-center">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs">
-                  {filteredUsers.map((user, index) => {
-                    const isActive = user.status === "Active";
-                    const isOddRow = index % 2 === 0;
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+                <span className="ml-2 text-sm font-medium text-slate-500">
+                  Loading users…
+                </span>
+              </div>
+            )}
 
-                    return (
-                      <tr
-                        key={user.id}
-                        className={`transition-colors duration-150 hover:bg-[#f1f5f9] ${
-                          isOddRow ? "bg-[#f8fafc]" : "bg-white"
-                        }`}
-                      >
-                        {/* User Name */}
-                        <td className="py-4 px-4 align-middle">
-                          <div className="font-bold text-[#0f172a] text-xs">
-                            {user.fullName}
-                          </div>
-                        </td>
+            {/* Error State */}
+            {!isLoading && loadError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+                <p className="text-sm font-medium text-red-600">{loadError}</p>
+                <button
+                  type="button"
+                  onClick={loadUsers}
+                  className="px-4 py-2 text-xs font-bold rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
 
-                        {/* Email Address */}
-                        <td className="py-4 px-4 text-[#475569] font-normal align-middle">
-                          {user.email}
-                        </td>
+            {/* Dark Emerald Header Table (Attached Image Inspo) */}
+            {!isLoading && !loadError && (
+              <>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[750px]">
+                      <thead>
+                        <tr className="bg-[#04382c] text-white text-xs font-bold">
+                          <th className="py-3.5 px-4 font-bold tracking-wide">
+                            User Name & Details
+                          </th>
+                          <th className="py-3.5 px-4 font-bold tracking-wide">
+                            Email Address
+                          </th>
+                          <th className="py-3.5 px-4 font-bold tracking-wide">
+                            Assigned Role
+                          </th>
+                          <th className="py-3.5 px-4 font-bold tracking-wide">
+                            Account Status
+                          </th>
+                          <th className="py-3.5 px-4 font-bold tracking-wide">
+                            Last Login
+                          </th>
+                          <th className="py-3.5 px-4 font-bold text-center tracking-wide">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs">
+                        {users.map((user, index) => {
+                          const status = displayStatus(user);
+                          const isActive = status === "Active";
+                          const isPending = status === "Pending Invitation";
+                          const isOddRow = index % 2 === 0;
 
-                        {/* Assigned Role (Clean text format without background box) */}
-                        <td className="py-4 px-4 align-middle font-bold text-[#0f172a]">
-                          {renderRoleName(user.role)}
-                        </td>
+                          return (
+                            <tr
+                              key={user.id}
+                              className={`border-b border-slate-100 transition-colors duration-150 hover:bg-[#f1f5f9] ${
+                                isOddRow ? "bg-[#f8fafc]/60" : "bg-white"
+                              }`}
+                            >
+                              <td className="py-4 px-4 align-middle">
+                                <div className="font-bold text-[#0f172a] text-xs">
+                                  {user.displayName || user.name}
+                                </div>
+                                {user.username && (
+                                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                    @{user.username}
+                                  </div>
+                                )}
+                              </td>
 
-                        {/* Account Status (Clean text format without background box) */}
-                        <td className="py-4 px-4 align-middle">
-                          <span
-                            className={`font-bold text-xs ${
-                              isActive ? "text-[#15803d]" : "text-[#e11d48]"
-                            }`}
-                          >
-                            {user.status}
-                          </span>
-                        </td>
+                              <td className="py-4 px-4 text-[#475569] font-normal align-middle">
+                                {user.email}
+                              </td>
 
-                        {/* Last Login */}
-                        <td className="py-4 px-4 text-[#64748b] font-medium align-middle whitespace-nowrap">
-                          {user.lastLogin}
-                        </td>
+                              <td className="py-4 px-4 align-middle font-bold text-[#0f172a]">
+                                {displayRole(user)}
+                              </td>
 
-                        {/* Actions (Keeps the boxed pill button style as requested) */}
-                        <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStatus(user.id)}
-                            className={`px-3.5 py-1 text-xs font-bold rounded-full border transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-xs ${
-                              isActive
-                                ? "border-rose-200/90 bg-rose-50/90 text-rose-700 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-800"
-                                : "border-emerald-200/90 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-800"
-                            }`}
-                          >
-                            {isActive ? "Deactivate" : "Activate"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <td className="py-4 px-4 align-middle">
+                                <span
+                                  className={`text-xs font-bold ${
+                                    isPending
+                                      ? "text-[#b06000]"
+                                      : isActive
+                                        ? "text-[#137333]"
+                                        : "text-[#c5221f]"
+                                  }`}
+                                >
+                                  {status}
+                                </span>
+                              </td>
 
-                  {filteredUsers.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-8 text-center text-xs text-slate-500 font-medium"
-                      >
-                        No user accounts match your search query or filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              <td className="py-4 px-4 align-middle">
+                                {renderLastLogin(user.lastLoginAt, user.status)}
+                              </td>
+
+                              {/* Resend Invitation / Activate / Deactivate Actions */}
+                              <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
+                                {isPending ? (
+                                  <button
+                                    type="button"
+                                    disabled={actionUserId === user.id}
+                                    onClick={() => handleResendInvitation(user)}
+                                    className="px-3.5 py-1 text-xs font-bold rounded-full border border-[#047857] bg-[#ecfdf5] text-[#044e3a] hover:bg-[#d1fae5] transition-all cursor-pointer shadow-2xs hover:shadow-xs disabled:opacity-50 inline-flex items-center gap-1.5"
+                                  >
+                                    {actionUserId === user.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin inline" />
+                                    ) : (
+                                      <RefreshCw className="w-3 h-3 inline" />
+                                    )}
+                                    <span>
+                                      {actionUserId === user.id
+                                        ? "Resending…"
+                                        : "Resend Invitation"}
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={actionUserId === user.id}
+                                    onClick={() => handleToggleStatus(user)}
+                                    className={`px-3.5 py-1 text-xs font-bold rounded-full border transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-xs disabled:opacity-50 ${
+                                      isActive
+                                        ? "border-rose-200/90 bg-rose-50/90 text-rose-700 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-800"
+                                        : "border-blue-200/90 bg-blue-50/90 text-blue-700 hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800"
+                                    }`}
+                                  >
+                                    {actionUserId === user.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin inline" />
+                                    ) : isActive ? (
+                                      "Deactivate"
+                                    ) : (
+                                      "Activate"
+                                    )}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {users.length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="py-8 text-center text-xs text-slate-500 font-medium"
+                            >
+                              No user accounts match your search query or
+                              filter.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Pagination Controls */}
+                {meta && (
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">
+                      Showing{" "}
+                      <span className="font-bold text-slate-700">
+                        {meta.total === 0
+                          ? 0
+                          : (meta.page - 1) * meta.pageSize + 1}
+                        –{Math.min(meta.page * meta.pageSize, meta.total)}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-bold text-slate-700">
+                        {meta.total}
+                      </span>{" "}
+                      users
+                    </p>
+                    {meta.totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={currentPage <= 1}
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          className="p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4 text-slate-600" />
+                        </button>
+                        <span className="text-xs font-bold text-slate-600 min-w-[60px] text-center">
+                          Page {meta.page} of {meta.totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={currentPage >= meta.totalPages}
+                          onClick={() =>
+                            setCurrentPage((p) =>
+                              Math.min(meta.totalPages, p + 1),
+                            )
+                          }
+                          className="p-2 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors cursor-pointer"
+                        >
+                          <ChevronRight className="w-4 h-4 text-slate-600" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </section>
         </div>
       )}
