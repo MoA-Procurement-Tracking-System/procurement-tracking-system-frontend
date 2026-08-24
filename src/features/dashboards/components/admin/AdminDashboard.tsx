@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   History,
   ShieldCheck,
@@ -10,143 +10,85 @@ import {
   UserX,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
+import {
+  fetchUsers,
+  fetchAuditLogs,
+  updateUser,
+  type ApiUser,
+  type AuditLogEntry,
+} from "@/lib/adminApi";
 import { getDashboardHeading } from "../../dashboard.config";
 import { DashboardOverview } from "../DashboardOverview";
-import {
-  RecentAuditTrailTable,
-  type DemoAuditLog,
-} from "./RecentAuditTrailTable";
-import { UserAccessTable, type DemoUser } from "./UserAccessTable";
-
-// Initial Demo Data matching the reference screenshot
-const INITIAL_DEMO_USERS: DemoUser[] = [
-  {
-    id: "1",
-    fullName: "Demelash Worku",
-    email: "officer@moa.gov.et",
-    role: "OFFICER",
-    status: "Active",
-  },
-  {
-    id: "2",
-    fullName: "Dr. Yared Worku",
-    email: "director@moa.gov.et",
-    role: "DIRECTOR",
-    status: "Active",
-  },
-  {
-    id: "3",
-    fullName: "Ato Solomon Tadesse",
-    email: "management@moa.gov.et",
-    role: "MANAGEMENT",
-    status: "Active",
-  },
-  {
-    id: "4",
-    fullName: "Tewodros Kassaye",
-    email: "admin@moa.gov.et",
-    role: "ADMIN",
-    status: "Active",
-  },
-  {
-    id: "5",
-    fullName: "Abebe Kebede",
-    email: "newuser@moa.gov.et",
-    role: "OFFICER",
-    status: "Active",
-  },
-  {
-    id: "6",
-    fullName: "Sara Hailu",
-    email: "sara@moa.gov.et",
-    role: "DIRECTOR",
-    status: "Active",
-  },
-  {
-    id: "7",
-    fullName: "Hana Girma",
-    email: "hana@moa.gov.et",
-    role: "ENDORSING_COMMITTEE",
-    status: "Inactive",
-  },
-  {
-    id: "8",
-    fullName: "Dawit Mekonnen",
-    email: "dawit@moa.gov.et",
-    role: "OFFICER",
-    status: "Inactive",
-  },
-];
-
-const INITIAL_DEMO_LOGS: DemoAuditLog[] = [
-  {
-    id: "log-1",
-    timestamp: "8/12/2026, 11:09:01 PM",
-    user: "admin",
-    role: "ADMIN",
-    userAndRole: "admin (ADMIN)",
-    action: "LOGIN",
-    recordId: "usr-3",
-    details: "User admin logged in successfully as ADMIN",
-  },
-  {
-    id: "log-2",
-    timestamp: "8/12/2026, 11:09:01 PM",
-    user: "admin",
-    role: "ADMIN",
-    userAndRole: "admin (ADMIN)",
-    action: "PASSWORD_CHANGED",
-    recordId: "usr-3",
-    details: "Account security credentials updated for user admin",
-  },
-  {
-    id: "log-3",
-    timestamp: "1/18/2026, 1:00:00 PM",
-    user: "director",
-    role: "DIRECTOR",
-    userAndRole: "director (DIRECTOR)",
-    action: "APPROVE_PLAN",
-    recordId: "MoA/BREFONS/2018/APP-01",
-    details:
-      "Procurement Director approved plan and submitted to Management Committee",
-  },
-  {
-    id: "log-4",
-    timestamp: "1/20/2026, 2:00:00 PM",
-    user: "management",
-    role: "MANAGEMENT",
-    userAndRole: "management (MANAGEMENT)",
-    action: "COMMITTEE_VOTE",
-    recordId: "MoA/BREFONS/2018/APP-01",
-    details: "Ato Solomon Tadesse cast APPROVE vote for BREFONS Plan",
-  },
-];
+import { RecentAuditTrailTable } from "./RecentAuditTrailTable";
+import { UserAccessTable } from "./UserAccessTable";
 
 export function AdminDashboard({ user }: { user: AuthUser }) {
   const heading = getDashboardHeading("ADMIN");
 
-  // State for demo users list & toggle functionality
-  const [users, setUsers] = useState<DemoUser[]>(INITIAL_DEMO_USERS);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [totalUserCount, setTotalUserCount] = useState<number>(0);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
 
-  const handleToggleStatus = (userId: string) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((u) =>
-        u.id === userId
-          ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" }
-          : u,
-      ),
-    );
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
+
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setIsUsersLoading(true);
+    setIsLogsLoading(true);
+
+    try {
+      const usersRes = await fetchUsers({ pageSize: 50 });
+      setUsers(usersRes.data);
+      setTotalUserCount(usersRes.meta.total);
+    } catch {
+      // Keep existing state
+    } finally {
+      setIsUsersLoading(false);
+    }
+
+    try {
+      const logsRes = await fetchAuditLogs({ pageSize: 5 });
+      setLogs(logsRes.data);
+    } catch {
+      // Keep existing state
+    } finally {
+      setIsLogsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleToggleStatus = async (targetUser: ApiUser) => {
+    setTogglingId(targetUser.id);
+    try {
+      await updateUser(targetUser.id, { isActive: !targetUser.isActive });
+      await loadData();
+    } catch {
+      // Handle gracefully
+    } finally {
+      setTogglingId(null);
+    }
   };
 
-  const totalAccounts = users.length;
-  const activeAccess = users.filter((u) => u.status === "Active").length;
-  const deactivatedAccounts = users.filter(
-    (u) => u.status === "Inactive",
+  const totalAccounts = totalUserCount || users.length;
+  const activeAccess = users.filter(
+    (u) => u.isActive && u.status !== "PENDING_INVITATION",
   ).length;
+  const deactivatedAccounts = users.filter((u) => !u.isActive).length;
 
-  const officersCount = users.filter((u) => u.role === "OFFICER").length;
-  const directorsCount = users.filter((u) => u.role === "DIRECTOR").length;
-  const adminsCount = users.filter((u) => u.role === "ADMIN").length;
+  const officersCount = users.filter(
+    (u) => u.authRole === "OFFICER" || u.role === "ProcurementOfficer",
+  ).length;
+  const directorsCount = users.filter(
+    (u) => u.authRole === "DIRECTOR" || u.role === "ProcurementDirector",
+  ).length;
+  const adminsCount = users.filter(
+    (u) => u.authRole === "ADMIN" || u.role === "Administrator",
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -219,7 +161,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
         focusItems={[
           {
             title: "Provision users carefully",
-            description: "Assign only the role required for each user’s work.",
+            description: "Assign only the role required for each user's work.",
           },
           {
             title: "Review failed access",
@@ -234,11 +176,17 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
         ]}
       />
 
-      {/* User Account Status & Access Controls Table */}
-      <UserAccessTable users={users} onToggleStatus={handleToggleStatus} />
+      {/* User Account Status & Access Controls Table (Director Theme, 5 items) */}
+      <UserAccessTable
+        users={users}
+        isLoading={isUsersLoading}
+        onToggleStatus={handleToggleStatus}
+        togglingId={togglingId}
+        onRefresh={loadData}
+      />
 
-      {/* Recent Audit Trail Table */}
-      <RecentAuditTrailTable logs={INITIAL_DEMO_LOGS} />
+      {/* Recent Audit Trail Table (Director Theme, 5 items) */}
+      <RecentAuditTrailTable logs={logs} isLoading={isLogsLoading} />
     </div>
   );
 }
