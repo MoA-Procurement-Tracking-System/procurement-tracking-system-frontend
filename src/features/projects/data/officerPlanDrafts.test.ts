@@ -28,7 +28,7 @@ describe("officer plan draft persistence", () => {
 
     expect(plan.reference).toBe("PP-DRIVE-2017-02");
     expect(plan.status).toBe("Draft");
-    expect(plan.categories).toEqual(["Goods"]);
+    expect(plan.category).toBe("Goods");
     expect(plan.activities).toBe(0);
     expect(plan.organizationRegion).toBe("FPCU / Federal");
     expect(plan.planPeriod?.from.gregorian).toBe("2026-07-08");
@@ -54,5 +54,23 @@ describe("officer plan draft persistence", () => {
     expect(records).toHaveLength(1);
     expect(parseSavedPlanRecords(JSON.stringify(records))).toEqual(records);
     expect(parseSavedPlanRecords("not-json")).toEqual([]);
+  });
+
+  it("migrates legacy saved plans to their first valid plan category", () => {
+    const plan = createDraftPlan(officerProjects[0], draftInput);
+    const legacyPlan = {
+      ...plan,
+      categories: ["Consultancy", "Goods"],
+      category: undefined,
+    };
+
+    const [record] = parseSavedPlanRecords(
+      JSON.stringify([
+        { plan: legacyPlan, projectCode: officerProjects[0].code },
+      ]),
+    );
+
+    expect(record.plan.category).toBe("Consultancy Services");
+    expect(record.plan).not.toHaveProperty("categories");
   });
 });

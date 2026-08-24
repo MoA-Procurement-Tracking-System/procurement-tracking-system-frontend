@@ -1,10 +1,14 @@
-import type { OfficerProject, ProcurementPlanSummary } from "./officerProjects";
+import type {
+  OfficerProject,
+  ProcurementCategory,
+  ProcurementPlanSummary,
+} from "./officerProjects";
 
 export const OFFICER_PLAN_DRAFTS_STORAGE_KEY = "moa-pts:officer-plan-drafts:v1";
 
 export interface ProcurementPlanDraftInput {
   budgetYear: string;
-  category: string;
+  category: ProcurementCategory;
   generalProcurementNoticeDate: string;
   generalProcurementNoticeDateEthiopian: string;
   organizationRegion: string;
@@ -28,7 +32,7 @@ export function createDraftPlan(
   return {
     activities: 0,
     budgetYear: `${input.budgetYear} EFY`,
-    categories: [input.category],
+    category: input.category,
     completedActivities: 0,
     currency: project.baseCurrency,
     delayedActivities: 0,
@@ -92,7 +96,11 @@ export function parseSavedPlanRecords(
     const parsed: unknown = JSON.parse(serializedRecords);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.filter(isSavedOfficerPlanRecord);
+    return parsed
+      .map(normalizeSavedOfficerPlanRecord)
+      .filter(
+        (record): record is SavedOfficerPlanRecord => record !== undefined,
+      );
   } catch {
     return [];
   }
@@ -123,38 +131,68 @@ function nextPlanReference(project: OfficerProject, budgetYear: string) {
   return `${prefix}${String(highestSequence + 1).padStart(2, "0")}`;
 }
 
-function isSavedOfficerPlanRecord(
+function normalizeSavedOfficerPlanRecord(
   value: unknown,
-): value is SavedOfficerPlanRecord {
-  if (!value || typeof value !== "object") return false;
+): SavedOfficerPlanRecord | undefined {
+  if (!value || typeof value !== "object") return undefined;
 
   const record = value as Partial<SavedOfficerPlanRecord>;
-  return (
-    typeof record.projectCode === "string" &&
-    isProcurementPlanSummary(record.plan)
-  );
+  if (typeof record.projectCode !== "string") return undefined;
+
+  const plan = normalizeProcurementPlanSummary(record.plan);
+  return plan ? { plan, projectCode: record.projectCode } : undefined;
 }
 
-function isProcurementPlanSummary(
+function normalizeProcurementPlanSummary(
   value: unknown,
-): value is ProcurementPlanSummary {
-  if (!value || typeof value !== "object") return false;
+): ProcurementPlanSummary | undefined {
+  if (!value || typeof value !== "object") return undefined;
 
-  const plan = value as Partial<ProcurementPlanSummary>;
-  return (
-    typeof plan.name === "string" &&
-    typeof plan.reference === "string" &&
-    typeof plan.budgetYear === "string" &&
-    Array.isArray(plan.categories) &&
-    plan.categories.every((category) => typeof category === "string") &&
-    plan.status === "Draft" &&
-    (plan.currency === "ETB" ||
-      plan.currency === "USD" ||
-      plan.currency === "UA") &&
-    typeof plan.activities === "number" &&
-    typeof plan.completedActivities === "number" &&
-    typeof plan.delayedActivities === "number" &&
-    typeof plan.inProgressActivities === "number" &&
-    typeof plan.estimatedValue === "number"
-  );
+  const plan = value as Partial<ProcurementPlanSummary> & {
+    categories?: unknown;
+  };
+  const legacyCategory =
+    Array.isArray(plan.categories) && plan.categories.length > 0
+      ? plan.categories[0]
+      : undefined;
+  const category =
+    normalizeStoredCategory(plan.category) ??
+    normalizeStoredCategory(legacyCategory);
+
+  if (
+    !category ||
+    !(
+      typeof plan.name === "string" &&
+      typeof plan.reference === "string" &&
+      typeof plan.budgetYear === "string" &&
+      plan.status === "Draft" &&
+      (plan.currency === "ETB" ||
+        plan.currency === "USD" ||
+        plan.currency === "UA") &&
+      typeof plan.activities === "number" &&
+      typeof plan.completedActivities === "number" &&
+      typeof plan.delayedActivities === "number" &&
+      typeof plan.inProgressActivities === "number" &&
+      typeof plan.estimatedValue === "number"
+    )
+  ) {
+    return undefined;
+  }
+
+  const normalizedPlan = { ...plan, category };
+  delete normalizedPlan.categories;
+  return normalizedPlan as ProcurementPlanSummary;
+}
+
+function normalizeStoredCategory(
+  value: unknown,
+): ProcurementCategory | undefined {
+  if (value === "Goods" || value === "Works") return value;
+  if (value === "Non-Consulting" || value === "Non-Consulting Services") {
+    return "Non-Consulting Services";
+  }
+  if (value === "Consultancy" || value === "Consultancy Services") {
+    return "Consultancy Services";
+  }
+  return undefined;
 }

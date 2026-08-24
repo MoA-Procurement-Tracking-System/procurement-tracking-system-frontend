@@ -42,4 +42,21 @@ describe("CreateProcurementPlanView", () => {
       "South Ethiopia",
     ]);
   });
+
+  it("renders the complete single-page form with inherited project info, timeline, and direct save actions", () => {
+    const markup = renderToStaticMarkup(
+      <CreateProcurementPlanView
+        onSavePlan={() => undefined}
+        project={officerProjects[0]}
+      />,
+    );
+
+    expect(markup).toContain("Inherited Project Information");
+    expect(markup).toContain("Plan Identification &amp; Classification");
+    expect(markup).toContain(
+      "Plan Timeline (Dual Calendar: Gregorian &amp; Ethiopian)",
+    );
+    expect(markup).toContain("Save Draft");
+    expect(markup).toContain("Save &amp; Add Procurement Activity");
+  });
 });

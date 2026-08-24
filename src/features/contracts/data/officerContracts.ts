@@ -1,3 +1,6 @@
+import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
+import { officerProjects } from "../../projects/data/officerProjects";
+
 export const OFFICER_CONTRACTS_STORAGE_KEY = "moa-pts:officer-contracts:v1";
 
 export type ContractCurrency = "ETB" | "UA" | "USD";
@@ -54,76 +57,107 @@ export interface OfficerContract {
   totalPaid: number;
 }
 
-// UI-only fixtures. Replace with the Officer-scoped contracts endpoint when
-// API integration is brought into scope.
-export const officerContracts: readonly OfficerContract[] = [
-  {
-    completionDate: {
-      ethiopian: "06-Tah-2017",
-      gregorian: "15-Dec-2024",
-    },
-    contractNumber: "MOA-CON-2024-001",
-    currency: "ETB",
-    currentAmount: 45_000_000,
-    id: "contract-1",
-    originalAmount: 45_000_000,
-    procurementActivity:
-      "Procurement of 23 Field Vehicles for Regional Extension Offices",
-    project: "DRIVE",
-    remainingBalance: 30_000_000,
-    signingDate: {
-      ethiopian: "06-Tir-2016",
-      gregorian: "15-Jan-2024",
-    },
-    status: "Active",
-    supplier: "Green Field Engineering PLC",
-    totalPaid: 15_000_000,
-  },
-  {
-    completionDate: {
-      ethiopian: "21-Hid-2016",
-      gregorian: "30-Nov-2023",
-    },
-    contractNumber: "MOA-CON-2023-089",
-    currency: "USD",
-    currentAmount: 125_000,
-    id: "contract-2",
-    originalAmount: 125_000,
-    procurementActivity:
-      "Consultancy Service for Livestock Value Chain Assessment",
-    project: "BREFONS",
-    remainingBalance: 0,
-    signingDate: {
-      ethiopian: "01-Meg-2015",
-      gregorian: "10-Mar-2023",
-    },
-    status: "Completed",
-    supplier: "Agri Consult Intl.",
-    totalPaid: 125_000,
-  },
-  {
-    completionDate: {
-      ethiopian: "27-Tir-2016",
-      gregorian: "05-Feb-2024",
-    },
-    contractNumber: "MOA-CON-2023-102",
-    currency: "ETB",
-    currentAmount: 92_000_000,
-    id: "contract-3",
-    originalAmount: 85_500_000,
-    procurementActivity:
-      "Construction of Regional Veterinary Laboratory in Hawassa",
-    project: "DRIVE",
-    remainingBalance: 52_000_000,
-    signingDate: {
-      ethiopian: "28-Gin-2015",
-      gregorian: "05-Jun-2023",
-    },
-    status: "Delayed",
-    supplier: "Sunshine Construction",
-    totalPaid: 40_000_000,
-  },
-];
+// UI-only records model the same lifecycle as the approved project activity
+// baselines. When an activity reaches Signed Contract or Contract Completion,
+// it has exactly one matching contract record. API data will replace this
+// fixture generator without changing the view contracts.
+export const officerContracts: readonly OfficerContract[] =
+  officerProjects.flatMap((project) =>
+    project.plans
+      .filter((plan) => plan.status === "Approved")
+      .flatMap((plan) =>
+        getPlanActivities(project, plan).flatMap((activity) => {
+          const roadmap = activity.details?.roadmap ?? [];
+          const signedContract = roadmap.find(
+            (stage) => stage.name === "Signed Contract" && !stage.notApplicable,
+          );
+          const contractCompletion = roadmap.find(
+            (stage) =>
+              stage.name === "Contract Completion" && !stage.notApplicable,
+          );
+          const hasReachedContract =
+            activity.status === "Completed" ||
+            activity.currentStage === "Signed Contract" ||
+            activity.currentStage === "Contract Completion";
+
+          if (!hasReachedContract || !signedContract || !contractCompletion) {
+            return [];
+          }
+
+          const isCompleted = activity.status === "Completed";
+          const isDelayed = activity.status === "Delayed";
+          const paidAmount = isCompleted
+            ? activity.estimatedAmount
+            : isDelayed
+              ? Math.round(activity.estimatedAmount * 0.35 * 100) / 100
+              : Math.round(activity.estimatedAmount * 0.45 * 100) / 100;
+          const contractSuffix = `${plan.reference.split("-").at(-1)}-${activity.reference
+            .split("/")
+            .at(-1)}`;
+          const dateValue = (stage: (typeof roadmap)[number]) => ({
+            ethiopian: stage.ethiopianDate,
+            gregorian: stage.gregorianDate,
+          });
+          const awardStage = roadmap.find((stage) =>
+            stage.name.toLowerCase().includes("notification"),
+          );
+          const vatRate = 15;
+
+          return [
+            {
+              completionDate: dateValue(contractCompletion),
+              contractNumber: `MOA-CON-${project.code.slice(-3)}-${contractSuffix}`,
+              currency: plan.currency,
+              currentAmount: activity.estimatedAmount,
+              details: {
+                ...(isCompleted
+                  ? { actualCompletionDate: dateValue(contractCompletion) }
+                  : {}),
+                amendments: [],
+                amountWithVat:
+                  Math.round(
+                    activity.estimatedAmount * (1 + vatRate / 100) * 100,
+                  ) / 100,
+                ...(awardStage ? { awardDate: dateValue(awardStage) } : {}),
+                netOfVat: activity.estimatedAmount,
+                organizationRegion: activity.details?.form.location,
+                planReference: plan.reference,
+                projectCode: project.code,
+                remarks: isCompleted
+                  ? "Completed in accordance with the approved roadmap."
+                  : isDelayed
+                    ? "Contract implementation is delayed against scheduled completion."
+                    : "Contract signed; implementation and final completion are underway.",
+                startDate: dateValue(signedContract),
+                subcomponent: activity.details?.form.subcomponent,
+                vatRate,
+                activityReference: activity.reference,
+              },
+              id: `fixture-contract-${project.code}-${plan.reference}-${activity.reference}`,
+              originalAmount: activity.estimatedAmount,
+              procurementActivity: activity.description,
+              project: project.shortName,
+              remainingBalance: activity.estimatedAmount - paidAmount,
+              signingDate: dateValue(signedContract),
+              status: isCompleted
+                ? "Completed"
+                : isDelayed
+                  ? "Delayed"
+                  : "Active / Under Implementation",
+              supplier: supplierForCategory(plan.category),
+              totalPaid: paidAmount,
+            },
+          ];
+        }),
+      ),
+  );
+
+function supplierForCategory(category: string) {
+  if (category === "Works") return "National Construction Enterprise";
+  if (category === "Consultancy Services") return "Agriculture Advisory PLC";
+  if (category === "Non-Consulting Services") return "Rural Services PLC";
+  return "Agricultural Supply Enterprise";
+}
 
 export function addSavedContract(
   contracts: readonly OfficerContract[],

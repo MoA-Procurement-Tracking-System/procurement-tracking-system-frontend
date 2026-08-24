@@ -15,6 +15,8 @@ describe("OfficerProjectDetailView", () => {
     expect(markup).toContain("Assigned officers");
     expect(markup).toContain("Financing no.");
     expect(markup).toContain("Components");
+    expect(markup).toContain("Category");
+    expect(markup).not.toContain("Categories");
     expect(markup).not.toContain("Objective");
     expect(markup).not.toContain("Total budget");
     expect(markup).not.toContain("Sector");

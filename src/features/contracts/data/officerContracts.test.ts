@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addSavedContract,
+  officerContracts,
   parseSavedContracts,
   type OfficerContract,
 } from "./officerContracts";
@@ -45,6 +46,30 @@ describe("officer contract storage", () => {
   it("replaces a contract with the same contract number", () => {
     const updated = { ...contract, status: "Completed" as const };
     expect(addSavedContract([contract], updated)).toEqual([updated]);
+  });
+
+  it("generates contracts matching approved project activities with valid lifecycles", () => {
+    expect(officerContracts.length).toBeGreaterThan(0);
+    const completedContracts = officerContracts.filter(
+      (item) => item.status === "Completed",
+    );
+    const activeContracts = officerContracts.filter(
+      (item) => item.status === "Active / Under Implementation",
+    );
+
+    expect(completedContracts.length).toBeGreaterThan(0);
+    expect(activeContracts.length).toBeGreaterThan(0);
+
+    for (const completed of completedContracts) {
+      expect(completed.remainingBalance).toBe(0);
+      expect(completed.totalPaid).toBe(completed.currentAmount);
+      expect(completed.details?.actualCompletionDate).toBeDefined();
+    }
+
+    for (const active of activeContracts) {
+      expect(active.remainingBalance).toBeGreaterThan(0);
+      expect(active.totalPaid).toBeGreaterThan(0);
+    }
   });
 
   it("ignores malformed browser data", () => {

@@ -1,5 +1,7 @@
 export type ProjectStatus = "Active" | "Inactive";
 export type ProcurementPlanStatus = "Approved" | "Draft" | "Returned";
+export type ProcurementCategory =
+  "Goods" | "Works" | "Non-Consulting Services" | "Consultancy Services";
 
 export interface DualCalendarDateValue {
   ethiopian: string;
@@ -9,7 +11,7 @@ export interface DualCalendarDateValue {
 export interface ProcurementPlanSummary {
   activities: number;
   budgetYear: string;
-  categories: readonly string[];
+  category: ProcurementCategory;
   completedActivities: number;
   currency: "ETB" | "USD" | "UA";
   delayedActivities: number;
@@ -83,7 +85,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 12,
         budgetYear: "2016 EFY",
-        categories: ["Goods", "Works", "Non-Consulting"],
+        category: "Goods",
         completedActivities: 8,
         currency: "ETB",
         delayedActivities: 1,
@@ -96,7 +98,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 4,
         budgetYear: "2016 EFY",
-        categories: ["Consultancy"],
+        category: "Consultancy Services",
         completedActivities: 1,
         currency: "USD",
         delayedActivities: 1,
@@ -109,7 +111,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 7,
         budgetYear: "2017 EFY",
-        categories: ["Goods", "Consultancy"],
+        category: "Goods",
         completedActivities: 3,
         currency: "ETB",
         delayedActivities: 1,
@@ -156,7 +158,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 9,
         budgetYear: "2016 EFY",
-        categories: ["Goods"],
+        category: "Goods",
         completedActivities: 5,
         currency: "UA",
         delayedActivities: 1,
@@ -169,7 +171,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 6,
         budgetYear: "2016 EFY",
-        categories: ["Works"],
+        category: "Works",
         completedActivities: 3,
         currency: "UA",
         delayedActivities: 1,
@@ -182,7 +184,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 5,
         budgetYear: "2016 EFY",
-        categories: ["Consultancy"],
+        category: "Consultancy Services",
         completedActivities: 2,
         currency: "USD",
         delayedActivities: 1,
@@ -195,7 +197,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 8,
         budgetYear: "2017 EFY",
-        categories: ["Goods", "Works"],
+        category: "Works",
         completedActivities: 4,
         currency: "UA",
         delayedActivities: 1,
@@ -208,7 +210,7 @@ export const officerProjects: readonly OfficerProject[] = [
       {
         activities: 3,
         budgetYear: "2017 EFY",
-        categories: ["Non-Consulting"],
+        category: "Non-Consulting Services",
         completedActivities: 1,
         currency: "ETB",
         delayedActivities: 1,

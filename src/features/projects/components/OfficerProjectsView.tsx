@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import { CreateProcurementActivityView } from "@/features/projects/components/CreateProcurementActivityView";
 import { CreateProcurementPlanView } from "@/features/projects/components/CreateProcurementPlanView";
 import { OfficerProcurementActivityDetailView } from "@/features/projects/components/OfficerProcurementActivityDetailView";
@@ -30,7 +31,6 @@ import {
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
 import {
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -114,8 +114,7 @@ export function OfficerProjectsView({
         plan.status === "Draft" &&
         plan.name === input.planName.trim() &&
         plan.budgetYear === `${input.budgetYear} EFY` &&
-        plan.categories.length === 1 &&
-        plan.categories[0] === input.category,
+        plan.category === input.category,
     );
 
     let planForNavigation = existingPlan;
@@ -475,13 +474,7 @@ function OfficerProjectsList({
                       {project.activePlans}
                     </td>
                     <td className="px-4 py-4">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-[#eaf4f0] px-2 py-1 text-xs font-bold text-[#176c55]">
-                        <CheckCircle2
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5"
-                        />
-                        {project.status}
-                      </span>
+                      <StatusText className="text-xs" label={project.status} />
                     </td>
                     <td className="px-4 py-4 text-right">
                       <Link

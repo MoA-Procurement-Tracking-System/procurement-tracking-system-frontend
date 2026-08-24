@@ -9,7 +9,7 @@ import {
 
 const payment: OfficerContractPayment = {
   amount: 2_000_000,
-  contractNumber: "MOA-CON-2024-001",
+  contractNumber: officerContracts[0].contractNumber,
   date: { ethiopian: "01-Hamle-2018", gregorian: "2026-07-08" },
   id: "payment-1",
   paymentType: "1st / Interim",
@@ -33,8 +33,12 @@ describe("officer payment storage", () => {
 
   it("calculates total paid and remaining balance", () => {
     const contract = applyPaymentsToContract(officerContracts[0], [payment]);
-    expect(contract.totalPaid).toBe(17_000_000);
-    expect(contract.remainingBalance).toBe(28_000_000);
+    expect(contract.totalPaid).toBe(
+      officerContracts[0].totalPaid + payment.amount,
+    );
+    expect(contract.remainingBalance).toBe(
+      officerContracts[0].remainingBalance - payment.amount,
+    );
   });
 
   it("ignores malformed or negative payment records", () => {

@@ -1,10 +1,12 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import type {
   OfficerProject,
-  ProcurementPlanStatus,
   ProcurementPlanSummary,
 } from "@/features/projects/data/officerProjects";
+import { getPlanActivities as getFixturePlanActivities } from "../data/fixtureActivityLifecycle";
+export { getPlanActivities } from "../data/fixtureActivityLifecycle";
 import type {
   ProcurementActivityStatus,
   ProcurementActivitySummary,
@@ -14,7 +16,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Download,
   House,
   Plus,
@@ -26,144 +27,6 @@ import { useMemo, useRef, useState } from "react";
 type ActivityStatus = ProcurementActivityStatus;
 
 type PlanActivity = ProcurementActivitySummary;
-
-const planStatusTones: Record<
-  ProcurementPlanStatus,
-  { background: string; border: string; color: string }
-> = {
-  Approved: {
-    background: "#e8f5ef",
-    border: "#b8dfcf",
-    color: "#047857",
-  },
-  Draft: {
-    background: "#f1f5f9",
-    border: "#cbd5e1",
-    color: "#475569",
-  },
-  Returned: {
-    background: "#fff7ed",
-    border: "#fed7aa",
-    color: "#c2410c",
-  },
-};
-
-const activityStatusTones: Record<
-  ActivityStatus,
-  { background: string; border: string; color: string; dot: string }
-> = {
-  Completed: {
-    background: "#ecfdf5",
-    border: "#a7f3d0",
-    color: "#047857",
-    dot: "#059669",
-  },
-  Delayed: {
-    background: "#fff1f0",
-    border: "#fecaca",
-    color: "#b42318",
-    dot: "#dc2626",
-  },
-  "In Progress": {
-    background: "#eff6ff",
-    border: "#bfdbfe",
-    color: "#1d4ed8",
-    dot: "#2563eb",
-  },
-  "Not Started": {
-    background: "#f8fafc",
-    border: "#cbd5e1",
-    color: "#475569",
-    dot: "#64748b",
-  },
-};
-
-const activityTemplates = [
-  {
-    amount: 45_000_000,
-    category: "Goods",
-    description: "Procurement of Veterinary Vaccines for Zone 3",
-    method: "NCB",
-    stage: "Bid Opening",
-  },
-  {
-    amount: 120_500_000,
-    category: "Works",
-    description: "Construction of Irrigation Canal Extension",
-    method: "ICB",
-    stage: "Contract Signing",
-  },
-  {
-    amount: 3_200_000,
-    category: "Services",
-    description: "Consultancy for Soil Quality Assessment",
-    method: "QCBS",
-    stage: "Final Report",
-  },
-  {
-    amount: 85_000_000,
-    category: "Goods",
-    description: "Supply of Tractors and Attachments",
-    method: "ICB",
-    stage: "Bid Evaluation",
-  },
-  {
-    amount: 18_750_000,
-    category: "Works",
-    description: "Construction of Regional Storage Facilities",
-    method: "NCB",
-    stage: "Technical Evaluation",
-  },
-  {
-    amount: 6_400_000,
-    category: "Goods",
-    description: "Supply of Livestock Monitoring Equipment",
-    method: "RFQ",
-    stage: "Purchase Order",
-  },
-  {
-    amount: 2_850_000,
-    category: "Services",
-    description: "Feasibility Study for Market Linkage Hubs",
-    method: "CQS",
-    stage: "Shortlisting",
-  },
-  {
-    amount: 4_600_000,
-    category: "Services",
-    description: "Fleet Maintenance and Support Services",
-    method: "NCB",
-    stage: "Contract Execution",
-  },
-  {
-    amount: 22_300_000,
-    category: "Goods",
-    description: "Supply of Improved Forage Seed",
-    method: "NCB",
-    stage: "Bid Preparation",
-  },
-  {
-    amount: 38_900_000,
-    category: "Works",
-    description: "Rehabilitation of Community Water Points",
-    method: "NCB",
-    stage: "Site Handover",
-  },
-  {
-    amount: 1_950_000,
-    category: "Services",
-    description: "Environmental and Social Compliance Audit",
-    method: "LCS",
-    stage: "Proposal Evaluation",
-  },
-  {
-    amount: 54_200_000,
-    category: "Works",
-    description: "Construction of a Regional Veterinary Laboratory",
-    method: "ICB",
-    stage: "Contract Award",
-  },
-] as const;
 
 export function OfficerProcurementPlanDetailView({
   plan,
@@ -183,7 +46,7 @@ export function OfficerProcurementPlanDetailView({
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const activities = useMemo(
-    () => getPlanActivities(project, plan, savedActivities),
+    () => getFixturePlanActivities(project, plan, savedActivities),
     [plan, project, savedActivities],
   );
   const categoryOptions = useMemo(
@@ -336,7 +199,7 @@ export function OfficerProcurementPlanDetailView({
               <span aria-hidden="true" className="text-slate-300">
                 •
               </span>
-              <PlanStatusBadge status={plan.status} />
+              <StatusText className="text-[10px]" label={plan.status} />
               <span aria-hidden="true" className="text-slate-300">
                 •
               </span>
@@ -577,24 +440,6 @@ export function OfficerProcurementPlanDetailView({
   );
 }
 
-function PlanStatusBadge({ status }: { status: ProcurementPlanStatus }) {
-  const tone = planStatusTones[status];
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold"
-      style={{
-        backgroundColor: tone.background,
-        borderColor: tone.border,
-        color: tone.color,
-      }}
-    >
-      <CircleDot aria-hidden="true" className="h-3 w-3" />
-      {status}
-    </span>
-  );
-}
-
 function ActivityRow({
   activity,
   href,
@@ -602,8 +447,6 @@ function ActivityRow({
   activity: PlanActivity;
   href: string;
 }) {
-  const tone = activityStatusTones[activity.status];
-
   return (
     <tr className="even:bg-[#fbfcff] hover:bg-[#f7fbf9]">
       <td className="px-3 py-2.5 align-top font-mono text-[10px] font-semibold text-[#1261a8]">
@@ -625,21 +468,7 @@ function ActivityRow({
         {activity.currentStage}
       </td>
       <td className="px-3 py-2.5 align-top">
-        <span
-          className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1 text-[9px] font-semibold"
-          style={{
-            backgroundColor: tone.background,
-            borderColor: tone.border,
-            color: tone.color,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: tone.dot }}
-          />
-          {activity.status}
-        </span>
+        <StatusText className="text-[9px]" label={activity.status} />
       </td>
       <td className="px-3 py-2.5 text-right align-top">
         <Link
@@ -682,79 +511,6 @@ function PaginationButton({
       {children}
     </button>
   );
-}
-
-export function getPlanActivities(
-  project: OfficerProject,
-  plan: ProcurementPlanSummary,
-  savedActivities: readonly ProcurementActivitySummary[] = [],
-) {
-  const generated = createPlanActivities(project, plan);
-  return [
-    ...generated,
-    ...savedActivities.filter(
-      (savedActivity) =>
-        !generated.some(
-          (activity) => activity.reference === savedActivity.reference,
-        ),
-    ),
-  ];
-}
-
-function createPlanActivities(
-  project: OfficerProject,
-  plan: ProcurementPlanSummary,
-): PlanActivity[] {
-  const activityProjectCode =
-    project.shortName === "DRIVE" ? "DRV" : project.shortName;
-  const remaining: Record<ActivityStatus, number> = {
-    Completed: plan.completedActivities,
-    Delayed: plan.delayedActivities,
-    "In Progress": plan.inProgressActivities,
-    "Not Started": 0,
-  };
-  const preferredStatuses: ActivityStatus[] = [
-    "In Progress",
-    "Delayed",
-    "Completed",
-    "In Progress",
-  ];
-  const statuses: ActivityStatus[] = [];
-
-  for (const preferred of preferredStatuses) {
-    if (statuses.length >= plan.activities) break;
-    if (remaining[preferred] > 0) {
-      statuses.push(preferred);
-      remaining[preferred] -= 1;
-    }
-  }
-
-  for (const status of ["Completed", "In Progress", "Delayed"] as const) {
-    while (remaining[status] > 0 && statuses.length < plan.activities) {
-      statuses.push(status);
-      remaining[status] -= 1;
-    }
-  }
-
-  return Array.from({ length: plan.activities }, (_, index) => {
-    const template = activityTemplates[index % activityTemplates.length];
-    const categoryCode =
-      template.category === "Goods"
-        ? "G"
-        : template.category === "Works"
-          ? "W"
-          : "S";
-
-    return {
-      category: template.category,
-      currentStage: template.stage,
-      description: template.description,
-      estimatedAmount: template.amount,
-      method: template.method,
-      reference: `MOA/${activityProjectCode}/${categoryCode}/${String(index + 1).padStart(2, "0")}`,
-      status: statuses[index] ?? "In Progress",
-    };
-  });
 }
 
 function formatAmount(value: number) {
