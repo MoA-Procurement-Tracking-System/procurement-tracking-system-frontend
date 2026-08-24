@@ -68,7 +68,11 @@ function renderLastLogin(lastLoginAt: string | null, status: string) {
     );
   }
   if (!lastLoginAt) {
-    return <span className="text-[#64748b] font-medium whitespace-nowrap">Never</span>;
+    return (
+      <span className="text-[#64748b] font-medium whitespace-nowrap">
+        Never
+      </span>
+    );
   }
   return (
     <span className="text-[#64748b] font-medium whitespace-nowrap">
@@ -210,9 +214,7 @@ export function UserManagementView({
       await loadUsers();
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Failed to update user status.",
+        err instanceof Error ? err.message : "Failed to update user status.",
       );
     } finally {
       setActionUserId(null);
@@ -317,7 +319,8 @@ export function UserManagementView({
                     <strong className="font-bold text-[#04382c]">
                       {invitedInfo.role}
                     </strong>
-                    . The recipient can click the link in their inbox to setup their password.
+                    . The recipient can click the link in their inbox to setup
+                    their password.
                   </p>
                 </div>
               </div>
@@ -634,10 +637,7 @@ export function UserManagementView({
                               </td>
 
                               <td className="py-4 px-4 align-middle">
-                                {renderLastLogin(
-                                  user.lastLoginAt,
-                                  user.status,
-                                )}
+                                {renderLastLogin(user.lastLoginAt, user.status)}
                               </td>
 
                               {/* Resend Invitation / Activate / Deactivate Actions */}
@@ -691,7 +691,8 @@ export function UserManagementView({
                               colSpan={6}
                               className="py-8 text-center text-xs text-slate-500 font-medium"
                             >
-                              No user accounts match your search query or filter.
+                              No user accounts match your search query or
+                              filter.
                             </td>
                           </tr>
                         )}
