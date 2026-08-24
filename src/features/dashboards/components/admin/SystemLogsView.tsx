@@ -75,8 +75,6 @@ export function SystemLogsView() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadLogs = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
     try {
       const result = await fetchAuditLogs({
         page: currentPage,
@@ -89,19 +87,49 @@ export function SystemLogsView() {
       setLoadError(
         err instanceof Error ? err.message : "Failed to load audit logs.",
       );
-    } finally {
-      setIsLoading(false);
     }
   }, [currentPage, searchQuery, selectedAction]);
 
   useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+    let active = true;
 
-  // Reset to page 1 when search or filter changes
-  useEffect(() => {
+    fetchAuditLogs({
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+      search: searchQuery || undefined,
+      action: selectedAction === "ALL" ? undefined : selectedAction,
+    })
+      .then((result) => {
+        if (active) {
+          setLogsResponse(result);
+          setLoadError(null);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load audit logs.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPage, searchQuery, selectedAction]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
     setCurrentPage(1);
-  }, [searchQuery, selectedAction]);
+  };
+
+  const handleActionChange = (val: string) => {
+    setSelectedAction(val);
+    setCurrentPage(1);
+  };
 
   const logs = logsResponse?.data ?? [];
   const meta = logsResponse?.meta;
@@ -139,7 +167,7 @@ export function SystemLogsView() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search logs, user, action..."
                 className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full pl-9 pr-4 py-2 text-xs text-[#0f172a] placeholder-slate-400 w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium transition-all"
               />
@@ -148,7 +176,7 @@ export function SystemLogsView() {
             <div className="relative w-full sm:w-auto">
               <select
                 value={selectedAction}
-                onChange={(e) => setSelectedAction(e.target.value)}
+                onChange={(e) => handleActionChange(e.target.value)}
                 className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-bold text-[#334155] focus:outline-none cursor-pointer w-full"
               >
                 <option value="ALL">All Actions</option>
@@ -187,7 +215,7 @@ export function SystemLogsView() {
           </div>
         )}
 
-        {/* Dark Emerald Header Table (No Record ID column, full details display) */}
+        {/* Dark Emerald Header Table */}
         {!isLoading && !loadError && (
           <>
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
@@ -231,7 +259,7 @@ export function SystemLogsView() {
                           </td>
 
                           <td className="py-4 px-4 whitespace-nowrap align-middle">
-                            <span className="inline-block px-2.5 py-1 text-[#044e3a] text-[11px] font-bold uppercase tracking-wider">
+                            <span className="text-[#044e3a] text-xs font-bold uppercase tracking-wider">
                               {log.action}
                             </span>
                           </td>

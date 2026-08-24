@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Users, Loader2, RefreshCw } from "lucide-react";
+import { ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { createInvitedUser } from "@/lib/authApi";
 import type { ApiUser } from "@/lib/adminApi";
 import type { ProvisionableRole } from "@/lib/authTypes";
@@ -163,11 +163,11 @@ export function UserAccessTable({
 
                       <td className="py-3.5 px-4 align-middle">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          className={`text-xs font-bold ${
                             isPending
                               ? "text-[#b06000]"
                               : isActive
-                                ? " text-[#137333]"
+                                ? "text-[#137333]"
                                 : "text-[#c5221f]"
                           }`}
                         >

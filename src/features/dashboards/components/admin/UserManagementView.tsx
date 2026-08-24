@@ -68,11 +68,7 @@ function renderLastLogin(lastLoginAt: string | null, status: string) {
     );
   }
   if (!lastLoginAt) {
-    return (
-      <span className="text-[#64748b] font-medium whitespace-nowrap">
-        Never
-      </span>
-    );
+    return <span className="text-[#64748b] font-medium whitespace-nowrap">Never</span>;
   }
   return (
     <span className="text-[#64748b] font-medium whitespace-nowrap">
@@ -117,8 +113,6 @@ export function UserManagementView({
 
   // ─── Fetch Users ────────────────────────────────────────────────────────
   const loadUsers = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
     try {
       const roleFilterMap: Record<string, string | undefined> = {
         ALL: undefined,
@@ -145,19 +139,68 @@ export function UserManagementView({
       setLoadError(
         err instanceof Error ? err.message : "Failed to load users.",
       );
-    } finally {
-      setIsLoading(false);
     }
   }, [currentPage, searchQuery, selectedRole, selectedStatus]);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    let active = true;
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+    const roleFilterMap: Record<string, string | undefined> = {
+      ALL: undefined,
+      OFFICER: "ProcurementOfficer",
+      DIRECTOR: "ProcurementDirector",
+      ENDORSING_COMMITTEE: "ManagementTeam",
+      ADMIN: "Administrator",
+    };
+
+    fetchUsers({
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+      search: searchQuery || undefined,
+      role: roleFilterMap[selectedRole],
+      isActive:
+        selectedStatus === "ALL"
+          ? undefined
+          : selectedStatus === "Active"
+            ? true
+            : false,
+    })
+      .then((result) => {
+        if (active) {
+          setUsersResponse(result);
+          setLoadError(null);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load users.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPage, searchQuery, selectedRole, selectedStatus]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
     setCurrentPage(1);
-  }, [searchQuery, selectedRole, selectedStatus]);
+  };
+
+  const handleRoleChange = (val: string) => {
+    setSelectedRole(val);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (val: string) => {
+    setSelectedStatus(val);
+    setCurrentPage(1);
+  };
 
   // ─── Toggle Active/Inactive ─────────────────────────────────────────────
   const handleToggleStatus = async (user: ApiUser) => {
@@ -167,7 +210,9 @@ export function UserManagementView({
       await loadUsers();
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Failed to update user status.",
+        err instanceof Error
+          ? err.message
+          : "Failed to update user status.",
       );
     } finally {
       setActionUserId(null);
@@ -254,6 +299,9 @@ export function UserManagementView({
           <div className="relative overflow-hidden bg-gradient-to-r from-[#ecfdf5] via-[#f0fdf4] to-[#e6f4ea] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3.5 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#044e3a] text-white shrink-0 shadow-2xs mt-0.5">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
                 <div className="space-y-1 min-w-0">
                   <h3 className="text-base font-extrabold text-[#044e3a] tracking-tight">
                     {invitedInfo.isResend
@@ -269,8 +317,7 @@ export function UserManagementView({
                     <strong className="font-bold text-[#04382c]">
                       {invitedInfo.role}
                     </strong>
-                    . The recipient can click the link in their inbox to setup
-                    their password.
+                    . The recipient can click the link in their inbox to setup their password.
                   </p>
                 </div>
               </div>
@@ -453,7 +500,7 @@ export function UserManagementView({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="Search by name or email..."
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full pl-9 pr-4 py-2 text-xs text-[#0f172a] placeholder-slate-400 w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium transition-all"
                 />
@@ -462,7 +509,7 @@ export function UserManagementView({
               <div className="flex items-center gap-3 self-end md:self-auto">
                 <select
                   value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
+                  onChange={(e) => handleRoleChange(e.target.value)}
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-bold text-[#334155] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">All Roles</option>
@@ -476,7 +523,7 @@ export function UserManagementView({
 
                 <select
                   value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  onChange={(e) => handleStatusChange(e.target.value)}
                   className="bg-[#f8fafc] border border-[#e2e8f0] rounded-full px-4 py-2 text-xs font-bold text-[#334155] focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">All Statuses</option>
@@ -574,7 +621,7 @@ export function UserManagementView({
 
                               <td className="py-4 px-4 align-middle">
                                 <span
-                                  className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold  ${
+                                  className={`text-xs font-bold ${
                                     isPending
                                       ? "text-[#b06000]"
                                       : isActive
@@ -587,7 +634,10 @@ export function UserManagementView({
                               </td>
 
                               <td className="py-4 px-4 align-middle">
-                                {renderLastLogin(user.lastLoginAt, user.status)}
+                                {renderLastLogin(
+                                  user.lastLoginAt,
+                                  user.status,
+                                )}
                               </td>
 
                               {/* Resend Invitation / Activate / Deactivate Actions */}
@@ -641,8 +691,7 @@ export function UserManagementView({
                               colSpan={6}
                               className="py-8 text-center text-xs text-slate-500 font-medium"
                             >
-                              No user accounts match your search query or
-                              filter.
+                              No user accounts match your search query or filter.
                             </td>
                           </tr>
                         )}

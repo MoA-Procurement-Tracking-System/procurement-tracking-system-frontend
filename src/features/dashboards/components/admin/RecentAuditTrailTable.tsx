@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, History, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import type { AuditLogEntry } from "@/lib/adminApi";
 
 function formatTimestamp(iso: string): string {
@@ -133,7 +133,7 @@ export function RecentAuditTrailTable({
                       </td>
 
                       <td className="py-3.5 px-4 whitespace-nowrap align-middle">
-                        <span className="inline-block px-2.5 py-0.5 text-[#044e3a] text-[11px] font-bold uppercase tracking-wider">
+                        <span className="text-[#044e3a] text-xs font-bold uppercase tracking-wider">
                           {log.action}
                         </span>
                       </td>

@@ -35,17 +35,12 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    setIsUsersLoading(true);
-    setIsLogsLoading(true);
-
     try {
       const usersRes = await fetchUsers({ pageSize: 50 });
       setUsers(usersRes.data);
       setTotalUserCount(usersRes.meta.total);
     } catch {
       // Keep existing state
-    } finally {
-      setIsUsersLoading(false);
     }
 
     try {
@@ -53,14 +48,37 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
       setLogs(logsRes.data);
     } catch {
       // Keep existing state
-    } finally {
-      setIsLogsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let active = true;
+
+    fetchUsers({ pageSize: 50 })
+      .then((usersRes) => {
+        if (active) {
+          setUsers(usersRes.data);
+          setTotalUserCount(usersRes.meta.total);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setIsUsersLoading(false);
+      });
+
+    fetchAuditLogs({ pageSize: 5 })
+      .then((logsRes) => {
+        if (active) setLogs(logsRes.data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setIsLogsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleToggleStatus = async (targetUser: ApiUser) => {
     setTogglingId(targetUser.id);
@@ -161,7 +179,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
         focusItems={[
           {
             title: "Provision users carefully",
-            description: "Assign only the role required for each user's work.",
+            description: "Assign only the role required for each user’s work.",
           },
           {
             title: "Review failed access",
