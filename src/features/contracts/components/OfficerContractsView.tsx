@@ -53,6 +53,9 @@ export function OfficerContractsView({
   const [savedPayments, setSavedPayments] = useState<OfficerContractPayment[]>(
     [],
   );
+  const [prevSelectedContractNumber, setPrevSelectedContractNumber] = useState(
+    selectedContractNumber,
+  );
   const [fiscalYear, setFiscalYear] = useState("all");
   const [searchQuery, setSearchQuery] = useState(
     () => selectedContractNumber ?? "",
@@ -60,11 +63,12 @@ export function OfficerContractsView({
   const [status, setStatus] = useState<"all" | ContractStatus>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
-  useEffect(() => {
+  if (selectedContractNumber !== prevSelectedContractNumber) {
+    setPrevSelectedContractNumber(selectedContractNumber);
     if (selectedContractNumber) {
       setSearchQuery(selectedContractNumber);
     }
-  }, [selectedContractNumber]);
+  }
 
   useEffect(() => {
     const loadSavedContracts = window.setTimeout(() => {

@@ -17,7 +17,6 @@ import {
 } from "../utils/ethiopianCalendar";
 import {
   ArrowLeft,
-  ArrowRight,
   ArrowRightLeft,
   CalendarDays,
   CheckCircle2,
@@ -477,11 +476,11 @@ export function CreateProcurementPlanView({
               />
               <DualCalendarField
                 errorMessage={
-                  validationAttempted && !form.periodTo
-                    ? "End date is required."
-                    : dateOrderError
-                      ? "End date cannot be earlier than start date."
-                      : undefined
+                  periodToError
+                    ? !form.periodTo
+                      ? "End date is required."
+                      : "End date cannot be earlier than start date."
+                    : undefined
                 }
                 ethiopianValue={form.periodToEthiopian}
                 gregorianValue={form.periodTo}
