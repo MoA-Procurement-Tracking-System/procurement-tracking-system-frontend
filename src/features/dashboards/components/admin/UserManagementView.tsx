@@ -221,23 +221,24 @@ export function UserManagementView({
 
   return (
     <div className="space-y-6">
-      {/* Toast / Success Notification matching screenshot */}
+      {/* Toast / Success Notification */}
       {invitedInfo && (
         <div className="animate-in fade-in slide-in-from-top-2">
           <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
             <h3 className="text-base sm:text-lg font-extrabold text-[#044e3a] mb-1 tracking-tight">
-              Invitation Created Successfully
+              Invitation Email Sent Successfully
             </h3>
             <p className="text-[#046c50] font-medium leading-relaxed">
-              An invitation has been generated for{" "}
+              An official registration email has been delivered to{" "}
               <strong className="font-bold text-[#04382c]">
                 {invitedInfo.email}
               </strong>{" "}
-              as{" "}
+              for the role of{" "}
               <strong className="font-bold text-[#04382c]">
                 {invitedInfo.role}
               </strong>
-              .
+              . The user can now click the invitation link in their email to
+              create their password and access the system.
             </p>
           </div>
         </div>
