@@ -195,9 +195,12 @@ describe("ActivityTrackingDetailView", () => {
     const worksPlan = brefonsProject.plans.find(
       (candidate) => candidate.reference === "PP-BREFONS-2016-02",
     )!;
-    const summaryActivity = getPlanActivities(brefonsProject, worksPlan).find(
-      (activity) => activity.reference === "MOA/BREFONS/W/02",
-    )!;
+    const summaryActivity = {
+      ...getPlanActivities(brefonsProject, worksPlan).find(
+        (activity) => activity.reference === "MOA/BREFONS/W/02",
+      )!,
+      details: undefined,
+    };
     const summaryItem: OfficerTrackedActivityItem = {
       activity: summaryActivity,
       plan: worksPlan,

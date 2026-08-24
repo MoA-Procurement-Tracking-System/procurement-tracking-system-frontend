@@ -56,6 +56,101 @@ export function createInitialActivityTrackingRecord(
   planReference: string,
   activity: ProcurementActivitySummary,
 ): OfficerActivityTrackingRecord {
+  const roadmap = activity.details?.roadmap ?? [];
+
+  // Activities created before roadmap capture remain summary-only.  New and
+  // fixture activities use their approved roadmap as the single source of truth.
+  if (roadmap.length === 0) {
+    return summaryTrackingRecord(projectCode, planReference, activity);
+  }
+
+  const currentStageIndex = Math.max(
+    0,
+    roadmap.findIndex((stage) => stage.name === activity.currentStage),
+  );
+  const stages = roadmap.map((stage, index): ActivityStageTracking => {
+    if (stage.notApplicable) {
+      return {
+        remarks: stage.remarks,
+        revisions: [],
+        stageName: stage.name,
+        status: "Not Applicable",
+      };
+    }
+
+    const completed =
+      activity.status === "Completed" || index < currentStageIndex;
+    const inProgress = !completed && index === currentStageIndex;
+
+    return {
+      ...(completed
+        ? {
+            actualDate: {
+              ethiopian: stage.ethiopianDate,
+              gregorian: stage.gregorianDate,
+            },
+          }
+        : {}),
+      remarks: stage.remarks,
+      revisions: [],
+      stageName: stage.name,
+      status: completed
+        ? "Completed"
+        : inProgress
+          ? "In Progress"
+          : "Not Started",
+    };
+  });
+  const applicableStages = stages.filter(
+    (stage) => stage.status !== "Not Applicable",
+  );
+  const completedStages = applicableStages.filter(
+    (stage) => stage.status === "Completed",
+  ).length;
+  const currentStage = stages[currentStageIndex];
+  const hasSignedContract =
+    currentStage?.stageName === "Signed Contract" ||
+    stages.some(
+      (stage, idx) =>
+        stage.stageName === "Signed Contract" &&
+        (stage.status === "Completed" || idx <= currentStageIndex),
+    );
+
+  return {
+    activityReference: activity.reference,
+    activityStatus:
+      activity.status === "Completed" || hasSignedContract ? "Cleared" : "New",
+    generalRemarks:
+      activity.status === "Completed"
+        ? "Procurement and contract completion have been recorded."
+        : hasSignedContract
+          ? "Contract signature has been recorded; implementation is under way."
+          : "",
+    planReference,
+    processStatus:
+      activity.status === "Completed"
+        ? "Completed"
+        : hasSignedContract
+          ? "Signed"
+          : currentStage?.stageName.toLowerCase().includes("evaluation") ||
+              currentStage?.stageName.toLowerCase().includes("bid submission")
+            ? "Bid Opened / Under Evaluation"
+            : "Under Implementation",
+    progressPercent:
+      applicableStages.length === 0
+        ? 0
+        : Math.round((completedStages / applicableStages.length) * 100),
+    projectCode,
+    stages,
+    updatedAt: "",
+  };
+}
+
+function summaryTrackingRecord(
+  projectCode: string,
+  planReference: string,
+  activity: ProcurementActivitySummary,
+): OfficerActivityTrackingRecord {
   return {
     activityReference: activity.reference,
     activityStatus: activity.status === "Completed" ? "Cleared" : "New",

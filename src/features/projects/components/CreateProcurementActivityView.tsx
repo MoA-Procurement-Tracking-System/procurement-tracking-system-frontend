@@ -1260,6 +1260,7 @@ function RelatedInformationStep({
               onChange={(event) =>
                 onChange("estimatedAmount", event.target.value)
               }
+              onWheel={(event) => event.currentTarget.blur()}
               placeholder="0.00"
               step="0.01"
               type="number"
@@ -1417,6 +1418,7 @@ function RelatedInformationStep({
                     onChange={(event) =>
                       updateLot(lot.id, "amount", event.target.value)
                     }
+                    onWheel={(event) => event.currentTarget.blur()}
                     placeholder="0.00"
                     step="0.01"
                     type="number"
@@ -1603,6 +1605,7 @@ function AdditionalDetailsStep({
                 max="90"
                 min="-90"
                 onChange={(event) => onChange("latitude", event.target.value)}
+                onWheel={(event) => event.currentTarget.blur()}
                 placeholder="0.000000"
                 step="any"
                 type="number"
@@ -1615,6 +1618,7 @@ function AdditionalDetailsStep({
                 max="180"
                 min="-180"
                 onChange={(event) => onChange("longitude", event.target.value)}
+                onWheel={(event) => event.currentTarget.blur()}
                 placeholder="0.000000"
                 step="any"
                 type="number"
@@ -1760,6 +1764,7 @@ function AllocationSelector({
                     ),
                   )
                 }
+                onWheel={(event) => event.currentTarget.blur()}
                 step="0.01"
                 type="number"
                 value={allocation.percent}

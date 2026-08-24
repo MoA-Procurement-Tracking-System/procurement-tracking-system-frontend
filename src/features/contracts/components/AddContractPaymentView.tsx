@@ -204,6 +204,7 @@ export function AddContractPaymentView({
                       onChange={(event) =>
                         updateField("amount", event.target.value)
                       }
+                      onWheel={(event) => event.currentTarget.blur()}
                       placeholder="0.00"
                       step="0.01"
                       type="number"

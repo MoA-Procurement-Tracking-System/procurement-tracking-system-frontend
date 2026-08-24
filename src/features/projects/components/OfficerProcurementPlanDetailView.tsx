@@ -3,9 +3,10 @@
 import { StatusText } from "../../../components/dashboard/StatusText";
 import type {
   OfficerProject,
-  ProcurementCategory,
   ProcurementPlanSummary,
 } from "@/features/projects/data/officerProjects";
+import { getPlanActivities as getFixturePlanActivities } from "../data/fixtureActivityLifecycle";
+export { getPlanActivities } from "../data/fixtureActivityLifecycle";
 import type {
   ProcurementActivityStatus,
   ProcurementActivitySummary,
@@ -27,111 +28,6 @@ type ActivityStatus = ProcurementActivityStatus;
 
 type PlanActivity = ProcurementActivitySummary;
 
-interface ActivityTemplate {
-  amount: number;
-  description: string;
-  method: string;
-  stage: string;
-}
-
-const activityTemplates: Record<
-  ProcurementCategory,
-  readonly ActivityTemplate[]
-> = {
-  "Consultancy Services": [
-    {
-      amount: 3_200_000,
-      description: "Consultancy for Soil Quality Assessment",
-      method: "QCBS",
-      stage: "Final Report",
-    },
-    {
-      amount: 2_850_000,
-      description: "Feasibility Study for Market Linkage Hubs",
-      method: "CQS",
-      stage: "Shortlisting",
-    },
-    {
-      amount: 1_950_000,
-      description: "Environmental and Social Compliance Audit",
-      method: "LCS",
-      stage: "Proposal Evaluation",
-    },
-  ],
-  Goods: [
-    {
-      amount: 45_000_000,
-      description: "Procurement of Veterinary Vaccines for Zone 3",
-      method: "RFB",
-      stage: "Bid Opening",
-    },
-    {
-      amount: 85_000_000,
-      description: "Supply of Tractors and Attachments",
-      method: "RFB",
-      stage: "Bid Evaluation",
-    },
-    {
-      amount: 6_400_000,
-      description: "Supply of Livestock Monitoring Equipment",
-      method: "RFQ",
-      stage: "Purchase Order",
-    },
-    {
-      amount: 22_300_000,
-      description: "Supply of Improved Forage Seed",
-      method: "RFB",
-      stage: "Bid Preparation",
-    },
-  ],
-  "Non-Consulting Services": [
-    {
-      amount: 4_600_000,
-      description: "Fleet Maintenance and Support Services",
-      method: "RFB",
-      stage: "Contract Execution",
-    },
-    {
-      amount: 2_400_000,
-      description: "Security Services for Regional Project Offices",
-      method: "RFB",
-      stage: "Bid Evaluation",
-    },
-    {
-      amount: 1_850_000,
-      description: "Transport and Logistics Support Services",
-      method: "RFQ",
-      stage: "Purchase Order",
-    },
-  ],
-  Works: [
-    {
-      amount: 120_500_000,
-      description: "Construction of Irrigation Canal Extension",
-      method: "RFB",
-      stage: "Contract Signing",
-    },
-    {
-      amount: 18_750_000,
-      description: "Construction of Regional Storage Facilities",
-      method: "RFB",
-      stage: "Technical Evaluation",
-    },
-    {
-      amount: 38_900_000,
-      description: "Rehabilitation of Community Water Points",
-      method: "RFB",
-      stage: "Site Handover",
-    },
-    {
-      amount: 54_200_000,
-      description: "Construction of a Regional Veterinary Laboratory",
-      method: "RFB",
-      stage: "Contract Award",
-    },
-  ],
-};
-
 export function OfficerProcurementPlanDetailView({
   plan,
   project,
@@ -150,7 +46,7 @@ export function OfficerProcurementPlanDetailView({
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const activities = useMemo(
-    () => getPlanActivities(project, plan, savedActivities),
+    () => getFixturePlanActivities(project, plan, savedActivities),
     [plan, project, savedActivities],
   );
   const categoryOptions = useMemo(
@@ -615,95 +511,6 @@ function PaginationButton({
       {children}
     </button>
   );
-}
-
-export function getPlanActivities(
-  project: OfficerProject,
-  plan: ProcurementPlanSummary,
-  savedActivities: readonly ProcurementActivitySummary[] = [],
-) {
-  const generated = createPlanActivities(project, plan);
-  const normalizedSaved = savedActivities.map((savedActivity) => ({
-    ...savedActivity,
-    category: plan.category,
-  }));
-  const savedByReference = new Map(
-    normalizedSaved.map((savedActivity) => [
-      savedActivity.reference,
-      savedActivity,
-    ]),
-  );
-  const generatedReferences = new Set(
-    generated.map((activity) => activity.reference),
-  );
-
-  return [
-    ...generated.map(
-      (activity) => savedByReference.get(activity.reference) ?? activity,
-    ),
-    ...Array.from(savedByReference.values()).filter(
-      (savedActivity) => !generatedReferences.has(savedActivity.reference),
-    ),
-  ];
-}
-
-function createPlanActivities(
-  project: OfficerProject,
-  plan: ProcurementPlanSummary,
-): PlanActivity[] {
-  const activityProjectCode =
-    project.shortName === "DRIVE" ? "DRV" : project.shortName;
-  const remaining: Record<ActivityStatus, number> = {
-    Completed: plan.completedActivities,
-    Delayed: plan.delayedActivities,
-    "In Progress": plan.inProgressActivities,
-    "Not Started": 0,
-  };
-  const preferredStatuses: ActivityStatus[] = [
-    "In Progress",
-    "Delayed",
-    "Completed",
-    "In Progress",
-  ];
-  const statuses: ActivityStatus[] = [];
-  const templates = activityTemplates[plan.category];
-
-  for (const preferred of preferredStatuses) {
-    if (statuses.length >= plan.activities) break;
-    if (remaining[preferred] > 0) {
-      statuses.push(preferred);
-      remaining[preferred] -= 1;
-    }
-  }
-
-  for (const status of ["Completed", "In Progress", "Delayed"] as const) {
-    while (remaining[status] > 0 && statuses.length < plan.activities) {
-      statuses.push(status);
-      remaining[status] -= 1;
-    }
-  }
-
-  return Array.from({ length: plan.activities }, (_, index) => {
-    const template = templates[index % templates.length];
-    const categoryCode =
-      plan.category === "Goods"
-        ? "G"
-        : plan.category === "Works"
-          ? "W"
-          : plan.category === "Non-Consulting Services"
-            ? "NCS"
-            : "CS";
-
-    return {
-      category: plan.category,
-      currentStage: template.stage,
-      description: template.description,
-      estimatedAmount: template.amount,
-      method: template.method,
-      reference: `MOA/${activityProjectCode}/${categoryCode}/${String(index + 1).padStart(2, "0")}`,
-      status: statuses[index] ?? "In Progress",
-    };
-  });
 }
 
 function formatAmount(value: number) {

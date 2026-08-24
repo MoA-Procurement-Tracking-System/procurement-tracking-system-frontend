@@ -467,6 +467,7 @@ export function RegisterContractView({
                   onChange={(event) =>
                     updateField("originalAmount", event.target.value)
                   }
+                  onWheel={(event) => event.currentTarget.blur()}
                   placeholder="0.00"
                   step="0.01"
                   type="number"
@@ -495,6 +496,7 @@ export function RegisterContractView({
                     onChange={(event) =>
                       updateField("vatRate", event.target.value)
                     }
+                    onWheel={(event) => event.currentTarget.blur()}
                     step="0.01"
                     type="number"
                     value={form.vatRate}
@@ -573,6 +575,7 @@ export function RegisterContractView({
                             ),
                           )
                         }
+                        onWheel={(event) => event.currentTarget.blur()}
                         placeholder="Negative value for a reduction"
                         step="0.01"
                         type="number"

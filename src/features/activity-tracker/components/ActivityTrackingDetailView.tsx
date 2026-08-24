@@ -117,10 +117,12 @@ export function ActivityTrackingDetailView({
     ];
     return contracts.find(
       (contract) =>
-        (contract.details?.projectCode === item.project.code &&
+        (Boolean(contract.details) &&
+          contract.details?.projectCode === item.project.code &&
           contract.details.planReference === item.plan.reference &&
           contract.details.activityReference === item.activity.reference) ||
-        (contract.project === item.project.shortName &&
+        (!contract.details &&
+          contract.project === item.project.shortName &&
           contract.procurementActivity === item.activity.description),
     );
   }, [item, savedContracts]);

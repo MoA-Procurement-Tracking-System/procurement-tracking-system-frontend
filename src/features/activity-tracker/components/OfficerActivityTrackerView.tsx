@@ -14,7 +14,7 @@ import {
   type TrackingDateValue,
 } from "../data/officerActivityTracking";
 import { ActivityTrackingDetailView } from "./ActivityTrackingDetailView";
-import { getPlanActivities } from "../../projects/components/OfficerProcurementPlanDetailView";
+import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 import {
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
