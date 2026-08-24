@@ -237,7 +237,8 @@ export function UserManagementView({
               <strong className="font-bold text-[#04382c]">
                 {invitedInfo.role}
               </strong>
-              . The user can now click the invitation link in their email to create their password and access the system.
+              . The user can now click the invitation link in their email to
+              create their password and access the system.
             </p>
           </div>
         </div>
