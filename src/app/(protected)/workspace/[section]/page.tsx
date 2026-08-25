@@ -26,6 +26,7 @@ export default async function WorkspaceSectionPage({
   searchParams: Promise<{
     activity?: string | string[];
     contract?: string | string[];
+    from?: string | string[];
     mode?: string | string[];
     plan?: string | string[];
     project?: string | string[];
