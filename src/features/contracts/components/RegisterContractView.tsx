@@ -29,7 +29,6 @@ import {
   ClipboardCheck,
   FileSignature,
   FileText,
-  House,
   Info,
   LockKeyhole,
   Plus,
@@ -94,9 +93,11 @@ const statusOptions: readonly ContractStatus[] = [
 
 export function RegisterContractView({
   existingContracts,
+  fromTracker,
   onSave,
 }: {
   existingContracts: readonly OfficerContract[];
+  fromTracker?: boolean;
   onSave: (contract: OfficerContract) => void;
 }) {
   const [savedPlans, setSavedPlans] = useState<SavedOfficerPlanRecord[]>([]);
@@ -280,11 +281,7 @@ export function RegisterContractView({
         <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
           <ol className="flex flex-wrap items-center gap-2">
             <li>
-              <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55]"
-                href="/dashboard/officer"
-              >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
+              <Link className="hover:text-[#176c55]" href="/dashboard/officer">
                 Home
               </Link>
             </li>
@@ -292,9 +289,13 @@ export function RegisterContractView({
             <li>
               <Link
                 className="hover:text-[#176c55]"
-                href="/workspace/contracts"
+                href={
+                  fromTracker
+                    ? "/workspace/activity-tracker"
+                    : "/workspace/contracts"
+                }
               >
-                Contracts
+                {fromTracker ? "Activity Tracker" : "Contracts"}
               </Link>
             </li>
             <li aria-hidden="true">/</li>
@@ -467,6 +468,11 @@ export function RegisterContractView({
                   onChange={(event) =>
                     updateField("originalAmount", event.target.value)
                   }
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                      event.preventDefault();
+                    }
+                  }}
                   onWheel={(event) => event.currentTarget.blur()}
                   placeholder="0.00"
                   step="0.01"
@@ -496,6 +502,14 @@ export function RegisterContractView({
                     onChange={(event) =>
                       updateField("vatRate", event.target.value)
                     }
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "ArrowUp" ||
+                        event.key === "ArrowDown"
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
                     onWheel={(event) => event.currentTarget.blur()}
                     step="0.01"
                     type="number"
@@ -575,6 +589,14 @@ export function RegisterContractView({
                             ),
                           )
                         }
+                        onKeyDown={(event) => {
+                          if (
+                            event.key === "ArrowUp" ||
+                            event.key === "ArrowDown"
+                          ) {
+                            event.preventDefault();
+                          }
+                        }}
                         onWheel={(event) => event.currentTarget.blur()}
                         placeholder="Negative value for a reduction"
                         step="0.01"
@@ -802,10 +824,22 @@ export function RegisterContractView({
         <div className="mx-auto flex max-w-[100rem] items-center justify-between gap-3">
           <Link
             className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-            href="/workspace/contracts"
+            href={
+              fromTracker
+                ? selectedContext
+                  ? `/workspace/activity-tracker?project=${encodeURIComponent(
+                      selectedContext.project.code,
+                    )}&plan=${encodeURIComponent(
+                      selectedContext.plan.reference,
+                    )}&activity=${encodeURIComponent(
+                      selectedContext.activity.reference,
+                    )}`
+                  : "/workspace/activity-tracker"
+                : "/workspace/contracts"
+            }
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            Back
+            {fromTracker ? "Back to Tracker" : "Back"}
           </Link>
           <button
             className="inline-flex h-9 items-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white shadow-sm hover:bg-[#125442] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"

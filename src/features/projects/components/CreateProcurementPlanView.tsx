@@ -24,7 +24,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Hammer,
-  House,
   Info,
   Lightbulb,
   LockKeyhole,
@@ -265,7 +264,7 @@ export function CreateProcurementPlanView({
             <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-slate-700">
               Inherited Project Information
             </h2>
-            <span className="ml-auto text-[10px] text-slate-400">
+            <span className="ml-auto text-xs text-slate-400">
               Read-only from project setup
             </span>
           </div>
@@ -325,11 +324,7 @@ export function CreateProcurementPlanView({
               <div className="relative">
                 <select
                   aria-invalid={categoryError}
-                  className={`h-11 w-full appearance-none rounded border px-3 pr-10 text-sm font-medium text-slate-800 outline-none transition focus:ring-2 ${
-                    categoryError
-                      ? "border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-100"
-                      : "border-slate-400 bg-white focus:border-[#176c55] focus:ring-[#176c55]/15"
-                  }`}
+                  className="h-11 w-full appearance-none rounded border border-slate-400 bg-white px-3 pr-10 text-sm font-medium text-slate-800 outline-none transition focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
                   onChange={(event) =>
                     handleCategoryChange(
                       event.target.value as ProcurementCategory,
@@ -379,11 +374,7 @@ export function CreateProcurementPlanView({
                 >
                   <input
                     aria-invalid={nameError}
-                    className={`${compactFieldClasses} ${
-                      nameError
-                        ? "border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-100"
-                        : ""
-                    }`}
+                    className={compactFieldClasses}
                     id="plan-name"
                     onChange={(event) =>
                       updateField("planName", event.target.value)
@@ -570,14 +561,10 @@ function CreatePlanBreadcrumb({
   project: OfficerProject;
 }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-[10px] text-slate-500">
+    <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
       <ol className="flex flex-wrap items-center gap-2">
         <li>
-          <Link
-            className="inline-flex items-center gap-1 hover:text-[#176c55]"
-            href="/dashboard/officer"
-          >
-            <House aria-hidden="true" className="h-3 w-3" />
+          <Link className="hover:text-[#176c55]" href="/dashboard/officer">
             Home
           </Link>
         </li>
@@ -649,31 +636,25 @@ export function DualCalendarField({
         {label}
         {required ? <span className="ml-1 text-red-600">*</span> : null}
       </label>
-      <div
-        className={`flex items-end gap-2 border p-3 ${
-          error ? "border-red-500 bg-red-50" : "border-slate-300 bg-[#f0f3ff]"
-        }`}
-      >
+      <div className="flex items-end gap-2 border border-slate-300 bg-[#f0f3ff] p-3">
         <GregorianCalendarInput
-          error={error}
           id={`${id}-gregorian`}
           onChange={changeGregorian}
           value={gregorianValue}
         />
         <ArrowRightLeft
           aria-hidden="true"
-          className={`mb-2 h-4 w-4 ${error ? "text-red-400" : "text-slate-500"}`}
+          className="mb-2 h-4 w-4 text-slate-500"
         />
         <EthiopianCalendarInput
-          error={error}
           id={`${id}-ethiopian`}
           onSelect={changeEthiopian}
           value={ethiopianValue}
         />
       </div>
       {errorMessage ? (
-        <p className="mt-2 flex items-center gap-1 text-[10px] text-red-600">
-          <Info aria-hidden="true" className="h-3 w-3" />
+        <p className="mt-2 flex items-center gap-1 text-xs text-red-600">
+          <Info aria-hidden="true" className="h-3.5 w-3.5" />
           {errorMessage}
         </p>
       ) : null}
@@ -682,12 +663,10 @@ export function DualCalendarField({
 }
 
 function GregorianCalendarInput({
-  error,
   id,
   onChange,
   value,
 }: {
-  error: boolean;
   id: string;
   onChange: (value: string) => void;
   value: string;
@@ -695,18 +674,13 @@ function GregorianCalendarInput({
   return (
     <div className="min-w-0 flex-1">
       <label
-        className="mb-1 block text-[9px] font-bold uppercase tracking-[0.06em] text-slate-500"
+        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500"
         htmlFor={id}
       >
         Gregorian
       </label>
       <input
-        aria-invalid={error}
-        className={`h-9 w-full min-w-0 rounded-none border bg-white px-2 text-[10px] outline-none ${
-          error
-            ? "border-red-500 text-red-600 focus:ring-2 focus:ring-red-100"
-            : "border-slate-400 text-slate-700 focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
-        }`}
+        className="h-9 w-full min-w-0 rounded-none border border-slate-400 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
         id={id}
         onChange={(event) => onChange(event.target.value)}
         type="date"
@@ -717,12 +691,10 @@ function GregorianCalendarInput({
 }
 
 function EthiopianCalendarInput({
-  error,
   id,
   onSelect,
   value,
 }: {
-  error: boolean;
   id: string;
   onSelect: (value: EthiopianDate) => void;
   value: string;
@@ -763,7 +735,7 @@ function EthiopianCalendarInput({
   return (
     <div className="relative min-w-0 flex-1">
       <label
-        className="mb-1 block text-[9px] font-bold uppercase tracking-[0.06em] text-slate-500"
+        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500"
         htmlFor={id}
       >
         Ethiopian
@@ -771,11 +743,7 @@ function EthiopianCalendarInput({
       <button
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-none border bg-white px-2 text-left text-[10px] outline-none ${
-          error
-            ? "border-red-500 text-red-600 focus:ring-2 focus:ring-red-100"
-            : "border-slate-400 text-slate-700 focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
-        }`}
+        className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-none border border-slate-400 bg-white px-2.5 text-left text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
         id={id}
         onClick={toggleCalendar}
         type="button"
@@ -870,10 +838,10 @@ function LockedInput({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 text-[10px] text-slate-500">{label}</p>
+      <p className="mb-1.5 text-xs font-semibold text-slate-500">{label}</p>
       <div className="relative">
         <input
-          className={`h-9 w-full truncate rounded-none border border-slate-400 bg-white px-2 text-[10px] text-slate-500 outline-none ${
+          className={`h-9 w-full truncate rounded-none border border-slate-400 bg-white px-2.5 text-xs text-slate-600 outline-none ${
             icon ? "pl-7" : ""
           }`}
           readOnly
@@ -909,8 +877,8 @@ function CompactFormField({
   return (
     <div>
       <label
-        className={`mb-2 block text-[11px] font-medium ${
-          error ? "text-red-600" : "text-slate-600"
+        className={`mb-2 block text-xs font-semibold ${
+          error ? "text-red-600" : "text-slate-700"
         }`}
         htmlFor={htmlFor}
       >
@@ -919,8 +887,8 @@ function CompactFormField({
       </label>
       {children}
       {errorMessage ? (
-        <p className="mt-1.5 flex items-center gap-1 text-[10px] text-red-600">
-          <Info aria-hidden="true" className="h-3 w-3 shrink-0" />
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600 font-medium">
+          <Info aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
           {errorMessage}
         </p>
       ) : null}

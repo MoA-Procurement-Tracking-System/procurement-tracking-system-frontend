@@ -30,23 +30,19 @@ import {
   type OfficerProject,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  House,
-  Search,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export function OfficerProjectsView({
+  fromTracker,
   mode,
   selectedActivityReference,
   selectedPlanReference,
   selectedProjectCode,
 }: {
+  fromTracker?: boolean;
   mode?: "create-activity" | "create-plan";
   selectedActivityReference?: string;
   selectedPlanReference?: string;
@@ -196,6 +192,7 @@ export function OfficerProjectsView({
     return (
       <OfficerProcurementActivityDetailView
         activity={selectedActivity}
+        fromTracker={fromTracker}
         plan={selectedPlan}
         project={selectedProject}
       />
@@ -267,10 +264,9 @@ function OfficerProjectsList({
           <ol className="flex items-center gap-2">
             <li>
               <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                className="hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
                 href="/dashboard/officer"
               >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
                 Home
               </Link>
             </li>

@@ -5,11 +5,11 @@ import {
   CalendarRange,
   FileText,
   HandCoins,
-  House,
   Info,
   Landmark,
   MapPin,
   Plus,
+  Upload,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
@@ -103,11 +103,7 @@ export function OfficerProjectDetailView({
         <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
           <ol className="flex flex-wrap items-center gap-2">
             <li>
-              <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55]"
-                href="/dashboard/officer"
-              >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
+              <Link className="hover:text-[#176c55]" href="/dashboard/officer">
                 Home
               </Link>
             </li>
@@ -141,16 +137,25 @@ export function OfficerProjectDetailView({
             </p>
           </div>
 
-          <Link
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-sm font-bold text-white shadow-sm hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-            href={`/workspace/projects?project=${encodeURIComponent(
-              project.code,
-            )}&mode=create-plan`}
-            style={{ backgroundColor: "#176c55", color: "#ffffff" }}
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            Create Procurement Plan
-          </Link>
+          <div className="flex shrink-0 items-center gap-2.5">
+            <button
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-bold text-slate-700 shadow-xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              type="button"
+            >
+              <Upload aria-hidden="true" className="h-4 w-4 text-slate-500" />
+              Import Plan
+            </button>
+            <Link
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-sm font-bold text-white shadow-sm hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              href={`/workspace/projects?project=${encodeURIComponent(
+                project.code,
+              )}&mode=create-plan`}
+              style={{ backgroundColor: "#176c55", color: "#ffffff" }}
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              Create Plan
+            </Link>
+          </div>
         </div>
       </header>
 

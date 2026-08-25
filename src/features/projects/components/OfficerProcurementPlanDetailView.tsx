@@ -17,9 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  House,
   Plus,
   Search,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
@@ -144,11 +144,7 @@ export function OfficerProcurementPlanDetailView({
         <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
           <ol className="flex flex-wrap items-center gap-2">
             <li>
-              <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55]"
-                href="/dashboard/officer"
-              >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
+              <Link className="hover:text-[#176c55]" href="/dashboard/officer">
                 Home
               </Link>
             </li>
@@ -208,6 +204,16 @@ export function OfficerProcurementPlanDetailView({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              type="button"
+            >
+              <Upload
+                aria-hidden="true"
+                className="h-3.5 w-3.5 text-slate-500"
+              />
+              Import Activities
+            </button>
             <button
               className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
               onClick={exportActivities}
