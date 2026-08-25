@@ -12,6 +12,7 @@ export const getServerSession = cache(async (): Promise<AuthSession | null> => {
   try {
     const cookieHeader = (await cookies()).toString();
     if (!cookieHeader) return null;
+
     const response = await fetch(`${backendUrl()}/api/auth/session`, {
       headers: { cookie: cookieHeader },
       cache: "no-store",
