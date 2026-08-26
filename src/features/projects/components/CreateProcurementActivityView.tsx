@@ -34,7 +34,6 @@ import {
   CircleDollarSign,
   ClipboardList,
   FileText,
-  House,
   Info,
   Landmark,
   ListChecks,
@@ -77,16 +76,7 @@ export function CreateProcurementActivityView({
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
-  const planCategories = useMemo(
-    () =>
-      Array.from(
-        new Set(plan.categories.map((item) => normalizeActivityCategory(item))),
-      ),
-    [plan.categories],
-  );
-  const [category, setCategory] = useState<ProcurementActivityCategory>(
-    planCategories[0] ?? "Goods",
-  );
+  const category = normalizeActivityCategory(plan.category);
   const [step, setStep] = useState<WizardStep>(1);
   const [attemptedStep, setAttemptedStep] = useState<WizardStep | null>(null);
   const [saved, setSaved] = useState(false);
@@ -192,18 +182,6 @@ export function CreateProcurementActivityView({
     );
   }
 
-  function selectCategory(value: ProcurementActivityCategory) {
-    setCategory(value);
-    setForm((current) => ({
-      ...current,
-      contractType: "",
-      method: "",
-      pricingBasis: value === "Works" ? "" : "Not Applicable",
-      requiresUnAgency: false,
-    }));
-    setRoadmap([]);
-  }
-
   function moveTo(nextStep: WizardStep) {
     setAttemptedStep(null);
     setStep(nextStep);
@@ -260,7 +238,7 @@ export function CreateProcurementActivityView({
   };
 
   const stepDescriptions: Record<WizardStep, string> = {
-    1: "Define the procurement category, method, and applicable review controls.",
+    1: "Confirm the inherited plan category and select the applicable procurement method and controls.",
     2: "Enter identification, financial, funding, lot, and scope information.",
     3: "Complete allocation, procurement classification, and location details.",
     4: "Review and finalize the procurement schedule baseline.",
@@ -290,11 +268,9 @@ export function CreateProcurementActivityView({
                 <KeyDetailsStep
                   attempted={attemptedStep === 1}
                   category={category}
-                  categoryOptions={planCategories}
                   form={form}
                   methodOptions={methodOptions}
                   onChange={updateField}
-                  onCategoryChange={selectCategory}
                   onMethodChange={selectMethod}
                   project={project}
                 />
@@ -414,14 +390,10 @@ function ActivityBreadcrumb({
   project: OfficerProject;
 }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-[10px] text-slate-500">
+    <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
       <ol className="flex flex-wrap items-center gap-2">
         <li>
-          <Link
-            className="inline-flex items-center gap-1 hover:text-[#176c55]"
-            href="/dashboard/officer"
-          >
-            <House aria-hidden="true" className="h-3 w-3" />
+          <Link className="hover:text-[#176c55]" href="/dashboard/officer">
             Home
           </Link>
         </li>
@@ -709,8 +681,8 @@ function Field({
     <label className="block min-w-0">
       <span
         className={
-          "mb-1.5 block text-[10px] font-bold " +
-          (error ? "text-red-700" : "text-slate-600")
+          "mb-1.5 block text-xs font-semibold " +
+          (error ? "text-red-700" : "text-slate-700")
         }
       >
         {label}
@@ -718,12 +690,12 @@ function Field({
       </span>
       {children}
       {error ? (
-        <span className="mt-1.5 flex items-center gap-1 text-[10px] text-red-600">
-          <Info aria-hidden="true" className="h-3 w-3" />
+        <span className="mt-1.5 flex items-center gap-1 text-xs text-red-600 font-medium">
+          <Info aria-hidden="true" className="h-3.5 w-3.5" />
           {error}
         </span>
       ) : hint ? (
-        <span className="mt-1.5 block text-[9px] leading-4 text-slate-500">
+        <span className="mt-1.5 block text-xs leading-4 text-slate-500">
           {hint}
         </span>
       ) : null}
@@ -768,7 +740,7 @@ function YesNoChoice({
 }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-1.5 text-[10px] font-bold text-slate-600">
+      <legend className="mb-1.5 text-xs font-semibold text-slate-700">
         {label}
       </legend>
       <div className="grid h-10 w-full grid-cols-2 overflow-hidden rounded-md border border-slate-300 bg-white">
@@ -776,7 +748,7 @@ function YesNoChoice({
           <button
             aria-pressed={value === option}
             className={
-              "flex h-full min-w-0 items-center justify-center border-r border-slate-200 px-3 text-[10px] font-bold transition-colors last:border-r-0 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55] " +
+              "flex h-full min-w-0 items-center justify-center border-r border-slate-200 px-3 text-xs font-semibold transition-colors last:border-r-0 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55] " +
               (value === option
                 ? "bg-[#176c55] text-white shadow-sm"
                 : "bg-white text-slate-600 hover:bg-[#f6f7fb] hover:text-[#07523f]")
@@ -880,21 +852,17 @@ function SavedPanel({
 function KeyDetailsStep({
   attempted,
   category,
-  categoryOptions,
   form,
   methodOptions,
   onChange,
-  onCategoryChange,
   onMethodChange,
   project,
 }: {
   attempted: boolean;
   category: ProcurementActivityCategory;
-  categoryOptions: readonly ProcurementActivityCategory[];
   form: ActivityFormState;
   methodOptions: ReturnType<typeof methodsForCategory>;
   onChange: UpdateActivityField;
-  onCategoryChange: (value: ProcurementActivityCategory) => void;
   onMethodChange: (value: string) => void;
   project: OfficerProject;
 }) {
@@ -937,37 +905,20 @@ function KeyDetailsStep({
     >
       <div className="grid gap-4 md:grid-cols-2">
         <Field
-          hint={
-            categoryOptions.length > 1
-              ? "Inherited category options from this legacy multi-category plan."
-              : "Inherited from the procurement plan and cannot be changed here."
-          }
+          hint="Inherited from the procurement plan and cannot be changed here."
           label="Procurement Category"
         >
-          {categoryOptions.length > 1 ? (
-            <SelectControl
-              onChange={(value) =>
-                onCategoryChange(value as ProcurementActivityCategory)
-              }
-              value={category}
-            >
-              {categoryOptions.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </SelectControl>
-          ) : (
-            <div
-              className={
-                inputClasses + " flex items-center justify-between bg-slate-50"
-              }
-            >
-              <span className="font-semibold">{category}</span>
-              <LockKeyhole
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-slate-400"
-              />
-            </div>
-          )}
+          <div
+            className={
+              inputClasses + " flex items-center justify-between bg-slate-50"
+            }
+          >
+            <span className="font-semibold">{category}</span>
+            <LockKeyhole
+              aria-hidden="true"
+              className="h-3.5 w-3.5 text-slate-400"
+            />
+          </div>
         </Field>
 
         <Field
@@ -1304,6 +1255,12 @@ function RelatedInformationStep({
               onChange={(event) =>
                 onChange("estimatedAmount", event.target.value)
               }
+              onKeyDown={(event) => {
+                if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                  event.preventDefault();
+                }
+              }}
+              onWheel={(event) => event.currentTarget.blur()}
               placeholder="0.00"
               step="0.01"
               type="number"
@@ -1461,6 +1418,15 @@ function RelatedInformationStep({
                     onChange={(event) =>
                       updateLot(lot.id, "amount", event.target.value)
                     }
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "ArrowUp" ||
+                        event.key === "ArrowDown"
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onWheel={(event) => event.currentTarget.blur()}
                     placeholder="0.00"
                     step="0.01"
                     type="number"
@@ -1647,6 +1613,12 @@ function AdditionalDetailsStep({
                 max="90"
                 min="-90"
                 onChange={(event) => onChange("latitude", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                  }
+                }}
+                onWheel={(event) => event.currentTarget.blur()}
                 placeholder="0.000000"
                 step="any"
                 type="number"
@@ -1659,6 +1631,12 @@ function AdditionalDetailsStep({
                 max="180"
                 min="-180"
                 onChange={(event) => onChange("longitude", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                  }
+                }}
+                onWheel={(event) => event.currentTarget.blur()}
                 placeholder="0.000000"
                 step="any"
                 type="number"
@@ -1804,6 +1782,12 @@ function AllocationSelector({
                     ),
                   )
                 }
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                  }
+                }}
+                onWheel={(event) => event.currentTarget.blur()}
                 step="0.01"
                 type="number"
                 value={allocation.percent}

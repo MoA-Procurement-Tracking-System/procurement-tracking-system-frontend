@@ -1,14 +1,15 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import {
   Banknote,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  House,
   Plus,
   Search,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,69 +41,12 @@ const amountFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-const statusStyles: Record<
-  ContractStatus,
-  {
-    backgroundColor: string;
-    borderColor: string;
-    color: string;
-    dotColor: string;
-  }
-> = {
-  Active: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
-    color: "#1d4ed8",
-    dotColor: "#2563eb",
-  },
-  "Active / Under Implementation": {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
-    color: "#1d4ed8",
-    dotColor: "#2563eb",
-  },
-  Completed: {
-    backgroundColor: "#ecfdf5",
-    borderColor: "#a7f3d0",
-    color: "#047857",
-    dotColor: "#10b981",
-  },
-  Delayed: {
-    backgroundColor: "#fff1f0",
-    borderColor: "#fecaca",
-    color: "#b42318",
-    dotColor: "#dc2626",
-  },
-  "Partially Terminated": {
-    backgroundColor: "#fff7ed",
-    borderColor: "#fed7aa",
-    color: "#c2410c",
-    dotColor: "#f97316",
-  },
-  "Planned / Prepared": {
-    backgroundColor: "#f8fafc",
-    borderColor: "#cbd5e1",
-    color: "#475569",
-    dotColor: "#64748b",
-  },
-  Signed: {
-    backgroundColor: "#ecfeff",
-    borderColor: "#a5f3fc",
-    color: "#0e7490",
-    dotColor: "#0891b2",
-  },
-  Terminated: {
-    backgroundColor: "#fff1f2",
-    borderColor: "#fecdd3",
-    color: "#be123c",
-    dotColor: "#e11d48",
-  },
-};
-
 export function OfficerContractsView({
+  fromTracker,
   mode,
   selectedContractNumber,
 }: {
+  fromTracker?: boolean;
   mode?: "add-payment" | "register";
   selectedContractNumber?: string;
 }) {
@@ -111,10 +55,22 @@ export function OfficerContractsView({
   const [savedPayments, setSavedPayments] = useState<OfficerContractPayment[]>(
     [],
   );
+  const [prevSelectedContractNumber, setPrevSelectedContractNumber] = useState(
+    selectedContractNumber,
+  );
   const [fiscalYear, setFiscalYear] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+    () => selectedContractNumber ?? "",
+  );
   const [status, setStatus] = useState<"all" | ContractStatus>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  if (selectedContractNumber !== prevSelectedContractNumber) {
+    setPrevSelectedContractNumber(selectedContractNumber);
+    if (selectedContractNumber) {
+      setSearchQuery(selectedContractNumber);
+    }
+  }
 
   useEffect(() => {
     const loadSavedContracts = window.setTimeout(() => {
@@ -134,8 +90,17 @@ export function OfficerContractsView({
   }, []);
 
   const contracts = useMemo(() => {
+    const savedByNumber = new Map(
+      savedContracts.map((contract) => [
+        contract.contractNumber.toLowerCase(),
+        contract,
+      ]),
+    );
     const mergedContracts = [
-      ...officerContracts,
+      ...officerContracts.map(
+        (fixture) =>
+          savedByNumber.get(fixture.contractNumber.toLowerCase()) ?? fixture,
+      ),
       ...savedContracts.filter(
         (saved) =>
           !officerContracts.some(
@@ -222,9 +187,7 @@ export function OfficerContractsView({
   const visibleCount = filteredContracts.length;
   const hasActiveFilters =
     Boolean(searchQuery.trim()) || fiscalYear !== "all" || status !== "all";
-  const totalResults = hasActiveFilters
-    ? visibleCount
-    : 45 + savedContracts.length;
+  const totalResults = hasActiveFilters ? visibleCount : contracts.length;
   const entrySummary =
     visibleCount === 0
       ? "Showing 0 results"
@@ -241,6 +204,7 @@ export function OfficerContractsView({
     return (
       <RegisterContractView
         existingContracts={contracts}
+        fromTracker={fromTracker}
         onSave={saveContract}
       />
     );
@@ -250,6 +214,7 @@ export function OfficerContractsView({
     return (
       <AddContractPaymentView
         contract={selectedContract}
+        fromTracker={fromTracker}
         onSave={savePayment}
       />
     );
@@ -259,14 +224,13 @@ export function OfficerContractsView({
     <div className="w-full min-w-0 space-y-5 overflow-x-hidden pb-6">
       <header className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
+          <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
             <ol className="flex items-center gap-2">
               <li>
                 <Link
-                  className="inline-flex items-center gap-1 hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                  className="hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
                   href="/dashboard/officer"
                 >
-                  <House aria-hidden="true" className="h-3.5 w-3.5" />
                   Home
                 </Link>
               </li>
@@ -281,14 +245,23 @@ export function OfficerContractsView({
           <h1 className="sr-only">Contracts</h1>
         </div>
 
-        <Link
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-sm font-bold text-white shadow-sm hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-          href="/workspace/contracts?mode=register"
-          style={{ backgroundColor: "#176c55", color: "#ffffff" }}
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Register Contract
-        </Link>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-bold text-slate-700 shadow-xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+            type="button"
+          >
+            <Upload aria-hidden="true" className="h-4 w-4 text-slate-500" />
+            Import Contracts
+          </button>
+          <Link
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-sm font-bold text-white shadow-sm hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+            href="/workspace/contracts?mode=register"
+            style={{ backgroundColor: "#176c55", color: "#ffffff" }}
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            Register Contract
+          </Link>
+        </div>
       </header>
 
       <section
@@ -370,7 +343,7 @@ export function OfficerContractsView({
           role="region"
           tabIndex={0}
         >
-          <table className="w-[134rem] min-w-[134rem] table-fixed border-collapse text-left">
+          <table className="w-[146rem] min-w-[146rem] table-fixed border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-300 bg-[#edf5f1] text-[11px] font-extrabold uppercase tracking-[0.05em] text-slate-600">
                 <th className="w-10 px-3 py-2.5 text-center" scope="col">
@@ -415,7 +388,7 @@ export function OfficerContractsView({
                 <th className="w-44 px-3 py-2.5" scope="col">
                   Completion date
                 </th>
-                <th className="w-32 px-3 py-2.5" scope="col">
+                <th className="w-64 px-3 py-2.5" scope="col">
                   Status
                 </th>
                 <th className="w-36 px-3 py-2.5 text-center" scope="col">
@@ -426,7 +399,6 @@ export function OfficerContractsView({
             <tbody className="divide-y divide-slate-200">
               {filteredContracts.length > 0 ? (
                 filteredContracts.map((contract) => {
-                  const statusStyle = statusStyles[contract.status];
                   const isDelayed = contract.status === "Delayed";
 
                   return (
@@ -476,22 +448,11 @@ export function OfficerContractsView({
                         date={contract.completionDate}
                         delayed={isDelayed}
                       />
-                      <td className="px-3 py-2.5 align-top">
-                        <span
-                          className="inline-flex min-w-[6.25rem] items-center justify-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold leading-none"
-                          style={{
-                            backgroundColor: statusStyle.backgroundColor,
-                            borderColor: statusStyle.borderColor,
-                            color: statusStyle.color,
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: statusStyle.dotColor }}
-                          />
-                          {contract.status}
-                        </span>
+                      <td className="whitespace-nowrap px-3 py-2.5 align-top">
+                        <StatusText
+                          className="text-xs"
+                          label={contract.status}
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-center align-top">
                         <Link

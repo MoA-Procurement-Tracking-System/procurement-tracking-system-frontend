@@ -17,7 +17,7 @@ const defaultFilters: OfficerContractFilterValues = {
 
 describe("officer contract filters", () => {
   it("extracts the fiscal year from display and ISO Gregorian dates", () => {
-    expect(contractFiscalYear(officerContracts[0])).toBe("2024");
+    expect(contractFiscalYear(officerContracts[0])).toBe("2026");
     expect(
       contractFiscalYear({
         ...officerContracts[0],
@@ -40,10 +40,10 @@ describe("officer contract filters", () => {
     };
 
     for (const searchQuery of [
-      "2024-001",
+      "001-01-01",
       "drv/g/01",
-      "field vehicles",
-      "green field",
+      "veterinary vaccines",
+      "agricultural supply",
     ]) {
       expect(
         filterOfficerContracts([contract], {
@@ -72,10 +72,10 @@ describe("officer contract filters", () => {
       filterOfficerContracts([contract, ...officerContracts.slice(1)], {
         ...defaultFilters,
         currency: "ETB",
-        fiscalYear: "2024",
+        fiscalYear: "2026",
         organization: "FPCU / Federal",
         project: "DRIVE",
-        status: "Active",
+        status: "Active / Under Implementation",
       }),
     ).toEqual([contract]);
   });

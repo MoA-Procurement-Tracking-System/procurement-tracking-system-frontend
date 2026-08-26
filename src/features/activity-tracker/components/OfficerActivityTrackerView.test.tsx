@@ -1,19 +1,33 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import type { ProcurementActivityFormValues } from "../../projects/data/officerActivityDrafts";
 import { officerProjects } from "../../projects/data/officerProjects";
 import {
   collectTrackableActivities,
   OfficerActivityTrackerView,
+  trackerCurrentStage,
+  trackerDisplayStatus,
+  trackerIsDueSoon,
+  trackerStageProgress,
+  type OfficerTrackedActivityItem,
 } from "./OfficerActivityTrackerView";
 
 describe("OfficerActivityTrackerView", () => {
   it("renders the officer tracking workspace and filters", () => {
     const markup = renderToStaticMarkup(<OfficerActivityTrackerView />);
     expect(markup).toContain("Activity Tracker");
-    expect(markup).toContain("Approved-plan activities");
-    expect(markup).toContain("Search activity #, description, plan, or stage");
-    expect(markup).toContain("Process Status");
+    expect(markup).toContain(
+      "Monitor approved procurement activities, milestones, and delays.",
+    );
+    expect(markup).toContain("All Activities");
+    expect(markup).not.toContain("Requires Attention");
+    expect(markup).toContain(
+      "Search reference, activity, project, or stage...",
+    );
     expect(markup).toContain("More Filters");
+    expect(markup).toContain("Reference No.");
+    expect(markup).toContain("Effective Target");
+    expect(markup).toContain("Overall Status");
   });
 
   it("includes activities from approved plans only", () => {
@@ -22,4 +36,138 @@ describe("OfficerActivityTrackerView", () => {
     expect(items.every((item) => item.plan.status === "Approved")).toBe(true);
     expect(items.some((item) => item.plan.status === "Draft")).toBe(false);
   });
+
+  it("uses the latest revised target and derives due-soon stage progress", () => {
+    const item = makeTrackedItem();
+    const snapshot = trackerCurrentStage(item, "2026-08-22");
+
+    expect(snapshot.name).toBe("Bid Opening");
+    expect(snapshot.targetDate.gregorian).toBe("2026-08-25");
+    expect(snapshot.delayDays).toBe(0);
+    expect(trackerIsDueSoon(item, "2026-08-22")).toBe(true);
+    expect(trackerStageProgress(item)).toEqual({
+      completed: 1,
+      percent: 33,
+      total: 3,
+    });
+  });
+
+  it("derives delayed and contracted activity statuses from roadmap progress", () => {
+    const delayedItem = makeTrackedItem({
+      revisedTarget: "2026-08-20",
+    });
+    expect(trackerDisplayStatus(delayedItem, "2026-08-22")).toBe("Delayed");
+
+    const contractedItem = makeTrackedItem({
+      processStatus: "Signed",
+      signedContractCompleted: true,
+    });
+    expect(trackerDisplayStatus(contractedItem, "2026-08-22")).toBe(
+      "Contracted",
+    );
+  });
 });
+
+function makeTrackedItem({
+  processStatus = "Under Implementation",
+  revisedTarget = "2026-08-25",
+  signedContractCompleted = false,
+}: {
+  processStatus?: OfficerTrackedActivityItem["tracking"]["processStatus"];
+  revisedTarget?: string;
+  signedContractCompleted?: boolean;
+} = {}): OfficerTrackedActivityItem {
+  const base = collectTrackableActivities(officerProjects, [], [])[0];
+  if (!base) throw new Error("Expected an approved fixture activity.");
+
+  return {
+    ...base,
+    activity: {
+      ...base.activity,
+      currentStage: "Bid Opening",
+      details: {
+        componentAllocations: [],
+        financingAllocations: [],
+        form: {} as ProcurementActivityFormValues,
+        lots: [],
+        roadmap: [
+          {
+            allowNotApplicable: false,
+            days: "0",
+            ethiopianDate: "01-Hamle-2018",
+            gregorianDate: "2026-07-08",
+            name: "Preparation of Specification",
+            notApplicable: false,
+            remarks: "",
+          },
+          {
+            allowNotApplicable: false,
+            days: "20",
+            ethiopianDate: "15-Nehase-2018",
+            gregorianDate: "2026-08-01",
+            name: "Bid Opening",
+            notApplicable: false,
+            remarks: "",
+          },
+          {
+            allowNotApplicable: false,
+            days: "45",
+            ethiopianDate: "01-Tahsas-2019",
+            gregorianDate: "2026-10-01",
+            name: "Signed Contract",
+            notApplicable: false,
+            remarks: "",
+          },
+        ],
+      },
+      status: "In Progress",
+    },
+    tracking: {
+      ...base.tracking,
+      processStatus,
+      progressPercent: 50,
+      stages: [
+        {
+          actualDate: {
+            ethiopian: "01-Hamle-2018",
+            gregorian: "2026-07-08",
+          },
+          remarks: "",
+          revisions: [],
+          stageName: "Preparation of Specification",
+          status: "Completed",
+        },
+        {
+          remarks: "",
+          revisions: [
+            {
+              createdAt: "2026-08-18T08:00:00.000Z",
+              reason: "Approved evaluation schedule adjustment.",
+              revisionNumber: 1,
+              targetDate: {
+                ethiopian: "19-Nehase-2018",
+                gregorian: revisedTarget,
+              },
+            },
+          ],
+          stageName: "Bid Opening",
+          status: "In Progress",
+        },
+        {
+          ...(signedContractCompleted
+            ? {
+                actualDate: {
+                  ethiopian: "01-Tahsas-2019",
+                  gregorian: "2026-08-21",
+                },
+              }
+            : {}),
+          remarks: "",
+          revisions: [],
+          stageName: "Signed Contract",
+          status: signedContractCompleted ? "Completed" : "Not Started",
+        },
+      ],
+    },
+  };
+}

@@ -1,10 +1,10 @@
+import { StatusText } from "../../../../components/dashboard/StatusText";
 import {
   Bell,
   CalendarDays,
   CheckCircle2,
   CircleAlert,
   RotateCcw,
-  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -333,7 +333,6 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                 <tbody className="divide-y divide-slate-200">
                   {actionItems.map((item) => {
                     const isDelayed = item.status === "Delayed";
-                    const StatusIcon = isDelayed ? TriangleAlert : RotateCcw;
 
                     return (
                       <tr key={item.title} className="hover:bg-[#f7fbf9]">
@@ -351,17 +350,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                           {item.dueDate}
                         </td>
                         <td className="px-5 py-5">
-                          <p
-                            className={`flex items-center gap-2 text-sm font-bold ${
-                              isDelayed ? "text-[#bd2f27]" : "text-[#c66b00]"
-                            }`}
-                          >
-                            <StatusIcon
-                              aria-hidden="true"
-                              className="h-4 w-4 shrink-0"
-                            />
-                            {item.status}
-                          </p>
+                          <StatusText className="text-sm" label={item.status} />
                           <p className="mt-1 max-w-48 truncate text-xs text-slate-500">
                             {item.reason}
                           </p>

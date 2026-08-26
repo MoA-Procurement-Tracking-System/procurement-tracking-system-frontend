@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusText } from "../../../components/dashboard/StatusText";
 import { CreateProcurementActivityView } from "@/features/projects/components/CreateProcurementActivityView";
 import { CreateProcurementPlanView } from "@/features/projects/components/CreateProcurementPlanView";
 import { OfficerProcurementActivityDetailView } from "@/features/projects/components/OfficerProcurementActivityDetailView";
@@ -29,24 +30,19 @@ import {
   type OfficerProject,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
-import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  House,
-  Search,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export function OfficerProjectsView({
+  fromTracker,
   mode,
   selectedActivityReference,
   selectedPlanReference,
   selectedProjectCode,
 }: {
+  fromTracker?: boolean;
   mode?: "create-activity" | "create-plan";
   selectedActivityReference?: string;
   selectedPlanReference?: string;
@@ -114,8 +110,7 @@ export function OfficerProjectsView({
         plan.status === "Draft" &&
         plan.name === input.planName.trim() &&
         plan.budgetYear === `${input.budgetYear} EFY` &&
-        plan.categories.length === 1 &&
-        plan.categories[0] === input.category,
+        plan.category === input.category,
     );
 
     let planForNavigation = existingPlan;
@@ -197,6 +192,7 @@ export function OfficerProjectsView({
     return (
       <OfficerProcurementActivityDetailView
         activity={selectedActivity}
+        fromTracker={fromTracker}
         plan={selectedPlan}
         project={selectedProject}
       />
@@ -268,10 +264,9 @@ function OfficerProjectsList({
           <ol className="flex items-center gap-2">
             <li>
               <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                className="hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
                 href="/dashboard/officer"
               >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
                 Home
               </Link>
             </li>
@@ -475,13 +470,7 @@ function OfficerProjectsList({
                       {project.activePlans}
                     </td>
                     <td className="px-4 py-4">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-[#eaf4f0] px-2 py-1 text-xs font-bold text-[#176c55]">
-                        <CheckCircle2
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5"
-                        />
-                        {project.status}
-                      </span>
+                      <StatusText className="text-xs" label={project.status} />
                     </td>
                     <td className="px-4 py-4 text-right">
                       <Link

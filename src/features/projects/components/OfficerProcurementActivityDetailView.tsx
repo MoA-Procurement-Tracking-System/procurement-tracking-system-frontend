@@ -1,7 +1,7 @@
+import { StatusText } from "../../../components/dashboard/StatusText";
 import type {
   ProcurementActivityAllocation,
   ProcurementActivityRoadmapStage,
-  ProcurementActivityStatus,
   ProcurementActivitySummary,
 } from "@/features/projects/data/officerActivityDrafts";
 import type {
@@ -10,41 +10,13 @@ import type {
 } from "@/features/projects/data/officerProjects";
 import {
   ArrowLeft,
-  CircleDot,
   ClipboardList,
   FolderOpen,
-  House,
   MapPin,
   Route,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-
-const statusTones: Record<
-  ProcurementActivityStatus,
-  { background: string; border: string; color: string }
-> = {
-  Completed: {
-    background: "#ecfdf5",
-    border: "#a7f3d0",
-    color: "#047857",
-  },
-  Delayed: {
-    background: "#fff1f0",
-    border: "#fecaca",
-    color: "#b42318",
-  },
-  "In Progress": {
-    background: "#eff6ff",
-    border: "#bfdbfe",
-    color: "#1d4ed8",
-  },
-  "Not Started": {
-    background: "#f8fafc",
-    border: "#cbd5e1",
-    color: "#475569",
-  },
-};
 
 interface DetailValue {
   label: string;
@@ -53,19 +25,29 @@ interface DetailValue {
 
 export function OfficerProcurementActivityDetailView({
   activity,
+  fromTracker,
   plan,
   project,
 }: {
   activity: ProcurementActivitySummary;
+  fromTracker?: boolean;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
+  const trackerHref =
+    "/workspace/activity-tracker?project=" +
+    encodeURIComponent(project.code) +
+    "&plan=" +
+    encodeURIComponent(plan.reference) +
+    "&activity=" +
+    encodeURIComponent(activity.reference);
   const planHref =
     "/workspace/projects?project=" +
     encodeURIComponent(project.code) +
     "&plan=" +
     encodeURIComponent(plan.reference);
-  const tone = statusTones[activity.status];
+  const backHref = fromTracker ? trackerHref : planHref;
+  const backLabel = fromTracker ? "Back to Tracker" : "Back to Plan";
   const details = activity.details;
   const form = details?.form;
 
@@ -167,7 +149,14 @@ export function OfficerProcurementActivityDetailView({
   return (
     <div className="min-w-0 space-y-5 pb-6">
       <header>
-        <ActivityBreadcrumb plan={plan} planHref={planHref} project={project} />
+        <ActivityBreadcrumb
+          activity={activity}
+          fromTracker={fromTracker}
+          plan={plan}
+          planHref={planHref}
+          project={project}
+          trackerHref={trackerHref}
+        />
         <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#176c55]">
@@ -186,15 +175,15 @@ export function OfficerProcurementActivityDetailView({
               <span aria-hidden="true" className="text-slate-300">
                 •
               </span>
-              <StatusBadge status={activity.status} tone={tone} />
+              <StatusText className="text-[10px]" label={activity.status} />
             </div>
           </div>
           <Link
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#07523f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-            href={planHref}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#176c55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+            href={backHref}
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            Back to Plan
+            {backLabel}
           </Link>
         </div>
       </header>
@@ -319,23 +308,58 @@ export function OfficerProcurementActivityDetailView({
 }
 
 function ActivityBreadcrumb({
+  activity,
+  fromTracker,
   plan,
   planHref,
   project,
+  trackerHref,
 }: {
+  activity: ProcurementActivitySummary;
+  fromTracker?: boolean;
   plan: ProcurementPlanSummary;
   planHref: string;
   project: OfficerProject;
+  trackerHref: string;
 }) {
+  if (fromTracker) {
+    return (
+      <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
+        <ol className="flex flex-wrap items-center gap-2">
+          <li>
+            <Link className="hover:text-[#176c55]" href="/dashboard/officer">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link
+              className="hover:text-[#176c55]"
+              href="/workspace/activity-tracker"
+            >
+              Activity Tracker
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link className="hover:text-[#176c55]" href={trackerHref}>
+              {activity.reference}
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="font-semibold text-slate-800">
+            Activity Details
+          </li>
+        </ol>
+      </nav>
+    );
+  }
+
   return (
     <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
       <ol className="flex flex-wrap items-center gap-2">
         <li>
-          <Link
-            className="inline-flex items-center gap-1 hover:text-[#176c55]"
-            href="/dashboard/officer"
-          >
-            <House aria-hidden="true" className="h-3.5 w-3.5" />
+          <Link className="hover:text-[#176c55]" href="/dashboard/officer">
             Home
           </Link>
         </li>
@@ -417,28 +441,6 @@ function DetailItem({ label, value }: DetailValue) {
         {value}
       </dd>
     </div>
-  );
-}
-
-function StatusBadge({
-  status,
-  tone,
-}: {
-  status: ProcurementActivityStatus;
-  tone: { background: string; border: string; color: string };
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold"
-      style={{
-        backgroundColor: tone.background,
-        borderColor: tone.border,
-        color: tone.color,
-      }}
-    >
-      <CircleDot aria-hidden="true" className="h-3 w-3" />
-      {status}
-    </span>
   );
 }
 
