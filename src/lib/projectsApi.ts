@@ -3,6 +3,7 @@ import type {
   ProjectOfficer,
 } from "@/features/dashboards/components/director/projects/projectsData";
 import type { OfficerProject } from "@/features/projects/data/officerProjects";
+import { apiClient } from "./apiClient";
 
 export interface BackendProject {
   id: string;
@@ -71,123 +72,54 @@ export interface UpdateProjectInput {
 }
 
 export async function fetchProjects(): Promise<BackendProject[]> {
-  const response = await fetch("/api/projects", {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch projects");
+  try {
+    const res = await apiClient.get<any>("/projects");
+    return Array.isArray(res) ? res : res.data || [];
+  } catch (err) {
+    console.error("fetchProjects error:", err);
+    return [];
   }
-  return response.json();
 }
 
 export async function fetchProjectById(id: string): Promise<BackendProject> {
-  const response = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch project");
-  }
-  return response.json();
+  const res = await apiClient.get<any>(`/projects/${encodeURIComponent(id)}`);
+  return res.data || res;
 }
 
 export async function createProject(
   data: CreateProjectInput,
 ): Promise<BackendProject> {
-  const response = await fetch("/api/projects", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to create project";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>("/projects", data);
+  return res.data || res;
 }
 
 export async function updateProject(
   id: string,
   data: UpdateProjectInput,
 ): Promise<BackendProject> {
-  const response = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to update project";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.patch<any>(
+    `/projects/${encodeURIComponent(id)}`,
+    data,
+  );
+  return res.data || res;
 }
 
 export async function assignOfficerToProject(
   projectId: string,
   officerId: string,
 ): Promise<void> {
-  const response = await fetch(
-    `/api/projects/${encodeURIComponent(projectId)}/officers`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify({ officerId }),
-    },
-  );
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to assign officer";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
+  await apiClient.post(`/projects/${encodeURIComponent(projectId)}/officers`, {
+    officerId,
+  });
 }
 
 export async function removeOfficerFromProject(
   projectId: string,
   officerId: string,
 ): Promise<void> {
-  const response = await fetch(
-    `/api/projects/${encodeURIComponent(projectId)}/officers/${encodeURIComponent(officerId)}`,
-    {
-      method: "DELETE",
-      headers: { accept: "application/json" },
-    },
+  await apiClient.delete(
+    `/projects/${encodeURIComponent(projectId)}/officers/${encodeURIComponent(officerId)}`,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to remove officer");
-  }
 }
 
 export function mapBackendProjectToProjectItem(

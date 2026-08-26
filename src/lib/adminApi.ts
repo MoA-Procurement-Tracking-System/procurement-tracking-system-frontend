@@ -99,31 +99,59 @@ export interface FetchUsersParams {
   isActive?: boolean;
 }
 
-export function fetchUsers(
+import { apiClient, ApiClientError } from "./apiClient";
+
+export async function fetchUsers(
   params: FetchUsersParams = {},
 ): Promise<PaginatedResponse<ApiUser>> {
-  const query = new URLSearchParams();
-  if (params.page) query.set("page", String(params.page));
-  if (params.pageSize) query.set("pageSize", String(params.pageSize));
-  if (params.search) query.set("search", params.search);
-  if (params.role) query.set("role", params.role);
-  if (params.isActive !== undefined)
-    query.set("isActive", String(params.isActive));
+  try {
+    const res = await apiClient.get<any>("/users", {
+      params: {
+        page: params.page,
+        pageSize: params.pageSize,
+        search: params.search,
+        role: params.role,
+        isActive: params.isActive,
+      },
+    });
 
-  const qs = query.toString();
-  return adminRequest<PaginatedResponse<ApiUser>>(
-    `/api/users${qs ? `?${qs}` : ""}`,
-  );
+    if (res && res.data && res.meta) {
+      return res as PaginatedResponse<ApiUser>;
+    }
+    const list = Array.isArray(res) ? res : res?.data || [];
+    return {
+      data: list,
+      meta: {
+        page: params.page || 1,
+        pageSize: params.pageSize || 15,
+        total: list.length,
+        totalPages: 1,
+      },
+    };
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      throw new AuthApiError(err.message);
+    }
+    throw new AuthApiError("Unable to reach the administration service.");
+  }
 }
 
-export function updateUser(
+export async function updateUser(
   id: string,
   data: { isActive?: boolean; name?: string; role?: string },
 ): Promise<{ message: string; data: ApiUser }> {
-  return adminRequest<{ message: string; data: ApiUser }>(
-    `/api/users/${encodeURIComponent(id)}`,
-    { method: "PATCH", body: data },
-  );
+  try {
+    const res = await apiClient.patch<any>(
+      `/users/${encodeURIComponent(id)}`,
+      data,
+    );
+    return res.data ? res : { message: "User updated successfully", data: res };
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      throw new AuthApiError(err.message);
+    }
+    throw new AuthApiError("Failed to update user.");
+  }
 }
 
 // ─── Audit Logs API ─────────────────────────────────────────────────────────
@@ -137,19 +165,38 @@ export interface FetchAuditLogsParams {
   search?: string;
 }
 
-export function fetchAuditLogs(
+export async function fetchAuditLogs(
   params: FetchAuditLogsParams = {},
 ): Promise<PaginatedResponse<AuditLogEntry>> {
-  const query = new URLSearchParams();
-  if (params.page) query.set("page", String(params.page));
-  if (params.pageSize) query.set("pageSize", String(params.pageSize));
-  if (params.userId) query.set("userId", params.userId);
-  if (params.entityType) query.set("entityType", params.entityType);
-  if (params.action) query.set("action", params.action);
-  if (params.search) query.set("search", params.search);
+  try {
+    const res = await apiClient.get<any>("/audit-logs", {
+      params: {
+        page: params.page,
+        pageSize: params.pageSize,
+        userId: params.userId,
+        entityType: params.entityType,
+        action: params.action,
+        search: params.search,
+      },
+    });
 
-  const qs = query.toString();
-  return adminRequest<PaginatedResponse<AuditLogEntry>>(
-    `/api/audit-logs${qs ? `?${qs}` : ""}`,
-  );
+    if (res && res.data && res.meta) {
+      return res as PaginatedResponse<AuditLogEntry>;
+    }
+    const list = Array.isArray(res) ? res : res?.data || [];
+    return {
+      data: list,
+      meta: {
+        page: params.page || 1,
+        pageSize: params.pageSize || 25,
+        total: list.length,
+        totalPages: 1,
+      },
+    };
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      throw new AuthApiError(err.message);
+    }
+    throw new AuthApiError("Unable to reach the audit logs service.");
+  }
 }

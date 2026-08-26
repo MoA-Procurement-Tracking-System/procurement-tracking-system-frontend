@@ -31,7 +31,10 @@ describe("contractsApi", () => {
 
     const result = await fetchContracts({ status: "ACTIVE" });
     expect(result).toEqual(mockContracts);
-    expect(fetch).toHaveBeenCalledWith("/api/contracts?status=ACTIVE", expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/contracts?status=ACTIVE"),
+      expect.any(Object),
+    );
   });
 
   it("creates contract and records payments", async () => {

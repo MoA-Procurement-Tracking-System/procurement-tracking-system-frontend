@@ -24,53 +24,44 @@ export interface OfficerUserItem {
   isActive: boolean;
 }
 
+import { apiClient } from "./apiClient";
+
 export async function fetchLookups(type?: string): Promise<LookupItem[]> {
-  const query = type ? `?type=${encodeURIComponent(type)}` : "";
-  const response = await fetch(`/api/lookups${query}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch lookups");
+  try {
+    const payload = await apiClient.get<any>("/lookups", {
+      params: type ? { type } : undefined,
+    });
+    return Array.isArray(payload) ? payload : payload.data || [];
+  } catch (err) {
+    console.error("fetchLookups error:", err);
+    return [];
   }
-  const payload = await response.json();
-  return Array.isArray(payload) ? payload : payload.data || [];
 }
 
 export async function fetchSuppliers(): Promise<SupplierItem[]> {
-  const response = await fetch("/api/suppliers", {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch suppliers");
+  try {
+    const payload = await apiClient.get<any>("/suppliers");
+    return Array.isArray(payload) ? payload : payload.data || [];
+  } catch (err) {
+    console.error("fetchSuppliers error:", err);
+    return [];
   }
-  const payload = await response.json();
-  return Array.isArray(payload) ? payload : payload.data || [];
 }
 
 export async function fetchOfficers(): Promise<OfficerUserItem[]> {
-  const response = await fetch(
-    "/api/users?role=ProcurementOfficer&pageSize=100",
-    {
-      method: "GET",
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    },
-  );
-  if (!response.ok) {
-    // If users endpoint fails or is restricted, return empty array gracefully
+  try {
+    const payload = await apiClient.get<any>("/users", {
+      params: { role: "ProcurementOfficer", pageSize: 100 },
+    });
+    const list = Array.isArray(payload) ? payload : payload.data || [];
+    return list.map((u: any) => ({
+      id: u.id,
+      name: u.name || u.displayName || u.email,
+      email: u.email,
+      role: u.role || u.authRole,
+      isActive: u.isActive ?? true,
+    }));
+  } catch {
     return [];
   }
-  const payload = await response.json();
-  const list = Array.isArray(payload) ? payload : payload.data || [];
-  return list.map((u: any) => ({
-    id: u.id,
-    name: u.name || u.displayName || u.email,
-    email: u.email,
-    role: u.role || u.authRole,
-    isActive: u.isActive ?? true,
-  }));
 }

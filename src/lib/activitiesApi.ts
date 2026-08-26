@@ -105,77 +105,43 @@ export interface ReplanStageInput {
   reason: string;
 }
 
+import { apiClient } from "./apiClient";
+
 export async function fetchActivities(
   planId?: string,
 ): Promise<BackendActivity[]> {
-  const url = planId
-    ? `/api/activities?planId=${encodeURIComponent(planId)}`
-    : "/api/activities";
-  const response = await fetch(url, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch activities");
+  try {
+    const res = await apiClient.get<any>("/activities", {
+      params: planId ? { planId } : undefined,
+    });
+    return Array.isArray(res) ? res : res.data || [];
+  } catch (err) {
+    console.error("fetchActivities error:", err);
+    return [];
   }
-  return response.json();
 }
 
 export async function fetchActivityById(id: string): Promise<BackendActivity> {
-  const response = await fetch(`/api/activities/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch activity");
-  }
-  return response.json();
+  const res = await apiClient.get<any>(`/activities/${encodeURIComponent(id)}`);
+  return res.data || res;
 }
 
 export async function createActivity(
   data: CreateActivityInput,
 ): Promise<BackendActivity> {
-  const response = await fetch("/api/activities", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to create activity";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>("/activities", data);
+  return res.data || res;
 }
 
 export async function updateActivity(
   id: string,
   data: Partial<CreateActivityInput>,
 ): Promise<BackendActivity> {
-  const response = await fetch(`/api/activities/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to update activity");
-  }
-  return response.json();
+  const res = await apiClient.patch<any>(
+    `/activities/${encodeURIComponent(id)}`,
+    data,
+  );
+  return res.data || res;
 }
 
 export async function updateStageDates(
@@ -183,21 +149,10 @@ export async function updateStageDates(
   stageId: string,
   data: UpdateStageDatesInput,
 ): Promise<void> {
-  const response = await fetch(
-    `/api/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(data),
-    },
+  await apiClient.patch(
+    `/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}`,
+    data,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to update stage");
-  }
 }
 
 export async function recordActualStageDates(
@@ -205,21 +160,10 @@ export async function recordActualStageDates(
   stageId: string,
   data: RecordActualStageDatesInput,
 ): Promise<void> {
-  const response = await fetch(
-    `/api/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}/actual`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(data),
-    },
+  await apiClient.patch(
+    `/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}/actual`,
+    data,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to record actual stage dates");
-  }
 }
 
 export async function replanStage(
@@ -227,19 +171,8 @@ export async function replanStage(
   stageId: string,
   data: ReplanStageInput,
 ): Promise<void> {
-  const response = await fetch(
-    `/api/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}/replan`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(data),
-    },
+  await apiClient.post(
+    `/activities/${encodeURIComponent(activityId)}/stages/${encodeURIComponent(stageId)}/replan`,
+    data,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to replan stage");
-  }
 }

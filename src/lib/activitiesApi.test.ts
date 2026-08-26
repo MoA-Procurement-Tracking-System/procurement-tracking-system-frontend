@@ -34,7 +34,10 @@ describe("activitiesApi", () => {
 
     const result = await fetchActivities("plan-1");
     expect(result).toEqual(mockActivities);
-    expect(fetch).toHaveBeenCalledWith("/api/activities?planId=plan-1", expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/activities?planId=plan-1"),
+      expect.any(Object),
+    );
   });
 
   it("creates a new activity via POST /api/activities", async () => {
@@ -71,8 +74,9 @@ describe("activitiesApi", () => {
   });
 
   it("updates stage planning dates, actual dates, and replans stage", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ success: true }), { status: 200 }),
+    vi.spyOn(global, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ success: true }), { status: 200 }),
     );
 
     await updateStageDates("act-1", "stg-1", {

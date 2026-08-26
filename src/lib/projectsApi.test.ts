@@ -37,7 +37,10 @@ describe("projectsApi", () => {
 
     const result = await fetchProjects();
     expect(result).toEqual(mockProjects);
-    expect(fetch).toHaveBeenCalledWith("/api/projects", expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/projects"),
+      expect.any(Object),
+    );
   });
 
   it("creates a new project via POST /api/projects", async () => {
@@ -63,7 +66,7 @@ describe("projectsApi", () => {
 
     expect(result.id).toBe("p-new");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/projects",
+      expect.stringContaining("/projects"),
       expect.objectContaining({ method: "POST" }),
     );
   });
@@ -75,7 +78,7 @@ describe("projectsApi", () => {
 
     await assignOfficerToProject("p1", "off-1");
     expect(fetch).toHaveBeenCalledWith(
-      "/api/projects/p1/officers",
+      expect.stringContaining("/projects/p1/officers"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ officerId: "off-1" }),

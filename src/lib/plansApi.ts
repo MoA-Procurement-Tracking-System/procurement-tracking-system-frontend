@@ -73,122 +73,55 @@ export interface UpdatePlanInput {
   status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
 }
 
+import { apiClient } from "./apiClient";
+
 export async function fetchPlans(): Promise<BackendPlan[]> {
-  const response = await fetch("/api/plans", {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch plans");
+  try {
+    const res = await apiClient.get<any>("/plans");
+    return Array.isArray(res) ? res : res.data || [];
+  } catch (err) {
+    console.error("fetchPlans error:", err);
+    return [];
   }
-  return response.json();
 }
 
 export async function fetchPlanById(id: string): Promise<BackendPlan> {
-  const response = await fetch(`/api/plans/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch plan details");
-  }
-  return response.json();
+  const res = await apiClient.get<any>(`/plans/${encodeURIComponent(id)}`);
+  return res.data || res;
 }
 
 export async function createPlan(
   data: CreatePlanInput,
 ): Promise<BackendPlan> {
-  const response = await fetch("/api/plans", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to create plan";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>("/plans", data);
+  return res.data || res;
 }
 
 export async function updatePlan(
   id: string,
   data: UpdatePlanInput,
 ): Promise<BackendPlan> {
-  const response = await fetch(`/api/plans/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to update plan";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.patch<any>(
+    `/plans/${encodeURIComponent(id)}`,
+    data,
+  );
+  return res.data || res;
 }
 
 /** Officer submits draft plan to Director */
 export async function submitPlanForReview(id: string): Promise<BackendPlan> {
-  const response = await fetch(`/api/plans/${encodeURIComponent(id)}/submit`, {
-    method: "POST",
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to submit plan";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>(
+    `/plans/${encodeURIComponent(id)}/submit`,
+  );
+  return res.data || res;
 }
 
 /** Director approves plan and forwards to Endorsing Committee */
 export async function sendPlanToCommittee(id: string): Promise<BackendPlan> {
-  const response = await fetch(
-    `/api/plans/${encodeURIComponent(id)}/send-to-committee`,
-    {
-      method: "POST",
-      headers: { accept: "application/json" },
-    },
+  const res = await apiClient.post<any>(
+    `/plans/${encodeURIComponent(id)}/send-to-committee`,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to send plan to committee";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  return res.data || res;
 }
 
 /** Director rejects/returns plan to Officer with feedback */
@@ -196,26 +129,11 @@ export async function rejectPlan(
   id: string,
   reason: string,
 ): Promise<BackendPlan> {
-  const response = await fetch(`/api/plans/${encodeURIComponent(id)}/reject`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({ reason }),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to reject plan";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>(
+    `/plans/${encodeURIComponent(id)}/reject`,
+    { reason },
+  );
+  return res.data || res;
 }
 
 /** Committee member votes on plan */
@@ -224,25 +142,10 @@ export async function submitVote(
   decision: "APPROVE" | "REJECT",
   comment?: string,
 ): Promise<void> {
-  const response = await fetch(`/api/plans/${encodeURIComponent(planId)}/vote`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({ decision, comment }),
+  await apiClient.post(`/plans/${encodeURIComponent(planId)}/vote`, {
+    decision,
+    comment,
   });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to submit vote";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
 }
 
 export function mapBackendPlanToFrontend(

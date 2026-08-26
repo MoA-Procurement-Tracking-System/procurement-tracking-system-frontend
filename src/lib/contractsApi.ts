@@ -63,126 +63,74 @@ export interface RecordPaymentInput {
   idempotencyKey: string;
 }
 
+import { apiClient } from "./apiClient";
+
 export async function fetchContracts(params?: {
   search?: string;
   status?: string;
 }): Promise<BackendContract[]> {
-  const query = new URLSearchParams();
-  if (params?.search) query.set("search", params.search);
-  if (params?.status) query.set("status", params.status);
-
-  const qs = query.toString();
-  const response = await fetch(`/api/contracts${qs ? `?${qs}` : ""}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch contracts");
+  try {
+    const res = await apiClient.get<any>("/contracts", {
+      params: {
+        search: params?.search,
+        status: params?.status,
+      },
+    });
+    return Array.isArray(res) ? res : res.data || [];
+  } catch (err) {
+    console.error("fetchContracts error:", err);
+    return [];
   }
-  return response.json();
 }
 
 export async function fetchContractById(id: string): Promise<BackendContract> {
-  const response = await fetch(`/api/contracts/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: { accept: "application/json" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch contract");
-  }
-  return response.json();
+  const res = await apiClient.get<any>(`/contracts/${encodeURIComponent(id)}`);
+  return res.data || res;
 }
 
 export async function createContract(
   data: CreateContractInput,
 ): Promise<BackendContract> {
-  const response = await fetch("/api/contracts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to create contract";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  const res = await apiClient.post<any>("/contracts", data);
+  return res.data || res;
 }
 
 export async function updateContract(
   id: string,
   data: Partial<CreateContractInput>,
 ): Promise<BackendContract> {
-  const response = await fetch(`/api/contracts/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Failed to update contract");
-  }
-  return response.json();
+  const res = await apiClient.patch<any>(
+    `/contracts/${encodeURIComponent(id)}`,
+    data,
+  );
+  return res.data || res;
 }
 
 export async function fetchContractPayments(
   contractId: string,
   status?: "PAID" | "PENDING" | "FAILED",
 ): Promise<BackendPayment[]> {
-  const query = status ? `?filter[status]=${encodeURIComponent(status)}` : "";
-  const response = await fetch(
-    `/api/contracts/${encodeURIComponent(contractId)}/payments${query}`,
-    {
-      method: "GET",
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    },
-  );
-  if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to fetch payments");
+  try {
+    const res = await apiClient.get<any>(
+      `/contracts/${encodeURIComponent(contractId)}/payments`,
+      {
+        params: status ? { "filter[status]": status } : undefined,
+      },
+    );
+    return Array.isArray(res) ? res : res.data || [];
+  } catch (err) {
+    console.error("fetchContractPayments error:", err);
+    return [];
   }
-  return response.json();
 }
 
 export async function recordContractPayment(
   contractId: string,
   data: RecordPaymentInput,
 ): Promise<BackendPayment> {
-  const response = await fetch(
-    `/api/contracts/${encodeURIComponent(contractId)}/payments`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(data),
-    },
+  const res = await apiClient.post<any>(
+    `/contracts/${encodeURIComponent(contractId)}/payments`,
+    data,
   );
-  if (!response.ok) {
-    const errorText = await response.text();
-    let msg = "Failed to record payment";
-    try {
-      const parsed = JSON.parse(errorText);
-      msg = parsed.error || parsed.message || msg;
-    } catch {
-      msg = errorText || msg;
-    }
-    throw new Error(msg);
-  }
-  return response.json();
+  return res.data || res;
 }
