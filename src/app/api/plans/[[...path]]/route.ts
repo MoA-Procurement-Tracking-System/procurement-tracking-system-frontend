@@ -38,7 +38,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
     headers.set("cookie", cookieHeader);
   }
 
-  const requestBody = request.method === "GET" ? undefined : await request.text();
+  const requestBody =
+    request.method === "GET" ? undefined : await request.text();
   if (requestBody) {
     headers.set("content-type", "application/json");
   }

@@ -115,16 +115,18 @@ export function AppShell({
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  isActive
                     ? "bg-[#A3E635] text-[#082920] font-semibold shadow-sm"
                     : "text-[#D1F2E7] hover:bg-[#125241] hover:text-white"
-                  }`}
+                }`}
               >
                 <Icon
                   size={16}
                   strokeWidth={isActive ? 2.2 : 1.8}
-                  className={`w-4 h-4 shrink-0 ${isActive ? "text-[#082920]" : "text-[#87D2B9]"
-                    }`}
+                  className={`w-4 h-4 shrink-0 ${
+                    isActive ? "text-[#082920]" : "text-[#87D2B9]"
+                  }`}
                 />
                 <span className="truncate">{item.label}</span>
               </Link>
@@ -140,10 +142,11 @@ export function AppShell({
             href="/profile"
             onClick={() => setIsMobileMenuOpen(false)}
             title="View & Edit Profile"
-            className={`flex items-center gap-2.5 min-w-0 flex-1 group rounded-xl p-1.5 transition-all ${pathname === "/profile"
+            className={`flex items-center gap-2.5 min-w-0 flex-1 group rounded-xl p-1.5 transition-all ${
+              pathname === "/profile"
                 ? "bg-[#125241] ring-1 ring-[#A3E635]/40"
                 : "hover:bg-[#125241]/70"
-              }`}
+            }`}
           >
             <div className="w-9 h-9 rounded-full bg-[#82C899] text-[#062D23] font-bold text-xs flex items-center justify-center shrink-0 border border-white/20 shadow-xs group-hover:scale-105 transition-transform">
               {userInitials}

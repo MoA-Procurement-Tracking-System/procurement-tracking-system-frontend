@@ -43,30 +43,30 @@ export const PLAN_CATEGORY_CHOICES: {
   description: string;
   examples: string;
 }[] = [
-    {
-      category: "Goods",
-      description: "Physical items and supplies",
-      examples:
-        "Uniform, stationery, toners, vehicles, ICT equipment, laboratory equipment",
-    },
-    {
-      category: "Works",
-      description: "Construction/rehabilitation infrastructure",
-      examples:
-        "Water supply, laboratories, collection centers, workshop/calibration center",
-    },
-    {
-      category: "Non-Consulting Services",
-      description: "Services not primarily intellectual/advisory consultancy",
-      examples: "Printing, event management, operational services",
-    },
-    {
-      category: "Consultancy Services",
-      description: "Firm or individual professional/advisory services",
-      examples:
-        "Baseline survey, audit, value-chain studies, supervision, training/design consultancy",
-    },
-  ];
+  {
+    category: "Goods",
+    description: "Physical items and supplies",
+    examples:
+      "Uniform, stationery, toners, vehicles, ICT equipment, laboratory equipment",
+  },
+  {
+    category: "Works",
+    description: "Construction/rehabilitation infrastructure",
+    examples:
+      "Water supply, laboratories, collection centers, workshop/calibration center",
+  },
+  {
+    category: "Non-Consulting Services",
+    description: "Services not primarily intellectual/advisory consultancy",
+    examples: "Printing, event management, operational services",
+  },
+  {
+    category: "Consultancy Services",
+    description: "Firm or individual professional/advisory services",
+    examples:
+      "Baseline survey, audit, value-chain studies, supervision, training/design consultancy",
+  },
+];
 
 export const INITIAL_PLANS: ProcurementPlan[] = [
   {

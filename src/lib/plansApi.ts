@@ -1,4 +1,8 @@
-import type { ProcurementPlan, PlanCategory, PlanStatus } from "@/features/plans/plansData";
+import type {
+  ProcurementPlan,
+  PlanCategory,
+  PlanStatus,
+} from "@/features/plans/plansData";
 
 export interface BackendCommitteeVote {
   id: string;
@@ -17,7 +21,8 @@ export interface BackendPlan {
   committeeVoteDeadline: string | null;
   title: string;
   budgetYear: string | null;
-  procurementCategory: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" | null;
+  procurementCategory:
+    "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" | null;
   periodStart: string;
   periodEnd: string;
   organization: string | null;
@@ -74,7 +79,7 @@ export async function submitVote(
 
 export function mapBackendPlanToFrontend(
   backendPlan: BackendPlan,
-  currentMemberId?: string
+  currentMemberId?: string,
 ): ProcurementPlan {
   // Map category
   let category: PlanCategory = "Goods";
@@ -93,7 +98,10 @@ export function mapBackendPlanToFrontend(
   // Calculate estimated total from activities if included, otherwise use a default fallback
   let estimatedTotalNum = 0;
   if (backendPlan.activities && backendPlan.activities.length > 0) {
-    estimatedTotalNum = backendPlan.activities.reduce((sum, act) => sum + act.estimatedBudget, 0);
+    estimatedTotalNum = backendPlan.activities.reduce(
+      (sum, act) => sum + act.estimatedBudget,
+      0,
+    );
   } else {
     // If activities are not loaded in the list GET, fallback to some mock defaults matching DRIVE vs BREFONS values
     if (backendPlan.project?.code === "DRIVE") {
@@ -105,7 +113,10 @@ export function mapBackendPlanToFrontend(
 
   // Format estimatedTotal as string
   let estimatedTotal = `${(estimatedTotalNum / 1000000).toFixed(1)}M ETB`;
-  if (backendPlan.project?.code === "DRIVE" && backendPlan.title?.includes("Q3")) {
+  if (
+    backendPlan.project?.code === "DRIVE" &&
+    backendPlan.title?.includes("Q3")
+  ) {
     estimatedTotal = `$2.6M USD`;
   } else if (backendPlan.project?.code === "DRIVE") {
     estimatedTotal = `${(estimatedTotalNum / 1000000).toFixed(1)}M ETB`;
@@ -125,12 +136,16 @@ export function mapBackendPlanToFrontend(
   if (currentMemberId) {
     const myVote = votes.find((v) => v.memberId === currentMemberId);
     if (myVote) {
-      committeeDecision = myVote.decision === "APPROVE" ? "Approved" : "Rejected";
-      decisionRecordedDate = new Date(myVote.createdAt).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
+      committeeDecision =
+        myVote.decision === "APPROVE" ? "Approved" : "Rejected";
+      decisionRecordedDate = new Date(myVote.createdAt).toLocaleDateString(
+        "en-GB",
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        },
+      );
       rejectionReason = myVote.comment || undefined;
     }
   }
@@ -143,8 +158,12 @@ export function mapBackendPlanToFrontend(
     planName: backendPlan.title || "Untitled Plan",
     budgetYear: backendPlan.budgetYear || "2018 EFY",
     category,
-    planPeriodFrom: backendPlan.periodStart ? new Date(backendPlan.periodStart).toISOString().split("T")[0] : "",
-    planPeriodTo: backendPlan.periodEnd ? new Date(backendPlan.periodEnd).toISOString().split("T")[0] : "",
+    planPeriodFrom: backendPlan.periodStart
+      ? new Date(backendPlan.periodStart).toISOString().split("T")[0]
+      : "",
+    planPeriodTo: backendPlan.periodEnd
+      ? new Date(backendPlan.periodEnd).toISOString().split("T")[0]
+      : "",
     organizationRegion: backendPlan.organization || "Federal",
     description: backendPlan.description,
     status,
@@ -152,16 +171,23 @@ export function mapBackendPlanToFrontend(
     createdAt: backendPlan.createdAt,
     activitiesCount: backendPlan.activities ? backendPlan.activities.length : 0,
     estimatedTotal,
-    isPriority: backendPlan.committeeVoteDeadline ? (new Date(backendPlan.committeeVoteDeadline).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000) : false,
+    isPriority: backendPlan.committeeVoteDeadline
+      ? new Date(backendPlan.committeeVoteDeadline).getTime() -
+          new Date().getTime() <
+        7 * 24 * 60 * 60 * 1000
+      : false,
     progress,
     progressText,
     deadlineDate: backendPlan.committeeVoteDeadline || undefined,
     deadlineText: backendPlan.committeeVoteDeadline
-      ? new Date(backendPlan.committeeVoteDeadline).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
+      ? new Date(backendPlan.committeeVoteDeadline).toLocaleDateString(
+          "en-GB",
+          {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          },
+        )
       : undefined,
     decisionRecordedDate,
     committeeDecision,

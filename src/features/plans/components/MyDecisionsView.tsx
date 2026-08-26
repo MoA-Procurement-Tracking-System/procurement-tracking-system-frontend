@@ -48,7 +48,9 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
       try {
         setLoading(true);
         const rawPlans = await fetchPlans();
-        const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
+        const mapped = rawPlans.map((p) =>
+          mapBackendPlanToFrontend(p, user.id),
+        );
         setPlans(mapped);
       } catch (err) {
         console.error("Failed to load decisions:", err);
@@ -59,15 +61,19 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
     loadPlans();
   }, [user.id]);
 
-  const [selectedDecision, setSelectedDecision] = useState<DecisionRecord | null>(null);
+  const [selectedDecision, setSelectedDecision] =
+    useState<DecisionRecord | null>(null);
 
   const decisions: DecisionRecord[] = plans
     .filter((p) => p.committeeDecision !== undefined)
     .map((p) => {
-      let categoryVal: "GOODS" | "WORKS" | "CONSULTANCY" | "NON-CONSULTING" = "GOODS";
+      let categoryVal: "GOODS" | "WORKS" | "CONSULTANCY" | "NON-CONSULTING" =
+        "GOODS";
       if (p.category === "Works") categoryVal = "WORKS";
-      else if (p.category === "Consultancy Services") categoryVal = "CONSULTANCY";
-      else if (p.category === "Non-Consulting Services") categoryVal = "NON-CONSULTING";
+      else if (p.category === "Consultancy Services")
+        categoryVal = "CONSULTANCY";
+      else if (p.category === "Non-Consulting Services")
+        categoryVal = "NON-CONSULTING";
 
       return {
         id: p.id,
@@ -77,7 +83,8 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
         category: categoryVal,
         decision: p.committeeDecision === "Approved" ? "Approved" : "Rejected",
         dateRecorded: p.decisionRecordedDate || "Recent",
-        overallStatus: p.status === "Finally Approved" ? "Finally Approved" : "Pending",
+        overallStatus:
+          p.status === "Finally Approved" ? "Finally Approved" : "Pending",
         progress: p.progress || 0,
         progressText: p.progressText || "",
         rejectionReason: p.rejectionReason,
@@ -203,7 +210,8 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                   ></div>
                 </div>
                 <span className="text-xs text-slate-600 font-semibold">
-                  {selectedDecision.progressText} ({selectedDecision.overallStatus})
+                  {selectedDecision.progressText} (
+                  {selectedDecision.overallStatus})
                 </span>
               </div>
             </div>
@@ -283,13 +291,19 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500 font-medium">
+                      <td
+                        colSpan={7}
+                        className="py-12 text-center text-slate-500 font-medium"
+                      >
                         Loading decisions...
                       </td>
                     </tr>
                   ) : filteredDecisions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
+                      <td
+                        colSpan={7}
+                        className="py-12 text-center text-slate-500"
+                      >
                         <FileText className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                         <p className="font-semibold text-slate-700 text-sm">
                           No decisions recorded matching search filters
@@ -339,7 +353,9 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                                 : "bg-rose-50 text-rose-700 border-rose-100"
                             }`}
                           >
-                            {dec.decision === "Approved" ? "✓ Approved" : "✗ Rejected"}
+                            {dec.decision === "Approved"
+                              ? "✓ Approved"
+                              : "✗ Rejected"}
                           </span>
                         </td>
 

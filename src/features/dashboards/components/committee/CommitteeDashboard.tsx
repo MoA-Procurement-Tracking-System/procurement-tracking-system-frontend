@@ -35,7 +35,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
       try {
         setLoading(true);
         const rawPlans = await fetchPlans();
-        const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
+        const mapped = rawPlans.map((p) =>
+          mapBackendPlanToFrontend(p, user.id),
+        );
         setPlans(mapped);
       } catch (err) {
         console.error("Dashboard failed to load plans:", err);
@@ -48,7 +50,7 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
 
   // Awaiting My Vote: status is "Committee Review" AND committeeDecision is undefined (not voted yet)
   const awaitingPlans = plans.filter(
-    (p) => p.status === "Committee Review" && p.committeeDecision === undefined
+    (p) => p.status === "Committee Review" && p.committeeDecision === undefined,
   );
 
   // Delayed Reviews: status is "Committee Review" AND committeeDecision is undefined AND deadline Date is in the past
@@ -62,15 +64,22 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const reviewedPlans = plans.filter((p) => p.committeeDecision !== undefined);
 
   // Approved vs Rejected segment counts
-  const approvedReviewed = reviewedPlans.filter((p) => p.committeeDecision === "Approved");
-  const rejectedReviewed = reviewedPlans.filter((p) => p.committeeDecision === "Rejected");
+  const approvedReviewed = reviewedPlans.filter(
+    (p) => p.committeeDecision === "Approved",
+  );
+  const rejectedReviewed = reviewedPlans.filter(
+    (p) => p.committeeDecision === "Rejected",
+  );
 
   const totalReviewedCount = reviewedPlans.length;
   const approvedCount = approvedReviewed.length;
   const rejectedCount = rejectedReviewed.length;
 
-  const approvedPercent = totalReviewedCount > 0 ? Math.round((approvedCount / totalReviewedCount) * 100) : 0;
-  const rejectedPercent = totalReviewedCount > 0 ? (100 - approvedPercent) : 0;
+  const approvedPercent =
+    totalReviewedCount > 0
+      ? Math.round((approvedCount / totalReviewedCount) * 100)
+      : 0;
+  const rejectedPercent = totalReviewedCount > 0 ? 100 - approvedPercent : 0;
 
   useEffect(() => {
     const delay = totalReviewedCount > 0 ? 100 : 0;
@@ -90,7 +99,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const sortedAwaitingPlans = [...awaitingPlans].sort((a, b) => {
     if (!a.deadlineDate) return 1;
     if (!b.deadlineDate) return -1;
-    return new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime();
+    return (
+      new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime()
+    );
   });
 
   const displayedAwaitingPlans = sortedAwaitingPlans.filter((plan) => {
@@ -111,8 +122,12 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
   // Recent decisions: sorted by decisionRecordedDate desc, top 2
   const recentDecisions = [...reviewedPlans]
     .sort((a, b) => {
-      const dateA = a.decisionRecordedDate ? new Date(a.decisionRecordedDate).getTime() : 0;
-      const dateB = b.decisionRecordedDate ? new Date(b.decisionRecordedDate).getTime() : 0;
+      const dateA = a.decisionRecordedDate
+        ? new Date(a.decisionRecordedDate).getTime()
+        : 0;
+      const dateB = b.decisionRecordedDate
+        ? new Date(b.decisionRecordedDate).getTime()
+        : 0;
       return dateB - dateA;
     })
     .slice(0, 2);
@@ -171,7 +186,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
           </div>
           <div className="text-[11px] font-semibold text-rose-800 mt-2 flex items-center gap-1">
             <span>
-              {delayedCount > 0 ? `${delayedCount} votes are past deadline` : "No votes are delayed"}
+              {delayedCount > 0
+                ? `${delayedCount} votes are past deadline`
+                : "No votes are delayed"}
             </span>
           </div>
         </div>
@@ -209,17 +226,23 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
               <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 leading-tight">
                 Total Reviewed
               </h3>
-              <p className="text-xs text-slate-400 font-medium mt-1">Reviewed This Year</p>
+              <p className="text-xs text-slate-400 font-medium mt-1">
+                Reviewed This Year
+              </p>
             </div>
 
             <div className="flex flex-col gap-1.5 mt-4 select-none">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-700">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#15803d]"></span>
-                <span>{approvedCount} Approved ({approvedPercent}%)</span>
+                <span>
+                  {approvedCount} Approved ({approvedPercent}%)
+                </span>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-700">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#dc2626]"></span>
-                <span className="text-[#dc2626]">{rejectedCount} Rejected ({rejectedPercent}%)</span>
+                <span className="text-[#dc2626]">
+                  {rejectedCount} Rejected ({rejectedPercent}%)
+                </span>
               </div>
             </div>
           </div>
@@ -262,8 +285,12 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center bg-white rounded-full h-[58px] w-[58px] shadow-3xs border border-slate-100/50">
-              <span className="text-lg font-black text-slate-900 font-mono leading-none">{totalReviewedCount}</span>
-              <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Total</span>
+              <span className="text-lg font-black text-slate-900 font-mono leading-none">
+                {totalReviewedCount}
+              </span>
+              <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">
+                Total
+              </span>
             </div>
           </div>
         </div>
@@ -343,8 +370,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                     filteredAwaitingPlans.map((plan) => (
                       <tr
                         key={plan.id}
-                        className={`hover:bg-slate-50/50 transition-colors ${plan.isPriority ? "bg-rose-50/10" : ""
-                          }`}
+                        className={`hover:bg-slate-50/50 transition-colors ${
+                          plan.isPriority ? "bg-rose-50/10" : ""
+                        }`}
                       >
                         <td className="py-3.5 px-4 font-bold text-slate-900">
                           <Link
@@ -361,7 +389,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                                   : "text-slate-400 font-medium"
                               }
                             >
-                              {plan.isPriority ? "▲ Priority Review" : `${plan.budgetYear} • ${plan.activitiesCount} Activities`}
+                              {plan.isPriority
+                                ? "▲ Priority Review"
+                                : `${plan.budgetYear} • ${plan.activitiesCount} Activities`}
                             </span>
                             {plan.deadlineText && (
                               <>
@@ -378,22 +408,26 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                         </td>
                         <td className="py-3.5 px-4">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${plan.category === "Goods"
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                              plan.category === "Goods"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
                                 : plan.category === "Works"
                                   ? "bg-amber-50 text-amber-700 border-amber-100"
                                   : "bg-purple-50 text-purple-700 border-purple-100"
-                              }`}
+                            }`}
                           >
                             {plan.category}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 font-medium">
-                          {new Date(plan.createdAt).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {new Date(plan.createdAt).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-right font-bold text-slate-900 font-mono">
                           {plan.estimatedTotal}
@@ -402,10 +436,11 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${(plan.progress ?? 0) > 0
+                                className={`h-full rounded-full transition-all ${
+                                  (plan.progress ?? 0) > 0
                                     ? "bg-emerald-500"
                                     : "bg-slate-200"
-                                  }`}
+                                }`}
                                 style={{ width: `${plan.progress ?? 0}%` }}
                               ></div>
                             </div>
@@ -423,7 +458,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
 
             {/* Table Footer */}
             <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium select-none">
-              <span>Showing {filteredAwaitingPlans.length} of {awaitingPlans.length} plans</span>
+              <span>
+                Showing {filteredAwaitingPlans.length} of {awaitingPlans.length}{" "}
+                plans
+              </span>
               <div className="flex items-center gap-1.5">
                 <button
                   className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-3xs cursor-pointer"
@@ -459,7 +497,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
               </div>
             ) : (
               recentDecisions.map((plan) => (
-                <div key={plan.id} className="p-4.5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                <div
+                  key={plan.id}
+                  className="p-4.5 space-y-3 hover:bg-slate-50/50 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-bold text-slate-900 text-xs leading-tight">
                       {plan.planName}
@@ -471,7 +512,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                           : "bg-rose-50 text-rose-700 border-rose-100"
                       }`}
                     >
-                      {plan.committeeDecision === "Approved" ? "✓ Approved" : "✗ Rejected"}
+                      {plan.committeeDecision === "Approved"
+                        ? "✓ Approved"
+                        : "✗ Rejected"}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 font-medium">
@@ -497,18 +540,21 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                     <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
-                          plan.status === "Finally Approved" ? "bg-emerald-500" : "bg-amber-500"
+                          plan.status === "Finally Approved"
+                            ? "bg-emerald-500"
+                            : "bg-amber-500"
                         }`}
                         style={{ width: `${plan.progress}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {plan.committeeDecision === "Rejected" && plan.rejectionReason && (
-                    <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-[10px] text-slate-600 italic font-semibold leading-relaxed">
-                      &quot;{plan.rejectionReason}&quot;
-                    </div>
-                  )}
+                  {plan.committeeDecision === "Rejected" &&
+                    plan.rejectionReason && (
+                      <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-[10px] text-slate-600 italic font-semibold leading-relaxed">
+                        &quot;{plan.rejectionReason}&quot;
+                      </div>
+                    )}
 
                   <Link
                     href="/workspace/my-decisions"
@@ -535,4 +581,3 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
     </div>
   );
 }
-

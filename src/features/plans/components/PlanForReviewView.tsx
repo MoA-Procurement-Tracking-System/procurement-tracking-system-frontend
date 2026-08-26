@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ProcurementPlan } from "../plansData";
-import { fetchPlans, submitVote, mapBackendPlanToFrontend } from "../../../lib/plansApi";
+import {
+  fetchPlans,
+  submitVote,
+  mapBackendPlanToFrontend,
+} from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
 import {
   INITIAL_PROJECTS,
@@ -80,7 +84,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const alreadyVoted = p.committeeDecision !== undefined;
       isAwaitingReview = p.status === "Committee Review" && !alreadyVoted;
     } else {
-      isAwaitingReview = p.status === "Submitted to Director" || p.status === "Returned";
+      isAwaitingReview =
+        p.status === "Submitted to Director" || p.status === "Returned";
     }
     const matchesSearch =
       p.planName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -119,10 +124,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       prev.map((p) =>
         p.id === plan.id
           ? {
-            ...p,
-            status: "Committee Review",
-            approvalDate: new Date().toISOString().split("T")[0],
-          }
+              ...p,
+              status: "Committee Review",
+              approvalDate: new Date().toISOString().split("T")[0],
+            }
           : p,
       ),
     );
@@ -138,12 +143,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       prev.map((p) =>
         p.id === plan.id
           ? {
-            ...p,
-            status: "Returned",
-            description: returnRemarks.trim()
-              ? `[Returned Note: ${returnRemarks}] ${p.description || ""}`
-              : p.description,
-          }
+              ...p,
+              status: "Returned",
+              description: returnRemarks.trim()
+                ? `[Returned Note: ${returnRemarks}] ${p.description || ""}`
+                : p.description,
+            }
           : p,
       ),
     );
@@ -164,7 +169,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       setReturnRemarks("");
     } catch (err) {
       console.error(err);
-      const errMsg = err instanceof Error ? err.message : "Failed to submit approval vote.";
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to submit approval vote.";
       showToast(errMsg);
     }
   };
@@ -183,7 +189,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       setReturnRemarks("");
     } catch (err) {
       console.error(err);
-      const errMsg = err instanceof Error ? err.message : "Failed to submit rejection vote.";
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to submit rejection vote.";
       showToast(errMsg);
     }
   };
@@ -393,21 +400,33 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
                 <h3 className="text-sm font-bold text-slate-900">
-                  {user.role === "ENDORSING_COMMITTEE" ? "Committee Decision & Workflow Actions" : "Director Decision & Workflow Actions"}
+                  {user.role === "ENDORSING_COMMITTEE"
+                    ? "Committee Decision & Workflow Actions"
+                    : "Director Decision & Workflow Actions"}
                 </h3>
               </div>
 
               {/* Revision Remarks Textarea */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  {user.role === "ENDORSING_COMMITTEE" ? "Reason for Rejection / Notes" : "Revision Notes (If returning to Officer)"}
-                  {user.role === "ENDORSING_COMMITTEE" && <span className="text-rose-500 ml-1">* Mandatory for rejection</span>}
+                  {user.role === "ENDORSING_COMMITTEE"
+                    ? "Reason for Rejection / Notes"
+                    : "Revision Notes (If returning to Officer)"}
+                  {user.role === "ENDORSING_COMMITTEE" && (
+                    <span className="text-rose-500 ml-1">
+                      * Mandatory for rejection
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={4}
                   value={returnRemarks}
                   onChange={(e) => setReturnRemarks(e.target.value)}
-                  placeholder={user.role === "ENDORSING_COMMITTEE" ? "Specify reason for rejection..." : "Specify required corrections, missing documents or revision notes for the Procurement Officer..."}
+                  placeholder={
+                    user.role === "ENDORSING_COMMITTEE"
+                      ? "Specify reason for rejection..."
+                      : "Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+                  }
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
                 />
               </div>
@@ -417,7 +436,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 {user.role === "ENDORSING_COMMITTEE" ? (
                   <>
                     <button
-                      onClick={() => handleCommitteeApprove(selectedPlanForReview)}
+                      onClick={() =>
+                        handleCommitteeApprove(selectedPlanForReview)
+                      }
                       className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
                     >
                       <Send className="h-4 w-4" />
@@ -425,7 +446,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     </button>
 
                     <button
-                      onClick={() => handleCommitteeReject(selectedPlanForReview)}
+                      onClick={() =>
+                        handleCommitteeReject(selectedPlanForReview)
+                      }
                       disabled={!returnRemarks.trim()}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -519,7 +542,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500 font-medium">
+                  <td
+                    colSpan={9}
+                    className="py-12 text-center text-slate-500 font-medium"
+                  >
                     Loading plans from server...
                   </td>
                 </tr>
@@ -592,14 +618,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
-                        className={`text-xs font-extrabold ${plan.status === "Submitted to Director"
+                        className={`text-xs font-extrabold ${
+                          plan.status === "Submitted to Director"
                             ? "text-amber-800"
                             : plan.status === "Committee Review"
                               ? "text-blue-800"
                               : plan.status === "Returned"
                                 ? "text-rose-800"
                                 : "text-slate-700"
-                          }`}
+                        }`}
                       >
                         {plan.status}
                       </span>
