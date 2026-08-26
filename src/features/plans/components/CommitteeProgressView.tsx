@@ -377,7 +377,7 @@ export function CommitteeProgressView() {
     setItems((prevItems) =>
       prevItems.map((item) =>
         item.id === selectedPlan.id
-          ? { ...item, overallStatus: "Rejected" as any }
+          ? { ...item, overallStatus: "Rejected" }
           : item,
       ),
     );
