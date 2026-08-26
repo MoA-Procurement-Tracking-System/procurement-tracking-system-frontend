@@ -25,6 +25,7 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "delayed">("all");
 
   const [approvedPercentAnim, setApprovedPercentAnim] = useState(0);
   const [rejectedPercentAnim, setRejectedPercentAnim] = useState(0);
@@ -50,6 +51,13 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
     (p) => p.status === "Committee Review" && p.committeeDecision === undefined
   );
 
+  // Delayed Reviews: status is "Committee Review" AND committeeDecision is undefined AND deadline Date is in the past
+  const delayedPlans = awaitingPlans.filter((p) => {
+    if (!p.deadlineDate) return false;
+    return new Date(p.deadlineDate).getTime() < new Date().getTime();
+  });
+  const delayedCount = delayedPlans.length;
+
   // Total Reviewed: plans where this member has voted (committeeDecision is not undefined)
   const reviewedPlans = plans.filter((p) => p.committeeDecision !== undefined);
 
@@ -65,16 +73,17 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const rejectedPercent = totalReviewedCount > 0 ? (100 - approvedPercent) : 0;
 
   useEffect(() => {
-    if (totalReviewedCount > 0) {
-      const timer = setTimeout(() => {
+    const delay = totalReviewedCount > 0 ? 100 : 0;
+    const timer = setTimeout(() => {
+      if (totalReviewedCount > 0) {
         setApprovedPercentAnim(approvedPercent);
         setRejectedPercentAnim(rejectedPercent);
-      }, 100);
-      return () => clearTimeout(timer);
-    } else {
-      setApprovedPercentAnim(0);
-      setRejectedPercentAnim(0);
-    }
+      } else {
+        setApprovedPercentAnim(0);
+        setRejectedPercentAnim(0);
+      }
+    }, delay);
+    return () => clearTimeout(timer);
   }, [approvedPercent, rejectedPercent, totalReviewedCount]);
 
   // Sort awaitingPlans so that closest deadline comes first
@@ -84,7 +93,15 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
     return new Date(a.deadlineDate).getTime() - new Date(b.deadlineDate).getTime();
   });
 
-  const filteredAwaitingPlans = sortedAwaitingPlans.filter(
+  const displayedAwaitingPlans = sortedAwaitingPlans.filter((plan) => {
+    if (filter === "delayed") {
+      if (!plan.deadlineDate) return false;
+      return new Date(plan.deadlineDate).getTime() < new Date().getTime();
+    }
+    return true;
+  });
+
+  const filteredAwaitingPlans = displayedAwaitingPlans.filter(
     (plan) =>
       plan.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       plan.projectCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,10 +140,47 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
       {/* Premium Statistics Row */}
       <section
         aria-label="Committee statistics summary"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 max-w-4xl"
+        className="grid grid-cols-1 gap-4 md:grid-cols-3 max-w-5xl"
       >
-        {/* Card 1: Awaiting My Vote */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-50/70 to-orange-50/40 rounded-[20px] p-5 border border-amber-200 shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-orange-500 hover:shadow-xs transition-shadow">
+        {/* Card 1: Delayed Votes */}
+        <div
+          onClick={() => setFilter(filter === "delayed" ? "all" : "delayed")}
+          className={`relative overflow-hidden bg-gradient-to-br from-rose-50/70 to-red-50/40 rounded-[20px] p-5 border shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-red-500 hover:shadow-xs transition-all cursor-pointer select-none ${
+            filter === "delayed"
+              ? "border-red-400 ring-2 ring-red-500/20 scale-[1.01] shadow-xs"
+              : "border-rose-200 hover:scale-[1.01]"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-1.5">
+                {delayedCount > 0 && (
+                  <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse"></span>
+                )}
+                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-rose-900 leading-tight">
+                  Delayed Votes
+                </h3>
+              </div>
+              <p className="text-3xl font-black text-red-950 mt-2 font-mono leading-none">
+                {delayedCount}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-rose-200 text-rose-600 shadow-3xs">
+              <Clock size={20} strokeWidth={2.2} />
+            </div>
+          </div>
+          <div className="text-[11px] font-semibold text-rose-800 mt-2 flex items-center gap-1">
+            <span>
+              {delayedCount > 0 ? `${delayedCount} votes are past deadline` : "No votes are delayed"}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Awaiting My Vote */}
+        <div
+          onClick={() => setFilter("all")}
+          className="relative overflow-hidden bg-gradient-to-br from-amber-50/70 to-orange-50/40 rounded-[20px] p-5 border border-amber-200 shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-orange-500 hover:shadow-xs transition-all cursor-pointer select-none hover:scale-[1.01]"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-1.5">
@@ -148,7 +202,7 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
           </div>
         </div>
 
-        {/* Card 2: Total Reviewed */}
+        {/* Card 3: Total Reviewed */}
         <div className="bg-white rounded-[20px] p-5 border border-slate-200/80 shadow-3xs flex flex-row items-center justify-between min-h-[140px] hover:shadow-xs transition-shadow gap-4">
           <div className="flex flex-col justify-between h-full">
             <div>
@@ -222,11 +276,22 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
           <div className="bg-white rounded-[20px] border border-slate-200/80 shadow-2xs overflow-hidden">
             {/* Card Header */}
             <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <ClipboardCheck className="h-5 w-5 text-emerald-700 shrink-0" />
                 <h2 className="text-sm font-bold text-slate-900">
                   Plans Awaiting My Vote
                 </h2>
+                {filter === "delayed" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-150 animate-fade-in select-none">
+                    <span>Delayed Only</span>
+                    <button
+                      onClick={() => setFilter("all")}
+                      className="hover:bg-red-100 rounded-full p-0.5 transition-colors cursor-pointer"
+                    >
+                      <XCircle size={10} className="shrink-0" />
+                    </button>
+                  </span>
+                )}
               </div>
 
               {/* Search Input */}
@@ -358,7 +423,7 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
 
             {/* Table Footer */}
             <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium select-none">
-              <span>Showing {filteredAwaitingPlans.length} of 4 plans</span>
+              <span>Showing {filteredAwaitingPlans.length} of {awaitingPlans.length} plans</span>
               <div className="flex items-center gap-1.5">
                 <button
                   className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-3xs cursor-pointer"

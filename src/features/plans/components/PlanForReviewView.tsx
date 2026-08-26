@@ -33,6 +33,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
 
   const loadPlans = async () => {
     try {
@@ -40,7 +46,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const rawPlans = await fetchPlans();
       const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
       setPlans(mapped);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       showToast("Failed to load plans from server.");
     } finally {
@@ -49,7 +55,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   useEffect(() => {
-    loadPlans();
+    const timer = setTimeout(() => {
+      loadPlans();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -62,13 +71,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     null,
   );
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [returnRemarks, setReturnRemarks] = useState("");
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4500);
-  };
 
   // Filter plans awaiting review only
   const filteredPlans = plans.filter((p) => {
@@ -159,9 +162,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       await loadPlans();
       setSelectedPlanForReview(null);
       setReturnRemarks("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      showToast(err.message || "Failed to submit approval vote.");
+      const errMsg = err instanceof Error ? err.message : "Failed to submit approval vote.";
+      showToast(errMsg);
     }
   };
 
@@ -177,9 +181,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       await loadPlans();
       setSelectedPlanForReview(null);
       setReturnRemarks("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      showToast(err.message || "Failed to submit rejection vote.");
+      const errMsg = err instanceof Error ? err.message : "Failed to submit rejection vote.";
+      showToast(errMsg);
     }
   };
 
