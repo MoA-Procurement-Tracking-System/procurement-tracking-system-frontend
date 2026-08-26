@@ -57,7 +57,7 @@ export function ActivitiesListView({
   onApprovePlan,
   onReturnPlan,
 }: ActivitiesListViewProps) {
-  const [activities] = useState<ProcurementActivity[]>(() => {
+  const [activities, setActivities] = useState<ProcurementActivity[]>(() => {
     const directMatches = INITIAL_ACTIVITIES.filter(
       (a) => a.planId === plan.id || a.projectCode === project.code,
     );
@@ -156,9 +156,11 @@ export function ActivitiesListView({
     return directMatches;
   });
 
+  const [currentPlanName, setCurrentPlanName] = useState(plan.planName);
   const [searchTerm, setSearchTerm] = useState("");
   const [methodFilter, setMethodFilter] = useState<string>("ALL");
   const [reviewFilter, setReviewFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   // Selected Activity for Detailed View
   const [selectedActivity, setSelectedActivity] =
@@ -166,8 +168,87 @@ export function ActivitiesListView({
   const [directorReturnRemarks, setDirectorReturnRemarks] = useState("");
 
   const isDirectorReview = parentSection === "plan-for-review";
+
+  const handleUpdateActivityField = <K extends keyof ProcurementActivity>(
+    actId: string,
+    field: K,
+    value: ProcurementActivity[K],
+  ) => {
+    setActivities((prev) =>
+      prev.map((a) => (a.id === actId ? { ...a, [field]: value } : a)),
+    );
+    if (selectedActivity && selectedActivity.id === actId) {
+      setSelectedActivity((prev) =>
+        prev ? { ...prev, [field]: value } : null,
+      );
+    }
+  };
+
+  const handleUpdateRoadmapDate = (
+    actId: string,
+    stageId: string,
+    newDate: string,
+  ) => {
+    setActivities((prev) =>
+      prev.map((a) => {
+        if (a.id !== actId) return a;
+        const newRoadmap = a.roadmap.map((s) =>
+          s.id === stageId
+            ? {
+                ...s,
+                revisedTargetDate: newDate,
+                originalPlannedDate: s.originalPlannedDate || newDate,
+              }
+            : s,
+        );
+        return { ...a, roadmap: newRoadmap };
+      }),
+    );
+    if (selectedActivity && selectedActivity.id === actId) {
+      setSelectedActivity((prev) => {
+        if (!prev) return null;
+        const newRoadmap = prev.roadmap.map((s) =>
+          s.id === stageId
+            ? {
+                ...s,
+                revisedTargetDate: newDate,
+                originalPlannedDate: s.originalPlannedDate || newDate,
+              }
+            : s,
+        );
+        return { ...prev, roadmap: newRoadmap };
+      });
+    }
+  };
+
   // Active Detail Tab state (1: Key Details, 2: Related Info, 3: Additional Details, 4: Roadmap)
   const [activeDetailTab, setActiveDetailTab] = useState<1 | 2 | 3 | 4>(1);
+
+  const getActivityStatus = (
+    act: ProcurementActivity,
+  ): "Not Started" | "In Progress" | "Completed" | "Delayed" => {
+    const completedStages = act.roadmap.filter(
+      (s) => s.stageStatus === "Completed",
+    ).length;
+    const totalStages = act.roadmap.length;
+    const hasDelay = act.roadmap.some(
+      (s) =>
+        (s.delayDays && s.delayDays > 0) ||
+        s.remarks?.toLowerCase().includes("delay"),
+    );
+
+    if (hasDelay) return "Delayed";
+    if (completedStages === totalStages && totalStages > 0) return "Completed";
+    if (
+      completedStages === 0 &&
+      act.roadmap.every(
+        (s) => s.stageStatus === "Not Started" || !s.stageStatus,
+      )
+    ) {
+      return "Not Started";
+    }
+    return "In Progress";
+  };
 
   // Filter activities
   const filteredActivities = activities.filter((act) => {
@@ -177,12 +258,14 @@ export function ActivitiesListView({
     const matchesMethod = methodFilter === "ALL" || act.method === methodFilter;
     const matchesReview =
       reviewFilter === "ALL" || act.reviewType === reviewFilter;
-    return matchesSearch && matchesMethod && matchesReview;
+    const matchesStatus =
+      statusFilter === "ALL" || getActivityStatus(act) === statusFilter;
+    return matchesSearch && matchesMethod && matchesReview && matchesStatus;
   });
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200 pb-8">
-      {/* 1. SHORT & CONCISE BREADCRUMB NAVIGATION */}
+      {/* 1. CLEAN BREADCRUMB NAVIGATION (Plan for Review > Selected Plan Name > [Activity Ref No]) */}
       <nav
         aria-label="Breadcrumb"
         className="flex items-center gap-1.5 text-xs"
@@ -195,21 +278,12 @@ export function ActivitiesListView({
         </Link>
         <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
         {parentSection === "plan-for-review" ? (
-          <>
-            <button
-              onClick={onBackClick}
-              className="text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
-            >
-              Plan for Review
-            </button>
-            <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
-            <button
-              onClick={onBackClick}
-              className="text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
-            >
-              Review Plan
-            </button>
-          </>
+          <button
+            onClick={onBackClick}
+            className="text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
+          >
+            Plan for Review
+          </button>
         ) : (
           <button
             onClick={onBackClick}
@@ -221,13 +295,13 @@ export function ActivitiesListView({
         <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
         <button
           onClick={() => setSelectedActivity(null)}
-          className={`transition-colors cursor-pointer truncate max-w-[200px] ${
+          className={`transition-colors cursor-pointer truncate max-w-[260px] ${
             selectedActivity
               ? "text-slate-500 hover:text-slate-900"
               : "font-bold text-[#0A3C2F]"
           }`}
         >
-          Package Activities
+          {currentPlanName}
         </button>
         {selectedActivity && (
           <>
@@ -302,31 +376,46 @@ export function ActivitiesListView({
             </div>
           </section>
 
-          {/* Compact 4-Section Tabs */}
-          <div className="bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+          {/* 4-Step Stepper Bar (Matching Image 2) */}
+          <div className="bg-white py-4 px-6 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="relative flex items-center justify-between max-w-4xl mx-auto">
+              {/* Connecting Line */}
+              <div className="absolute top-4 left-10 right-10 h-0.5 bg-slate-200 z-0" />
+
               {[
-                { id: 1, label: "Step 1: Key Details", icon: FileText },
-                { id: 2, label: "Step 2: Related Info", icon: DollarSign },
-                { id: 3, label: "Step 3: Additional Details", icon: MapPin },
-                { id: 4, label: "Step 4: Roadmap", icon: Clock },
-              ].map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeDetailTab === tab.id;
+                { id: 1, label: "1. Key Details" },
+                { id: 2, label: "2. Related Info" },
+                { id: 3, label: "3. Additional Details" },
+                { id: 4, label: "4. Roadmap" },
+              ].map((step) => {
+                const isActive = activeDetailTab === step.id;
                 return (
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveDetailTab(tab.id as 1 | 2 | 3 | 4)}
-                    className={`py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      isActive
-                        ? "bg-[#0A3C2F] text-white shadow-2xs"
-                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                    }`}
+                    key={step.id}
+                    onClick={() => setActiveDetailTab(step.id as 1 | 2 | 3 | 4)}
+                    className="relative z-10 flex flex-col items-center group cursor-pointer focus:outline-none"
                   >
-                    <Icon
-                      className={`h-3.5 w-3.5 ${isActive ? "text-[#A3E635]" : "text-slate-400"}`}
-                    />
-                    <span>{tab.label}</span>
+                    {/* Circle Number Badge */}
+                    <div
+                      className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-white ${
+                        isActive
+                          ? "border-2 border-[#0A3C2F] text-[#0A3C2F] ring-4 ring-[#0A3C2F]/10 shadow-xs"
+                          : "border border-slate-300 text-slate-500 group-hover:border-slate-400 group-hover:text-slate-700"
+                      }`}
+                    >
+                      {step.id}
+                    </div>
+
+                    {/* Step Label Underneath */}
+                    <span
+                      className={`mt-2 text-xs transition-colors whitespace-nowrap ${
+                        isActive
+                          ? "font-bold text-[#0A3C2F]"
+                          : "font-medium text-slate-500 group-hover:text-slate-800"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
                   </button>
                 );
               })}
@@ -344,6 +433,31 @@ export function ActivitiesListView({
 
               {/* Unified Key-Value Table Sheet */}
               <div className="divide-y divide-slate-100 text-xs">
+                {/* Activity Description */}
+                <div className="py-2.5 flex items-start justify-between">
+                  <span className="font-semibold text-slate-500 w-1/3 pt-1">
+                    Activity Description
+                  </span>
+                  {isDirectorReview ? (
+                    <textarea
+                      rows={2}
+                      value={selectedActivity.description}
+                      onChange={(e) =>
+                        handleUpdateActivityField(
+                          selectedActivity.id,
+                          "description",
+                          e.target.value,
+                        )
+                      }
+                      className="w-2/3 rounded-xl border border-emerald-300 bg-white p-2.5 text-xs font-semibold text-slate-900 focus:border-[#0A3C2F] outline-none"
+                    />
+                  ) : (
+                    <span className="font-semibold text-slate-900 w-2/3">
+                      {selectedActivity.description}
+                    </span>
+                  )}
+                </div>
+
                 <div className="py-2.5 flex items-center justify-between">
                   <span className="font-semibold text-slate-500 w-1/3">
                     Procurement Category
@@ -473,14 +587,61 @@ export function ActivitiesListView({
                   </span>
                 </div>
 
+                {/* Estimated Amount */}
                 <div className="py-2.5 flex items-center justify-between">
                   <span className="font-semibold text-slate-500 w-1/3">
                     Estimated Amount
                   </span>
-                  <span className="font-mono font-extrabold text-slate-950 w-2/3">
-                    {selectedActivity.currency}{" "}
-                    {selectedActivity.estimatedAmount.toLocaleString()}
+                  {isDirectorReview ? (
+                    <div className="w-2/3 flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-500">
+                        {selectedActivity.currency}
+                      </span>
+                      <input
+                        type="number"
+                        value={selectedActivity.estimatedAmount}
+                        onChange={(e) =>
+                          handleUpdateActivityField(
+                            selectedActivity.id,
+                            "estimatedAmount",
+                            Number(e.target.value),
+                          )
+                        }
+                        className="w-48 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 font-mono font-bold text-xs text-slate-900 focus:border-[#0A3C2F] outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <span className="font-mono font-extrabold text-slate-950 w-2/3">
+                      {selectedActivity.currency}{" "}
+                      {selectedActivity.estimatedAmount.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Remarks / Comments */}
+                <div className="py-2.5 flex items-start justify-between">
+                  <span className="font-semibold text-slate-500 w-1/3 pt-1">
+                    Remarks / Comments
                   </span>
+                  {isDirectorReview ? (
+                    <textarea
+                      rows={2}
+                      value={selectedActivity.remarks || ""}
+                      onChange={(e) =>
+                        handleUpdateActivityField(
+                          selectedActivity.id,
+                          "remarks",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Enter clarification remarks..."
+                      className="w-2/3 rounded-xl border border-emerald-300 bg-white p-2.5 text-xs font-semibold text-slate-900 focus:border-[#0A3C2F] outline-none"
+                    />
+                  ) : (
+                    <span className="font-medium text-slate-800 w-2/3">
+                      {selectedActivity.remarks || "—"}
+                    </span>
+                  )}
                 </div>
 
                 <div className="py-2.5 flex items-center justify-between">
@@ -599,6 +760,32 @@ export function ActivitiesListView({
                     Longitude: {selectedActivity.longitude || "38.7525"}
                   </span>
                 </div>
+
+                {/* Remarks / Notes */}
+                <div className="py-2.5 flex items-start justify-between">
+                  <span className="font-semibold text-slate-500 w-1/3 pt-1">
+                    Remarks / Notes
+                  </span>
+                  {isDirectorReview ? (
+                    <textarea
+                      rows={2}
+                      value={selectedActivity.additionalRemarks || ""}
+                      onChange={(e) =>
+                        handleUpdateActivityField(
+                          selectedActivity.id,
+                          "additionalRemarks",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Enter additional notes..."
+                      className="w-2/3 rounded-xl border border-emerald-300 bg-white p-2.5 text-xs font-semibold text-slate-900 focus:border-[#0A3C2F] outline-none"
+                    />
+                  ) : (
+                    <span className="font-medium text-slate-800 w-2/3">
+                      {selectedActivity.additionalRemarks || "—"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -653,9 +840,28 @@ export function ActivitiesListView({
                             {stage.originalPlannedDate || "—"}
                           </td>
                           <td className="py-2 px-3 font-mono font-semibold text-slate-900">
-                            {stage.revisedTargetDate ||
+                            {isDirectorReview ? (
+                              <input
+                                type="date"
+                                value={
+                                  stage.revisedTargetDate ||
+                                  stage.originalPlannedDate ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  handleUpdateRoadmapDate(
+                                    selectedActivity.id,
+                                    stage.id,
+                                    e.target.value,
+                                  )
+                                }
+                                className="rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-xs font-mono font-bold text-slate-900 focus:border-[#0A3C2F] outline-none cursor-pointer"
+                              />
+                            ) : (
+                              stage.revisedTargetDate ||
                               stage.originalPlannedDate ||
-                              "—"}
+                              "—"
+                            )}
                           </td>
                           <td className="py-2 px-3 font-mono font-bold text-emerald-700">
                             {stage.actualDate || "—"}
@@ -685,48 +891,61 @@ export function ActivitiesListView({
       ) : (
         /* MAIN TABULAR ACTIVITY DIRECTORY */
         <div className="space-y-4">
-          {/* Context Header */}
-          <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Context Header Card Matching Screenshot 2 */}
+          <section className="rounded-xl border border-slate-200/80 bg-white p-4.5 shadow-2xs space-y-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onBackClick}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </button>
+              <span className="text-slate-300">•</span>
+              <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                {project.code}
+              </span>
+            </div>
+
+            {isDirectorReview ? (
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={onBackClick}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" /> Back
-                  </button>
-                  <span className="text-slate-300">•</span>
-                  <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
-                    {project.code}
-                  </span>
-                </div>
-
-                <h1 className="text-lg font-extrabold text-slate-950 tracking-tight">
-                  Package Activities — {plan.planName}
-                </h1>
-
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                  <span>
-                    Category:{" "}
-                    <strong className="text-slate-900">{plan.category}</strong>
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Fiscal Year:{" "}
-                    <strong className="text-slate-900">
-                      {plan.budgetYear}
-                    </strong>
-                  </span>
-                  <span>•</span>
-                  <span>
-                    Region:{" "}
-                    <strong className="text-slate-900">
-                      {plan.organizationRegion}
-                    </strong>
-                  </span>
-                </div>
+                <label className="block text-[10px] font-bold text-[#0A3C2F] uppercase tracking-wider">
+                  Plan Name (Editable for Minor Corrections / Typo Fixes)
+                </label>
+                <input
+                  type="text"
+                  value={currentPlanName}
+                  onChange={(e) => setCurrentPlanName(e.target.value)}
+                  placeholder="Enter plan name..."
+                  className="w-full text-base sm:text-lg font-extrabold text-slate-950 rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10 outline-none transition-all"
+                />
               </div>
+            ) : (
+              <h1 className="text-base sm:text-lg font-extrabold text-slate-950 tracking-tight leading-snug">
+                {currentPlanName}
+              </h1>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <span>
+                Category:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.category}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>
+                Fiscal Year:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.budgetYear}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>
+                Region:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.organizationRegion}
+                </strong>
+              </span>
             </div>
           </section>
 
@@ -751,7 +970,7 @@ export function ActivitiesListView({
                   onChange={(e) => setMethodFilter(e.target.value)}
                   className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
                 >
-                  <option value="ALL">All Procurement Methods</option>
+                  <option value="ALL">All Methods</option>
                   <option value="RFB - National">RFB - National</option>
                   <option value="RFB - International">
                     RFB - International
@@ -768,10 +987,24 @@ export function ActivitiesListView({
                   onChange={(e) => setReviewFilter(e.target.value)}
                   className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
                 >
-                  <option value="ALL">All Review Types</option>
+                  <option value="ALL">All Reviews</option>
                   <option value="Prior">Prior Review</option>
                   <option value="Post">Post Review</option>
                   <option value="Audit">Audit</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Delayed">Delayed</option>
                 </select>
               </div>
             </div>
@@ -798,7 +1031,7 @@ export function ActivitiesListView({
                       Estimated Amount
                     </th>
                     <th className="py-2.5 px-3 text-center min-w-[110px]">
-                      Progress
+                      Status
                     </th>
                     <th className="py-2.5 px-3 text-center min-w-[80px]">
                       Actions
@@ -824,9 +1057,44 @@ export function ActivitiesListView({
                         (s) => s.stageStatus === "Completed",
                       ).length;
                       const totalStages = act.roadmap.length;
-                      const percentComplete = Math.round(
-                        (completedStages / (totalStages || 1)) * 100,
+                      const hasDelay = act.roadmap.some(
+                        (s) =>
+                          (s.delayDays && s.delayDays > 0) ||
+                          s.remarks?.toLowerCase().includes("delay"),
                       );
+
+                      let computedStatus:
+                        | "Not Started"
+                        | "In Progress"
+                        | "Completed"
+                        | "Delayed" = "In Progress";
+                      if (hasDelay) {
+                        computedStatus = "Delayed";
+                      } else if (
+                        completedStages === totalStages &&
+                        totalStages > 0
+                      ) {
+                        computedStatus = "Completed";
+                      } else if (
+                        completedStages === 0 &&
+                        act.roadmap.every(
+                          (s) =>
+                            s.stageStatus === "Not Started" || !s.stageStatus,
+                        )
+                      ) {
+                        computedStatus = "Not Started";
+                      } else {
+                        computedStatus = "In Progress";
+                      }
+
+                      const statusColorStyle =
+                        computedStatus === "Completed"
+                          ? "text-[#166534] font-bold"
+                          : computedStatus === "Delayed"
+                            ? "text-[#b91c1c] font-extrabold"
+                            : computedStatus === "In Progress"
+                              ? "text-blue-700 font-bold"
+                              : "text-slate-500 font-semibold";
 
                       return (
                         <tr
@@ -874,11 +1142,9 @@ export function ActivitiesListView({
                             {act.estimatedAmount.toLocaleString()}
                           </td>
 
-                          <td className="py-2 px-3 text-center">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                              <Clock className="h-3 w-3 text-emerald-700" />
-                              {completedStages}/{totalStages} ({percentComplete}
-                              %)
+                          <td className="py-2 px-3 text-center whitespace-nowrap">
+                            <span className={`text-xs ${statusColorStyle}`}>
+                              {computedStatus}
                             </span>
                           </td>
 

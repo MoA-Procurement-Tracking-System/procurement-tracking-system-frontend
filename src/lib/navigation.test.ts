@@ -11,6 +11,7 @@ describe("role navigation permission matrix", () => {
         "Projects",
         "Plan for Review",
         "Committee Progress",
+        "Activity Tracker",
         "Reports",
       ],
     ],
@@ -26,6 +27,11 @@ describe("role navigation permission matrix", () => {
     expect(canAccessWorkspaceSection("OFFICER", "projects")).toBe(true);
     expect(canAccessWorkspaceSection("DIRECTOR", "projects")).toBe(true);
     expect(canAccessWorkspaceSection("ADMIN", "projects")).toBe(false);
+
+    expect(canAccessWorkspaceSection("DIRECTOR", "activity-tracker")).toBe(
+      true,
+    );
+    expect(canAccessWorkspaceSection("OFFICER", "activity-tracker")).toBe(true);
 
     expect(
       canAccessWorkspaceSection("ENDORSING_COMMITTEE", "plan-for-review"),

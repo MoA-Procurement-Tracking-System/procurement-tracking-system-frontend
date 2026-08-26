@@ -10,6 +10,10 @@ import {
   Info,
   Lock,
   Save,
+  Send,
+  RotateCcw,
+  MessageSquare,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
@@ -24,6 +28,7 @@ interface CreatePlanFormProps {
   project: ProjectItem;
   initialData?: ProcurementPlan | null;
   userRole?: "OFFICER" | "DIRECTOR" | "ADMIN";
+  readOnly?: boolean;
   onBackClick: () => void;
   onSavePlan: (plan: ProcurementPlan) => void;
 }
@@ -54,10 +59,11 @@ export function CreatePlanForm({
   project,
   initialData,
   userRole = "OFFICER",
+  readOnly = false,
   onBackClick,
   onSavePlan,
 }: CreatePlanFormProps) {
-  const isDirector = userRole === "DIRECTOR";
+  const isDirector = userRole === "DIRECTOR" || readOnly;
 
   const [budgetYear, setBudgetYear] = useState(
     initialData?.budgetYear || project.budgetYear || "2018 EFY (2025/2026)",
@@ -89,6 +95,7 @@ export function CreatePlanForm({
   );
 
   const [dateError, setDateError] = useState<string | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
 
   const handleCategoryChange = (newCategory: PlanCategory) => {
     setCategory(newCategory);
@@ -126,6 +133,14 @@ export function CreatePlanForm({
     }
 
     const finalStatus = targetStatus || status;
+    let finalDescription = description.trim();
+
+    if (targetStatus === "Submitted to Director" && revisionComment.trim()) {
+      const timeStamp = new Date().toLocaleDateString();
+      finalDescription = finalDescription
+        ? `${finalDescription}\n[Officer Revision (${timeStamp})]: ${revisionComment.trim()}`
+        : `[Officer Revision (${timeStamp})]: ${revisionComment.trim()}`;
+    }
 
     const savedPlan: ProcurementPlan = {
       id: initialData?.id || `plan-${Date.now()}`,
@@ -138,7 +153,7 @@ export function CreatePlanForm({
       planPeriodFrom,
       planPeriodTo,
       organizationRegion,
-      description: description.trim() || undefined,
+      description: finalDescription || undefined,
       approvalDate:
         finalStatus === "Committee Review" || finalStatus === "Finally Approved"
           ? new Date().toISOString().split("T")[0]
@@ -228,6 +243,26 @@ export function CreatePlanForm({
 
       {/* 2. Procurement Plan Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* RETURNED PLAN REVISION ALERT BANNER */}
+        {!isDirector &&
+          (status === "Returned" || initialData?.status === "Returned") && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 space-y-2 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+                <RotateCcw className="h-4.5 w-4.5 text-amber-700" />
+                <span>Plan Returned for Revision</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                This procurement plan was returned by the Director or Management
+                Committee for revision. Make your updates below, add your
+                revision comments, and click{" "}
+                <strong className="text-amber-950">
+                  Resend to Director for Approval
+                </strong>
+                .
+              </p>
+            </div>
+          )}
+
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
@@ -261,10 +296,10 @@ export function CreatePlanForm({
               onChange={(e) =>
                 handleCategoryChange(e.target.value as PlanCategory)
               }
-              disabled={isDirector || isDraftPlanForDirector}
+              disabled={readOnly || isDirector || isDraftPlanForDirector}
               className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                isDirector
-                  ? "bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed"
+                readOnly || isDirector
+                  ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                   : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
               }`}
               required
@@ -275,23 +310,6 @@ export function CreatePlanForm({
                 </option>
               ))}
             </select>
-
-            {/* Category Explanation & Examples box */}
-            {selectedCategoryInfo && (
-              <div className="mt-2.5 rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs leading-relaxed text-slate-700">
-                <p className="font-bold text-slate-900">
-                  {selectedCategoryInfo.category} Category Examples:
-                </p>
-                <p className="text-slate-600 mt-0.5">
-                  {selectedCategoryInfo.examples}
-                </p>
-                <p className="text-[11px] font-semibold text-emerald-800 mt-1.5 flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  Activities created inside this Plan strictly inherit this
-                  category.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Plan Name */}
@@ -303,9 +321,13 @@ export function CreatePlanForm({
               type="text"
               value={planName}
               onChange={(e) => setPlanName(e.target.value)}
-              disabled={isDraftPlanForDirector}
+              disabled={readOnly || isDraftPlanForDirector}
               placeholder="e.g. BREFONS - Goods Procurement Plan - 2018 EFY"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                readOnly
+                  ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
+                  : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
+              }`}
               required
             />
           </div>
@@ -327,10 +349,10 @@ export function CreatePlanForm({
               <select
                 value={budgetYear}
                 onChange={(e) => handleBudgetYearChange(e.target.value)}
-                disabled={isDirector || isDraftPlanForDirector}
+                disabled={readOnly || isDirector || isDraftPlanForDirector}
                 className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                  isDirector
-                    ? "bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed"
+                  readOnly || isDirector
+                    ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
                 }`}
                 required
@@ -351,8 +373,12 @@ export function CreatePlanForm({
               <select
                 value={organizationRegion}
                 onChange={(e) => setOrganizationRegion(e.target.value)}
-                disabled={isDraftPlanForDirector}
-                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 bg-white focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors"
+                disabled={readOnly || isDraftPlanForDirector}
+                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                  readOnly
+                    ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
+                    : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
+                }`}
                 required
               >
                 {ORGANIZATION_REGION_OPTIONS.map((reg) => (
@@ -388,8 +414,12 @@ export function CreatePlanForm({
                   type="date"
                   value={planPeriodFrom}
                   onChange={(e) => setPlanPeriodFrom(e.target.value)}
-                  disabled={isDraftPlanForDirector}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors"
+                  disabled={readOnly || isDraftPlanForDirector}
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                    readOnly
+                      ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
+                      : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
+                  }`}
                   required
                 />
               </div>
@@ -401,8 +431,12 @@ export function CreatePlanForm({
                   type="date"
                   value={planPeriodTo}
                   onChange={(e) => setPlanPeriodTo(e.target.value)}
-                  disabled={isDraftPlanForDirector}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors"
+                  disabled={readOnly || isDraftPlanForDirector}
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                    readOnly
+                      ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
+                      : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
+                  }`}
                   required
                 />
               </div>
@@ -419,10 +453,10 @@ export function CreatePlanForm({
                 type="date"
                 value={generalNoticeDate}
                 onChange={(e) => setGeneralNoticeDate(e.target.value)}
-                disabled={isDirector || isDraftPlanForDirector}
+                disabled={readOnly || isDirector || isDraftPlanForDirector}
                 className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                  isDirector
-                    ? "bg-slate-100 text-slate-600 border-slate-200 cursor-not-allowed"
+                  readOnly || isDirector
+                    ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
                 }`}
               />
@@ -435,9 +469,9 @@ export function CreatePlanForm({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as PlanStatus)}
-                disabled={isDirector || isDraftPlanForDirector}
+                disabled={readOnly || isDirector || isDraftPlanForDirector}
                 className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                  isDirector
+                  readOnly || isDirector
                     ? "bg-slate-100 text-slate-800 font-bold border-slate-200 cursor-not-allowed"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
                 }`}
@@ -462,11 +496,36 @@ export function CreatePlanForm({
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              disabled={isDraftPlanForDirector}
+              disabled={readOnly || isDraftPlanForDirector}
               placeholder="Plan-level notes, special coverage notes or donor guidelines..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors"
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                readOnly
+                  ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
+                  : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
+              }`}
             />
           </div>
+
+          {/* Officer Revision Comment Box */}
+          {!isDirector &&
+            (status === "Returned" || initialData?.status === "Returned") && (
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <MessageSquare className="h-4 w-4 text-[#0A3C2F]" />
+                  <span>
+                    Officer Revision Comment / Justification for Director{" "}
+                    <span className="text-rose-600">*</span>
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={revisionComment}
+                  onChange={(e) => setRevisionComment(e.target.value)}
+                  placeholder="Explain the revisions made to address feedback before resending to the Director..."
+                  className="w-full rounded-xl border border-amber-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors bg-white"
+                />
+              </div>
+            )}
 
           {/* Form Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
@@ -478,20 +537,43 @@ export function CreatePlanForm({
               Back to Plans List
             </button>
 
-            {!isDraftPlanForDirector && (
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A3C2F] hover:bg-[#072b22] text-xs sm:text-sm font-bold text-white shadow-xs transition-colors cursor-pointer"
-              >
-                <Save className="h-4 w-4" />
-                <span>
-                  {isDirector
-                    ? "Save Edits"
-                    : initialData
-                      ? "Save Changes"
-                      : "Create Procurement Plan"}
-                </span>
-              </button>
+            {!readOnly && !isDraftPlanForDirector && (
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-800 transition-colors cursor-pointer"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>
+                    {isDirector
+                      ? "Save Edits"
+                      : initialData
+                        ? "Save Changes"
+                        : "Create Procurement Plan"}
+                  </span>
+                </button>
+
+                {!isDirector &&
+                  (status === "Returned" ||
+                    initialData?.status === "Returned" ||
+                    status === "Draft") && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSaveWithStatus("Submitted to Director")
+                      }
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A3C2F] hover:bg-[#072b22] text-xs sm:text-sm font-bold text-white shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>
+                        {status === "Returned" ||
+                        initialData?.status === "Returned"
+                          ? "Resend to Director for Approval"
+                          : "Submit to Director"}
+                      </span>
+                    </button>
+                  )}
+              </div>
             )}
           </div>
         </section>

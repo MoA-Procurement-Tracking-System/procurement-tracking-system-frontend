@@ -72,6 +72,13 @@ export function AppShell({
   const navigation = getNavigationForRole(user.role);
   const userInitials = initials(user.displayName);
 
+  const handleNavClick = (href: string) => {
+    setIsMobileMenuOpen(false);
+    if (pathname === href) {
+      window.location.href = href;
+    }
+  };
+
   const sidebar = (
     <aside className="flex h-full w-64 flex-col justify-between bg-[#0A3C2F] text-white border-r border-[#125442] shrink-0 z-20">
       <div>
@@ -114,7 +121,7 @@ export function AppShell({
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => handleNavClick(item.href)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? "bg-[#A3E635] text-[#082920] font-semibold shadow-sm"

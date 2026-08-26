@@ -125,7 +125,7 @@ export const officerProjects: readonly OfficerProject[] = [
         inProgressActivities: 3,
         name: "2017 EFY Procurement Pipeline",
         reference: "PP-DRIVE-2017-01",
-        status: "Returned",
+        status: "Submitted to Director",
       },
     ],
     projectPeriod: {
@@ -211,7 +211,7 @@ export const officerProjects: readonly OfficerProject[] = [
         inProgressActivities: 3,
         name: "2017 EFY Regional Procurement Plan",
         reference: "PP-BREFONS-2017-01",
-        status: "Returned",
+        status: "Submitted to Director",
       },
       {
         activities: 3,

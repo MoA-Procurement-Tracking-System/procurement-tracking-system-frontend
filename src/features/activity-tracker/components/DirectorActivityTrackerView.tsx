@@ -67,19 +67,10 @@ export type TrackerDisplayStatus =
   | "Terminated";
 
 type TrackerQuickFilter =
-  | "all"
-  | "completed"
-  | "delayed"
-  | "due-soon"
-  | "in-progress";
+  "all" | "completed" | "delayed" | "due-soon" | "in-progress";
 
 type TrackerSort =
-  | "attention"
-  | "delay-desc"
-  | "reference"
-  | "stage"
-  | "status"
-  | "target-asc";
+  "attention" | "delay-desc" | "reference" | "stage" | "status" | "target-asc";
 
 const DUE_SOON_DAYS = 7;
 const PAGE_SIZE = 10;
@@ -476,9 +467,7 @@ function DirectorActivityTrackerList({
   const officerOptions = useMemo(
     () =>
       Array.from(
-        new Set(
-          items.flatMap((item) => item.project.assignedOfficers ?? []),
-        ),
+        new Set(items.flatMap((item) => item.project.assignedOfficers ?? [])),
       ).filter(Boolean),
     [items],
   );
@@ -487,12 +476,11 @@ function DirectorActivityTrackerList({
     () =>
       Array.from(
         new Set(
-          items.map((item) =>
-            (
+          items.map(
+            (item) =>
               item.plan.organizationRegion?.trim() ||
               item.project.organizationRegion?.trim() ||
-              item.project.countryOrganisation
-            ),
+              item.project.countryOrganisation,
           ),
         ),
       ).filter(Boolean),
@@ -657,10 +645,10 @@ function DirectorActivityTrackerList({
             Director Activity Tracker
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-3xl">
-            Track active officer progress, procurement milestones, stage completion, and critical project delays across the directorate.
+            Track active officer progress, procurement milestones, stage
+            completion, and critical project delays across the directorate.
           </p>
         </div>
-        
       </div>
 
       {/* 3. Quick Stats Filter Bar */}
@@ -891,7 +879,9 @@ function DirectorActivityTrackerList({
                 {/* Target Date From */}
                 <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
                   <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-                  <span className="text-slate-500 font-medium mr-1 shrink-0">Target From:</span>
+                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                    Target From:
+                  </span>
                   <input
                     type="date"
                     value={targetDateFrom}
@@ -903,7 +893,9 @@ function DirectorActivityTrackerList({
                 {/* Target Date To */}
                 <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
                   <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-                  <span className="text-slate-500 font-medium mr-1 shrink-0">Target To:</span>
+                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                    Target To:
+                  </span>
                   <input
                     type="date"
                     value={targetDateTo}
@@ -986,7 +978,8 @@ function DirectorActivityTrackerList({
                           {item.activity.description}
                         </button>
                         <p className="mt-1 text-[11px] text-slate-500 font-medium">
-                          {progress.completed} of {progress.total} stages completed ({progress.percent}%)
+                          {progress.completed} of {progress.total} stages
+                          completed ({progress.percent}%)
                         </p>
                       </td>
                       <td className="py-3.5 px-4">
@@ -1063,7 +1056,8 @@ function DirectorActivityTrackerList({
                       No tracked activities found
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Try clearing search queries or selecting different filters.
+                      Try clearing search queries or selecting different
+                      filters.
                     </p>
                   </td>
                 </tr>
@@ -1155,15 +1149,16 @@ function DirectorActivityDetailView({
   item: DirectorTrackedActivityItem;
   onBack: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "roadmap" | "contract">(
-    "overview",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "roadmap" | "contract"
+  >("overview");
   const todayIso = new Date().toISOString().slice(0, 10);
   const stage = trackerCurrentStage(item, todayIso);
   const progress = trackerStageProgress(item);
   const roadmap = item.activity.details?.roadmap ?? [];
   const form = item.activity.details?.form;
-  const officerNames = (item.project.assignedOfficers ?? []).join(", ") || "Unassigned";
+  const officerNames =
+    (item.project.assignedOfficers ?? []).join(", ") || "Unassigned";
 
   const displayStatus = trackerDisplayStatus(item, todayIso);
 
@@ -1204,7 +1199,6 @@ function DirectorActivityDetailView({
             <span className="font-mono text-xs font-bold text-[#0A3C2F] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
               {item.project.code}
             </span>
-            
           </div>
         </div>
 
@@ -1217,9 +1211,13 @@ function DirectorActivityDetailView({
               {item.activity.reference}
             </span>
             <span>•</span>
-            <span className="font-semibold text-slate-800">{item.project.shortName}</span>
+            <span className="font-semibold text-slate-800">
+              {item.project.shortName}
+            </span>
             <span>•</span>
-            <span>{item.plan.name} ({item.plan.reference})</span>
+            <span>
+              {item.plan.name} ({item.plan.reference})
+            </span>
           </div>
         </div>
 
@@ -1234,7 +1232,6 @@ function DirectorActivityDetailView({
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
-            
             <span>Overview</span>
           </button>
 
@@ -1247,7 +1244,6 @@ function DirectorActivityDetailView({
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
-            
             <span>Roadmap ({roadmap.length} Stages)</span>
           </button>
 
@@ -1260,7 +1256,6 @@ function DirectorActivityDetailView({
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
-            
             <span>Contract</span>
           </button>
         </div>
@@ -1277,65 +1272,102 @@ function DirectorActivityDetailView({
                 Approved Activity & Baseline Information
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Complete approved procurement baseline data, target tracking summary, and assigned officer log.
+                Complete approved procurement baseline data, target tracking
+                summary, and assigned officer log.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-5 text-xs border-t border-slate-100 pt-5">
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reference No.</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Reference No.
+                </p>
                 <p className="font-mono font-bold text-[#0A3C2F] text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 inline-block">
                   {item.activity.reference}
                 </p>
               </div>
 
               <div className="space-y-1 sm:col-span-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity Description</p>
-                <p className="font-extrabold text-slate-900 text-sm leading-snug">{item.activity.description}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Activity Description
+                </p>
+                <p className="font-extrabold text-slate-900 text-sm leading-snug">
+                  {item.activity.description}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project</p>
-                <p className="font-bold text-slate-800 text-xs">{item.project.shortName} ({item.project.code})</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Project
+                </p>
+                <p className="font-bold text-slate-800 text-xs">
+                  {item.project.shortName} ({item.project.code})
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Procurement Plan</p>
-                <p className="font-bold text-slate-800 text-xs">{item.plan.name}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Procurement Plan
+                </p>
+                <p className="font-bold text-slate-800 text-xs">
+                  {item.plan.name}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fiscal Year</p>
-                <p className="font-bold text-slate-800 text-xs">{item.plan.budgetYear}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Fiscal Year
+                </p>
+                <p className="font-bold text-slate-800 text-xs">
+                  {item.plan.budgetYear}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category & Method</p>
-                <p className="font-bold text-slate-800 text-xs">{item.activity.category} • {item.activity.method}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Category & Method
+                </p>
+                <p className="font-bold text-slate-800 text-xs">
+                  {item.activity.category} • {item.activity.method}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated Amount</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Estimated Amount
+                </p>
                 <p className="font-extrabold text-slate-900 text-xs">
-                  {formatAmount(item.activity.estimatedAmount)} {form?.currency || item.plan.currency}
+                  {formatAmount(item.activity.estimatedAmount)}{" "}
+                  {form?.currency || item.plan.currency}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Funding Source</p>
-                <p className="font-bold text-slate-800 text-xs">{form?.fundingSource || item.project.fundingSource}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Funding Source
+                </p>
+                <p className="font-bold text-slate-800 text-xs">
+                  {form?.fundingSource || item.project.fundingSource}
+                </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Market Approach & Review</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Market Approach & Review
+                </p>
                 <p className="font-semibold text-slate-700 text-xs">
-                  {form?.marketApproach || "Open"} • {form?.reviewType || "Prior Review"}
+                  {form?.marketApproach || "Open"} •{" "}
+                  {form?.reviewType || "Prior Review"}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Officer(s)</p>
-                <p className="font-extrabold text-[#0A3C2F] text-xs">{officerNames}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Assigned Officer(s)
+                </p>
+                <p className="font-extrabold text-[#0A3C2F] text-xs">
+                  {officerNames}
+                </p>
               </div>
             </div>
           </div>
@@ -1343,22 +1375,31 @@ function DirectorActivityDetailView({
           {/* Integrated Execution Status Bar */}
           <div className="bg-slate-50 border-t border-slate-200/80 p-6 sm:p-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall Status</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Overall Status
+              </p>
               <div className="pt-1">
                 <StatusText className="text-xs" label={displayStatus} />
               </div>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Stage</p>
-              <p className="font-extrabold text-slate-900 text-xs pt-0.5">{stage.name}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Current Stage
+              </p>
+              <p className="font-extrabold text-slate-900 text-xs pt-0.5">
+                {stage.name}
+              </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Roadmap Progress</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Roadmap Progress
+              </p>
               <div className="pt-0.5 space-y-1.5">
                 <p className="font-extrabold text-slate-900 text-xs">
-                  {progress.completed} of {progress.total} Stages ({progress.percent}%)
+                  {progress.completed} of {progress.total} Stages (
+                  {progress.percent}%)
                 </p>
                 <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                   <div
@@ -1370,9 +1411,12 @@ function DirectorActivityDetailView({
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">General Execution Note</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                General Execution Note
+              </p>
               <p className="font-medium text-slate-700 text-xs leading-relaxed pt-0.5">
-                {item.tracking.generalRemarks || "No officer execution notes recorded."}
+                {item.tracking.generalRemarks ||
+                  "No officer execution notes recorded."}
               </p>
             </div>
           </div>
@@ -1389,7 +1433,8 @@ function DirectorActivityDetailView({
                 Stage Lifecycle & Milestone Tracking Roadmap
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Read-only view of original planned dates, revised targets, actual completion dates, and officer stage logs.
+                Read-only view of original planned dates, revised targets,
+                actual completion dates, and officer stage logs.
               </p>
             </div>
           </div>
@@ -1400,10 +1445,16 @@ function DirectorActivityDetailView({
                 <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4 text-center w-12">#</th>
                   <th className="py-3.5 px-4 min-w-[220px]">Stage Name</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">Original Planned Target</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">Effective Target</th>
+                  <th className="py-3.5 px-4 min-w-[140px]">
+                    Original Planned Target
+                  </th>
+                  <th className="py-3.5 px-4 min-w-[140px]">
+                    Effective Target
+                  </th>
                   <th className="py-3.5 px-4 min-w-[120px]">Status</th>
-                  <th className="py-3.5 px-4 text-center min-w-[100px]">Delay</th>
+                  <th className="py-3.5 px-4 text-center min-w-[100px]">
+                    Delay
+                  </th>
                   <th className="py-3.5 px-4 min-w-[200px]">Officer Remarks</th>
                 </tr>
               </thead>
@@ -1413,7 +1464,10 @@ function DirectorActivityDetailView({
                   const isNotApp = tracking.status === "Not Applicable";
                   const isComp = tracking.status === "Completed";
                   const delay = calculateDelayDays(
-                    { ethiopian: stg.ethiopianDate, gregorian: stg.gregorianDate },
+                    {
+                      ethiopian: stg.ethiopianDate,
+                      gregorian: stg.gregorianDate,
+                    },
                     tracking,
                     todayIso,
                   );
@@ -1432,29 +1486,43 @@ function DirectorActivityDetailView({
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-800">{stg.gregorianDate || "—"}</p>
+                        <p className="font-semibold text-slate-800">
+                          {stg.gregorianDate || "—"}
+                        </p>
                         {stg.ethiopianDate && (
-                          <p className="text-[10px] text-slate-500">{stg.ethiopianDate}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {stg.ethiopianDate}
+                          </p>
                         )}
                       </td>
                       <td className="py-3.5 px-4">
                         <p className="font-bold text-slate-900">
                           {effectiveTargetDate(
-                            { ethiopian: stg.ethiopianDate, gregorian: stg.gregorianDate },
+                            {
+                              ethiopian: stg.ethiopianDate,
+                              gregorian: stg.gregorianDate,
+                            },
                             tracking,
                           ).gregorian || "—"}
                         </p>
                       </td>
                       <td className="py-3.5 px-4">
-                        <StatusText className="text-[10px]" label={tracking.status} />
+                        <StatusText
+                          className="text-[10px]"
+                          label={tracking.status}
+                        />
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         {delay === null || isComp || isNotApp ? (
                           <span className="text-slate-400">—</span>
                         ) : delay > 0 ? (
-                          <span className="font-bold text-[#b91c1c]">{delay}d delayed</span>
+                          <span className="font-bold text-[#b91c1c]">
+                            {delay}d delayed
+                          </span>
                         ) : (
-                          <span className="font-semibold text-[#166534]">0d</span>
+                          <span className="font-semibold text-[#166534]">
+                            0d
+                          </span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-slate-600">
@@ -1479,42 +1547,58 @@ function DirectorActivityDetailView({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs">
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contract Process Status</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Contract Process Status
+              </p>
               <div className="pt-1">
-                <StatusText className="text-xs" label={item.tracking.processStatus} />
+                <StatusText
+                  className="text-xs"
+                  label={item.tracking.processStatus}
+                />
               </div>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity Reference</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Activity Reference
+              </p>
               <p className="font-mono font-bold text-[#0A3C2F] text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 inline-block">
                 {item.activity.reference}
               </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Base Currency</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Base Currency
+              </p>
               <p className="font-extrabold text-slate-900 text-xs pt-0.5">
                 {form?.currency || item.plan.currency}
               </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Executing Agency</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Executing Agency
+              </p>
               <p className="font-extrabold text-slate-900 text-xs pt-0.5">
-                {item.project.executingAgency} ({item.project.countryOrganisation})
+                {item.project.executingAgency} (
+                {item.project.countryOrganisation})
               </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Funding Source</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Funding Source
+              </p>
               <p className="font-extrabold text-slate-900 text-xs pt-0.5">
                 {form?.fundingSource || item.project.fundingSource}
               </p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Record Updated</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Record Updated
+              </p>
               <p className="font-semibold text-slate-700 text-xs pt-0.5">
                 {new Date(item.tracking.updatedAt).toLocaleDateString()}
               </p>
@@ -1523,7 +1607,10 @@ function DirectorActivityDetailView({
 
           <div className="flex items-center gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500 font-medium">
             <LockKeyhole className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span>Activity Tracker execution handoff details are read-only for Director oversight.</span>
+            <span>
+              Activity Tracker execution handoff details are read-only for
+              Director oversight.
+            </span>
           </div>
         </div>
       )}

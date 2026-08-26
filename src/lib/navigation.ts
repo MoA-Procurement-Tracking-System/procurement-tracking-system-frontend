@@ -49,7 +49,7 @@ const workspaceSections = {
     href: "/workspace/activity-tracker",
     icon: "activity",
     description: "Track procurement activities, milestones and upcoming work.",
-    allowedRoles: ["OFFICER"],
+    allowedRoles: ["OFFICER", "DIRECTOR"],
   },
   "plan-for-review": {
     section: "plan-for-review",
@@ -86,7 +86,7 @@ const workspaceSections = {
   "user-management": {
     section: "user-management",
     label: "User Management",
-    href: "/admin/users",
+    href: "/workspace/user-management",
     icon: "users",
     description: "Manage authorized users, account status and assigned roles.",
     allowedRoles: ["ADMIN"],
@@ -105,7 +105,13 @@ type WorkspaceSectionKey = keyof typeof workspaceSections;
 
 const roleSectionOrder: Record<UserRole, readonly WorkspaceSectionKey[]> = {
   OFFICER: ["projects", "contracts", "activity-tracker"],
-  DIRECTOR: ["projects", "plan-for-review", "committee-progress", "reports"],
+  DIRECTOR: [
+    "projects",
+    "plan-for-review",
+    "committee-progress",
+    "activity-tracker",
+    "reports",
+  ],
   ENDORSING_COMMITTEE: ["plan-for-review", "my-decisions"],
   ADMIN: ["user-management", "system-logs"],
 };

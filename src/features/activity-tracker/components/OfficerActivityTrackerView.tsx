@@ -39,6 +39,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  House,
   RotateCcw,
   Search,
 } from "lucide-react";
@@ -693,13 +694,14 @@ function ActivityTrackerList({
   return (
     <div className="w-full min-w-0 space-y-5 overflow-x-hidden pb-6">
       <header>
-        <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
+        <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
           <ol className="flex items-center gap-2">
             <li>
               <Link
-                className="hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                className="inline-flex items-center gap-1 hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
                 href="/dashboard/officer"
               >
+                <House aria-hidden="true" className="h-3.5 w-3.5" />
                 Home
               </Link>
             </li>
@@ -755,185 +757,243 @@ function ActivityTrackerList({
         />
       </nav>
 
+      {/* Filters Panel matching Screenshot */}
       <section
         aria-label="Activity tracker filters"
-        className="w-full rounded-md border border-slate-300 bg-white p-3 shadow-sm"
+        className="w-full rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs space-y-3"
       >
-        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search tracked activities</span>
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-500"
-            />
+        {/* Row 1: Search, Project, Category, Method, More Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
-              className="h-10 w-full rounded-sm border border-slate-300 bg-[#fbfcfd] pr-3 pl-10 text-xs text-slate-800 outline-none transition placeholder:text-slate-500 hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search reference, activity, project, or stage..."
               type="search"
               value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search reference, activity, project, or stage..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0A3C2F] transition-all"
             />
-          </label>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:flex lg:items-center">
-            <div className="w-full lg:w-36">
-              <CompactSelect
-                label="Project"
-                onChange={setProjectCode}
-                options={[
-                  { label: "All Projects", value: "all" },
-                  ...projectOptions.map(([value, label]) => ({ label, value })),
-                ]}
-                value={projectCode}
-              />
-            </div>
-            <div className="w-full lg:w-40">
-              <CompactSelect
-                label="Category"
-                onChange={setCategory}
-                options={[
-                  { label: "All Categories", value: "all" },
-                  ...categoryOptions.map((value) => ({ label: value, value })),
-                ]}
-                value={category}
-              />
-            </div>
-            <div className="w-full lg:w-36">
-              <CompactSelect
-                label="Method"
-                onChange={setMethod}
-                options={[
-                  { label: "All Methods", value: "all" },
-                  ...methodOptions.map((value) => ({ label: value, value })),
-                ]}
-                value={method}
-              />
-            </div>
-            <button
-              aria-expanded={showMoreFilters}
-              className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-sm border px-3.5 text-xs font-bold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] ${
-                showMoreFilters || additionalFilterCount > 0
-                  ? "border-[#7caa98] bg-[#edf5f1] text-[#07523f]"
-                  : "border-slate-300 bg-[#fbfcfd] text-slate-700 hover:border-[#9fb8ad] hover:bg-white"
-              }`}
-              onClick={() => setShowMoreFilters((current) => !current)}
-              type="button"
-            >
-              <Filter aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-              More Filters
-              {additionalFilterCount > 0 ? ` (${additionalFilterCount})` : null}
-            </button>
           </div>
+
+          {/* Project Dropdown */}
+          <select
+            value={projectCode}
+            onChange={(e) => setProjectCode(e.target.value)}
+            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
+          >
+            <option value="all">All Projects</option>
+            {projectOptions.map(([val, name]) => (
+              <option key={val} value={val}>
+                {name} ({val})
+              </option>
+            ))}
+          </select>
+
+          {/* Category Dropdown */}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
+          >
+            <option value="all">All Categories</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          {/* Method Dropdown */}
+          <select
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
+          >
+            <option value="all">All Methods</option>
+            {methodOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+
+          {/* More Filters Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowMoreFilters((prev) => !prev)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              showMoreFilters || additionalFilterCount > 0
+                ? "bg-emerald-50 text-[#0A3C2F] border-emerald-300 shadow-2xs"
+                : "bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200 text-[#0A3C2F]"
+            }`}
+          >
+            <Filter className="h-4 w-4 text-[#0A3C2F]" />
+            <span>More Filters</span>
+            {additionalFilterCount > 0 ? (
+              <span className="bg-[#0A3C2F] text-white px-1.5 py-0.5 rounded-full text-[10px] font-extrabold">
+                {additionalFilterCount}
+              </span>
+            ) : null}
+          </button>
         </div>
 
-        {showMoreFilters ? (
-          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-            <CompactSelect
-              label="Procurement Plan"
-              onChange={setPlanReference}
-              options={[
-                { label: "All Procurement Plans", value: "all" },
-                ...planOptions.map(([value, label]) => ({ label, value })),
-              ]}
-              value={planReference}
-            />
-            <CompactSelect
-              label="Fiscal Year"
-              onChange={setFiscalYear}
-              options={[
-                { label: "All Fiscal Years", value: "all" },
-                ...fiscalYearOptions.map((value) => ({ label: value, value })),
-              ]}
-              value={fiscalYear}
-            />
-            <CompactSelect
-              label="Overall Status"
-              onChange={setDisplayStatus}
-              options={[
-                { label: "All Statuses", value: "all" },
-                { label: "Not Started", value: "Not Started" },
-                { label: "In Progress", value: "In Progress" },
-                { label: "Delayed", value: "Delayed" },
-                { label: "Contracted", value: "Contracted" },
-                { label: "Completed", value: "Completed" },
-                { label: "Terminated", value: "Terminated" },
-              ]}
-              value={displayStatus}
-            />
-            <CompactSelect
-              label="Delay Status"
-              onChange={setDelayStatus}
-              options={[
-                { label: "All Delay Statuses", value: "all" },
-                { label: "Delayed", value: "delayed" },
-                { label: "Due Soon", value: "due-soon" },
-                { label: "On Schedule", value: "on-schedule" },
-              ]}
-              value={delayStatus}
-            />
-            <CompactSelect
-              label="Current Stage"
-              onChange={setCurrentStage}
-              options={[
-                { label: "All Current Stages", value: "all" },
-                ...currentStageOptions.map((value) => ({
-                  label: value,
-                  value,
-                })),
-              ]}
-              value={currentStage}
-            />
-            <CompactDateInput
-              label="Target From"
-              max={targetDateTo || undefined}
-              onChange={setTargetDateFrom}
-              value={targetDateFrom}
-            />
-            <CompactSelect
-              label="Organization or Region"
-              onChange={setOrganization}
-              options={[
-                { label: "All Organizations", value: "all" },
-                ...organizationOptions.map((value) => ({
-                  label: value,
-                  value,
-                })),
-              ]}
-              value={organization}
-            />
-            <CompactSelect
-              icon={<ArrowUpDown aria-hidden="true" className="h-3.5 w-3.5" />}
-              label="Sort By"
-              onChange={(value) => setSortBy(value as TrackerSort)}
-              options={[
-                { label: "Attention Priority", value: "attention" },
-                { label: "Target Date", value: "target-asc" },
-                { label: "Delay Days", value: "delay-desc" },
-                { label: "Current Stage", value: "stage" },
-                { label: "Reference", value: "reference" },
-                { label: "Overall Status", value: "status" },
-              ]}
-              value={sortBy}
-            />
-            <CompactDateInput
-              label="Target To"
-              min={targetDateFrom || undefined}
-              onChange={setTargetDateTo}
-              value={targetDateTo}
-            />
+        {/* Expanded 3-Column Grid matching Screenshot */}
+        {showMoreFilters && (
+          <div className="pt-3 border-t border-slate-200/80 space-y-3 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Column 1 */}
+              <div className="space-y-3">
+                {/* All Procurement Plans */}
+                <select
+                  value={planReference}
+                  onChange={(e) => setPlanReference(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Procurement Plans</option>
+                  {planOptions.map(([val, label]) => (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* All Delay Statuses */}
+                <select
+                  value={delayStatus}
+                  onChange={(e) => setDelayStatus(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Delay Statuses</option>
+                  <option value="delayed">Delayed</option>
+                  <option value="due-soon">Due Soon</option>
+                  <option value="on-schedule">On Schedule</option>
+                </select>
+
+                {/* All Organizations */}
+                <select
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Organizations</option>
+                  {organizationOptions.map((org) => (
+                    <option key={org} value={org}>
+                      {org}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Column 2 */}
+              <div className="space-y-3">
+                {/* All Fiscal Years */}
+                <select
+                  value={fiscalYear}
+                  onChange={(e) => setFiscalYear(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Fiscal Years</option>
+                  {fiscalYearOptions.map((fy) => (
+                    <option key={fy} value={fy}>
+                      {fy}
+                    </option>
+                  ))}
+                </select>
+
+                {/* All Current Stages */}
+                <select
+                  value={currentStage}
+                  onChange={(e) => setCurrentStage(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Current Stages</option>
+                  {currentStageOptions.map((stg) => (
+                    <option key={stg} value={stg}>
+                      {stg}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Attention Priority / Sort By */}
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as TrackerSort)}
+                    className="w-full px-3.5 py-2.5 pl-8 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                  >
+                    <option value="attention">Attention Priority</option>
+                    <option value="target-asc">Target Date</option>
+                    <option value="delay-desc">Delay Days</option>
+                    <option value="stage">Current Stage</option>
+                    <option value="reference">Reference</option>
+                    <option value="status">Overall Status</option>
+                  </select>
+                  <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Column 3 */}
+              <div className="space-y-3">
+                {/* All Statuses */}
+                <select
+                  value={displayStatus}
+                  onChange={(e) => setDisplayStatus(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Delayed">Delayed</option>
+                  <option value="Contracted">Contracted</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Terminated">Terminated</option>
+                </select>
+
+                {/* Target Date From */}
+                <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
+                  <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
+                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                    Target From:
+                  </span>
+                  <input
+                    type="date"
+                    value={targetDateFrom}
+                    onChange={(e) => setTargetDateFrom(e.target.value)}
+                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer"
+                  />
+                </div>
+
+                {/* Target Date To */}
+                <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
+                  <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
+                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                    Target To:
+                  </span>
+                  <input
+                    type="date"
+                    value={targetDateTo}
+                    onChange={(e) => setTargetDateTo(e.target.value)}
+                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
             {hasFilters ? (
-              <div className="flex items-center justify-end pt-1 sm:col-span-2 lg:col-span-3">
+              <div className="flex justify-end pt-1">
                 <button
-                  className="inline-flex h-8 items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#176c55]"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#0A3C2F] transition-colors cursor-pointer"
                   onClick={resetFilters}
                   type="button"
                 >
-                  <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                  <RotateCcw className="h-3.5 w-3.5" />
                   Reset filters
                 </button>
               </div>
             ) : null}
           </div>
-        ) : null}
+        )}
       </section>
 
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -1179,17 +1239,15 @@ function CompactDateInput({
   value: string;
 }) {
   return (
-    <label className="relative flex h-10 min-w-0 items-center rounded-sm border border-slate-300 bg-[#fbfcfd] px-2.5 transition hover:border-[#9fb8ad] focus-within:border-[#176c55] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#176c55]/15">
+    <label className="relative block min-w-0">
+      <span className="sr-only">{label}</span>
       <CalendarDays
         aria-hidden="true"
-        className="mr-2 h-3.5 w-3.5 shrink-0 text-slate-500"
+        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
       />
-      <span className="mr-2 shrink-0 text-xs font-bold text-slate-600">
-        {label}:
-      </span>
       <input
         aria-label={label}
-        className="h-full min-w-0 flex-1 cursor-pointer bg-transparent text-xs font-semibold text-slate-700 outline-none"
+        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
         max={max}
         min={min}
         onChange={(event) => onChange(event.target.value)}
