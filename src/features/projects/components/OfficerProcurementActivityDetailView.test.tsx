@@ -127,4 +127,19 @@ describe("OfficerProcurementActivityDetailView", () => {
     expect(markup).toContain("Preparation of Specification");
     expect(markup).not.toContain("Classification Code");
   });
+
+  it("links back to Activity Tracker when navigated from tracker", () => {
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementActivityDetailView
+        activity={detailedActivity}
+        fromTracker={true}
+        plan={plan}
+        project={project}
+      />,
+    );
+
+    expect(markup).toContain("Back to Tracker");
+    expect(markup).toContain("/workspace/activity-tracker?project=");
+    expect(markup).toContain("Activity Tracker");
+  });
 });

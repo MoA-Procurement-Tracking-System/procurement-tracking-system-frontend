@@ -28,7 +28,6 @@ import {
   CircleDot,
   ExternalLink,
   FileClock,
-  House,
   Info,
   LockKeyhole,
   RefreshCw,
@@ -103,7 +102,8 @@ export function ActivityTrackingDetailView({
     "&plan=" +
     encodeURIComponent(item.plan.reference) +
     "&activity=" +
-    encodeURIComponent(item.activity.reference);
+    encodeURIComponent(item.activity.reference) +
+    "&from=tracker";
 
   const registeredContract = useMemo(() => {
     const contracts = [
@@ -131,14 +131,15 @@ export function ActivityTrackingDetailView({
   const contractHref = registeredContract
     ? `/workspace/contracts?contract=${encodeURIComponent(
         registeredContract.contractNumber,
-      )}`
+      )}&from=tracker`
     : "/workspace/contracts?mode=register" +
       "&project=" +
       encodeURIComponent(item.project.code) +
       "&plan=" +
       encodeURIComponent(item.plan.reference) +
       "&activity=" +
-      encodeURIComponent(item.activity.reference);
+      encodeURIComponent(item.activity.reference) +
+      "&from=tracker";
 
   function selectTab(tab: ActivityDetailTab) {
     setActiveTab(tab);
@@ -178,14 +179,11 @@ export function ActivityTrackingDetailView({
   return (
     <div className="min-w-0 space-y-5 pb-8">
       <header>
-        <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
+        <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
           <ol className="flex flex-wrap items-center gap-2">
             <li>
-              <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55]"
-                href="/dashboard/officer"
-              >
-                <House aria-hidden="true" className="h-3.5 w-3.5" /> Home
+              <Link className="hover:text-[#176c55]" href="/dashboard/officer">
+                Home
               </Link>
             </li>
             <li aria-hidden="true" className="text-slate-300">

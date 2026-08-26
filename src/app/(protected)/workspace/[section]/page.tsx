@@ -26,6 +26,7 @@ export default async function WorkspaceSectionPage({
   searchParams: Promise<{
     activity?: string | string[];
     contract?: string | string[];
+    from?: string | string[];
     mode?: string | string[];
     plan?: string | string[];
     project?: string | string[];
@@ -48,6 +49,8 @@ export default async function WorkspaceSectionPage({
       typeof query.plan === "string" ? query.plan : undefined;
     const selectedActivityReference =
       typeof query.activity === "string" ? query.activity : undefined;
+    const fromTracker =
+      query.from === "tracker" || query.from === "activity-tracker";
     const mode =
       query.mode === "create-plan" || query.mode === "create-activity"
         ? query.mode
@@ -55,6 +58,7 @@ export default async function WorkspaceSectionPage({
 
     return (
       <OfficerProjectsView
+        fromTracker={fromTracker}
         mode={mode}
         selectedActivityReference={selectedActivityReference}
         selectedPlanReference={selectedPlanReference}
@@ -90,12 +94,15 @@ export default async function WorkspaceSectionPage({
   if (section === "contracts" && session.user.role === "OFFICER") {
     const selectedContractNumber =
       typeof query.contract === "string" ? query.contract : undefined;
+    const fromTracker =
+      query.from === "tracker" || query.from === "activity-tracker";
     const mode =
       query.mode === "register" || query.mode === "add-payment"
         ? query.mode
         : undefined;
     return (
       <OfficerContractsView
+        fromTracker={fromTracker}
         mode={mode}
         selectedContractNumber={selectedContractNumber}
       />

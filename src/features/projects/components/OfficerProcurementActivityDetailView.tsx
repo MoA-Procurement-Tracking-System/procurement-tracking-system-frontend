@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   ClipboardList,
   FolderOpen,
-  House,
   MapPin,
   Route,
 } from "lucide-react";
@@ -26,18 +25,29 @@ interface DetailValue {
 
 export function OfficerProcurementActivityDetailView({
   activity,
+  fromTracker,
   plan,
   project,
 }: {
   activity: ProcurementActivitySummary;
+  fromTracker?: boolean;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
+  const trackerHref =
+    "/workspace/activity-tracker?project=" +
+    encodeURIComponent(project.code) +
+    "&plan=" +
+    encodeURIComponent(plan.reference) +
+    "&activity=" +
+    encodeURIComponent(activity.reference);
   const planHref =
     "/workspace/projects?project=" +
     encodeURIComponent(project.code) +
     "&plan=" +
     encodeURIComponent(plan.reference);
+  const backHref = fromTracker ? trackerHref : planHref;
+  const backLabel = fromTracker ? "Back to Tracker" : "Back to Plan";
   const details = activity.details;
   const form = details?.form;
 
@@ -139,7 +149,14 @@ export function OfficerProcurementActivityDetailView({
   return (
     <div className="min-w-0 space-y-5 pb-6">
       <header>
-        <ActivityBreadcrumb plan={plan} planHref={planHref} project={project} />
+        <ActivityBreadcrumb
+          activity={activity}
+          fromTracker={fromTracker}
+          plan={plan}
+          planHref={planHref}
+          project={project}
+          trackerHref={trackerHref}
+        />
         <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#176c55]">
@@ -162,11 +179,11 @@ export function OfficerProcurementActivityDetailView({
             </div>
           </div>
           <Link
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#07523f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-            href={planHref}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#176c55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+            href={backHref}
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            Back to Plan
+            {backLabel}
           </Link>
         </div>
       </header>
@@ -291,23 +308,58 @@ export function OfficerProcurementActivityDetailView({
 }
 
 function ActivityBreadcrumb({
+  activity,
+  fromTracker,
   plan,
   planHref,
   project,
+  trackerHref,
 }: {
+  activity: ProcurementActivitySummary;
+  fromTracker?: boolean;
   plan: ProcurementPlanSummary;
   planHref: string;
   project: OfficerProject;
+  trackerHref: string;
 }) {
+  if (fromTracker) {
+    return (
+      <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
+        <ol className="flex flex-wrap items-center gap-2">
+          <li>
+            <Link className="hover:text-[#176c55]" href="/dashboard/officer">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link
+              className="hover:text-[#176c55]"
+              href="/workspace/activity-tracker"
+            >
+              Activity Tracker
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link className="hover:text-[#176c55]" href={trackerHref}>
+              {activity.reference}
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="font-semibold text-slate-800">
+            Activity Details
+          </li>
+        </ol>
+      </nav>
+    );
+  }
+
   return (
     <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
       <ol className="flex flex-wrap items-center gap-2">
         <li>
-          <Link
-            className="inline-flex items-center gap-1 hover:text-[#176c55]"
-            href="/dashboard/officer"
-          >
-            <House aria-hidden="true" className="h-3.5 w-3.5" />
+          <Link className="hover:text-[#176c55]" href="/dashboard/officer">
             Home
           </Link>
         </li>

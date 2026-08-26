@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, ChevronRight, Filter, Home } from "lucide-react";
+import { FileSpreadsheet, ChevronRight, Filter } from "lucide-react";
 import Link from "next/link";
 import {
   MOCK_ANNUAL_PLAN_REPORT,
@@ -284,9 +284,9 @@ export function ReportsView() {
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
         <Link
           href="/dashboard"
-          className="text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1"
+          className="text-slate-500 hover:text-slate-900 transition-colors"
         >
-          <Home className="h-4 w-4" />
+          Home
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
         <span className="font-bold text-[#0A3C2F]">Reports</span>

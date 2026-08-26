@@ -39,7 +39,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  House,
   RotateCcw,
   Search,
 } from "lucide-react";
@@ -694,14 +693,13 @@ function ActivityTrackerList({
   return (
     <div className="w-full min-w-0 space-y-5 overflow-x-hidden pb-6">
       <header>
-        <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
+        <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
           <ol className="flex items-center gap-2">
             <li>
               <Link
-                className="inline-flex items-center gap-1 hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                className="hover:text-[#176c55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
                 href="/dashboard/officer"
               >
-                <House aria-hidden="true" className="h-3.5 w-3.5" />
                 Home
               </Link>
             </li>
@@ -761,8 +759,8 @@ function ActivityTrackerList({
         aria-label="Activity tracker filters"
         className="w-full rounded-md border border-slate-300 bg-white p-3 shadow-sm"
       >
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(20rem,1fr)_10rem_11rem_11rem_auto]">
-          <label className="relative block min-w-0 sm:col-span-2 xl:col-span-1">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+          <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search tracked activities</span>
             <Search
               aria-hidden="true"
@@ -776,51 +774,59 @@ function ActivityTrackerList({
               value={searchQuery}
             />
           </label>
-          <CompactSelect
-            label="Project"
-            onChange={setProjectCode}
-            options={[
-              { label: "All Projects", value: "all" },
-              ...projectOptions.map(([value, label]) => ({ label, value })),
-            ]}
-            value={projectCode}
-          />
-          <CompactSelect
-            label="Category"
-            onChange={setCategory}
-            options={[
-              { label: "All Categories", value: "all" },
-              ...categoryOptions.map((value) => ({ label: value, value })),
-            ]}
-            value={category}
-          />
-          <CompactSelect
-            label="Method"
-            onChange={setMethod}
-            options={[
-              { label: "All Methods", value: "all" },
-              ...methodOptions.map((value) => ({ label: value, value })),
-            ]}
-            value={method}
-          />
-          <button
-            aria-expanded={showMoreFilters}
-            className={`inline-flex h-10 items-center justify-center gap-2 rounded-sm border px-3 text-xs font-bold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] ${
-              showMoreFilters || additionalFilterCount > 0
-                ? "border-[#7caa98] bg-[#edf5f1] text-[#07523f]"
-                : "border-slate-300 bg-[#fbfcfd] text-slate-700 hover:border-[#9fb8ad] hover:bg-white"
-            }`}
-            onClick={() => setShowMoreFilters((current) => !current)}
-            type="button"
-          >
-            <Filter aria-hidden="true" className="h-3.5 w-3.5" />
-            More Filters
-            {additionalFilterCount > 0 ? ` (${additionalFilterCount})` : null}
-          </button>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:flex lg:items-center">
+            <div className="w-full lg:w-36">
+              <CompactSelect
+                label="Project"
+                onChange={setProjectCode}
+                options={[
+                  { label: "All Projects", value: "all" },
+                  ...projectOptions.map(([value, label]) => ({ label, value })),
+                ]}
+                value={projectCode}
+              />
+            </div>
+            <div className="w-full lg:w-40">
+              <CompactSelect
+                label="Category"
+                onChange={setCategory}
+                options={[
+                  { label: "All Categories", value: "all" },
+                  ...categoryOptions.map((value) => ({ label: value, value })),
+                ]}
+                value={category}
+              />
+            </div>
+            <div className="w-full lg:w-36">
+              <CompactSelect
+                label="Method"
+                onChange={setMethod}
+                options={[
+                  { label: "All Methods", value: "all" },
+                  ...methodOptions.map((value) => ({ label: value, value })),
+                ]}
+                value={method}
+              />
+            </div>
+            <button
+              aria-expanded={showMoreFilters}
+              className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-sm border px-3.5 text-xs font-bold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] ${
+                showMoreFilters || additionalFilterCount > 0
+                  ? "border-[#7caa98] bg-[#edf5f1] text-[#07523f]"
+                  : "border-slate-300 bg-[#fbfcfd] text-slate-700 hover:border-[#9fb8ad] hover:bg-white"
+              }`}
+              onClick={() => setShowMoreFilters((current) => !current)}
+              type="button"
+            >
+              <Filter aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              More Filters
+              {additionalFilterCount > 0 ? ` (${additionalFilterCount})` : null}
+            </button>
+          </div>
         </div>
 
         {showMoreFilters ? (
-          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 lg:grid-cols-3">
             <CompactSelect
               label="Procurement Plan"
               onChange={setPlanReference}
@@ -877,16 +883,10 @@ function ActivityTrackerList({
               value={currentStage}
             />
             <CompactDateInput
-              label="Target Date From"
+              label="Target From"
               max={targetDateTo || undefined}
               onChange={setTargetDateFrom}
               value={targetDateFrom}
-            />
-            <CompactDateInput
-              label="Target Date To"
-              min={targetDateFrom || undefined}
-              onChange={setTargetDateTo}
-              value={targetDateTo}
             />
             <CompactSelect
               label="Organization or Region"
@@ -914,15 +914,23 @@ function ActivityTrackerList({
               ]}
               value={sortBy}
             />
+            <CompactDateInput
+              label="Target To"
+              min={targetDateFrom || undefined}
+              onChange={setTargetDateTo}
+              value={targetDateTo}
+            />
             {hasFilters ? (
-              <button
-                className="inline-flex h-9 items-center gap-2 justify-self-start text-xs font-bold text-slate-500 hover:text-[#176c55] xl:col-span-3 2xl:col-span-5 2xl:justify-self-end"
-                onClick={resetFilters}
-                type="button"
-              >
-                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                Reset filters
-              </button>
+              <div className="flex items-center justify-end pt-1 sm:col-span-2 lg:col-span-3">
+                <button
+                  className="inline-flex h-8 items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#176c55]"
+                  onClick={resetFilters}
+                  type="button"
+                >
+                  <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                  Reset filters
+                </button>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -1171,15 +1179,17 @@ function CompactDateInput({
   value: string;
 }) {
   return (
-    <label className="relative block min-w-0">
-      <span className="sr-only">{label}</span>
+    <label className="relative flex h-10 min-w-0 items-center rounded-sm border border-slate-300 bg-[#fbfcfd] px-2.5 transition hover:border-[#9fb8ad] focus-within:border-[#176c55] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#176c55]/15">
       <CalendarDays
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+        className="mr-2 h-3.5 w-3.5 shrink-0 text-slate-500"
       />
+      <span className="mr-2 shrink-0 text-xs font-bold text-slate-600">
+        {label}:
+      </span>
       <input
         aria-label={label}
-        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
+        className="h-full min-w-0 flex-1 cursor-pointer bg-transparent text-xs font-semibold text-slate-700 outline-none"
         max={max}
         min={min}
         onChange={(event) => onChange(event.target.value)}
