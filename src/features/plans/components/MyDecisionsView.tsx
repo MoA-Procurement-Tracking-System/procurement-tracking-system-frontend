@@ -56,12 +56,20 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
           mapBackendPlanToFrontend(p, user.id),
         );
         const officerPlans = getOfficerReviewPlans();
-        const combined = [...mapped, ...officerPlans];
-        setPlans(combined.length > 0 ? combined : INITIAL_PLANS);
+        
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        mapped.forEach((p) => planMap.set(p.id, p));
+        
+        setPlans(Array.from(planMap.values()));
       } catch (err) {
         console.error("Failed to load decisions:", err);
         const officerPlans = getOfficerReviewPlans();
-        setPlans(officerPlans.length > 0 ? officerPlans : INITIAL_PLANS);
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        setPlans(Array.from(planMap.values()));
       } finally {
         setLoading(false);
       }

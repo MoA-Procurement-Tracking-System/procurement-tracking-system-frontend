@@ -83,6 +83,82 @@ function renderLastLogin(lastLoginAt: string | null, status: string) {
 
 const PAGE_SIZE = 15;
 
+const DEFAULT_USERS_RESPONSE: PaginatedResponse<ApiUser> = {
+  data: [
+    {
+      id: "u-off-1",
+      username: "officer@moa.gov.et",
+      displayName: "Abebe Bikila",
+      email: "officer@moa.gov.et",
+      name: "Abebe Bikila",
+      role: "ProcurementOfficer",
+      authRole: "OFFICER",
+      status: "ACTIVE",
+      isActive: true,
+      lastLoginAt: "2026-08-26T09:30:00Z",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-08-26T09:30:00Z",
+    },
+    {
+      id: "u-dir-1",
+      username: "director@moa.gov.et",
+      displayName: "Dr. Aster Kebede",
+      email: "director@moa.gov.et",
+      name: "Dr. Aster Kebede",
+      role: "ProcurementDirector",
+      authRole: "DIRECTOR",
+      status: "ACTIVE",
+      isActive: true,
+      lastLoginAt: "2026-08-26T10:15:00Z",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-08-26T10:15:00Z",
+    },
+    {
+      id: "u-com-1",
+      username: "genet@moa.gov.et",
+      displayName: "Genet Tadesse",
+      email: "genet@moa.gov.et",
+      name: "Genet Tadesse",
+      role: "ManagementTeam",
+      authRole: "ENDORSING_COMMITTEE",
+      status: "ACTIVE",
+      isActive: true,
+      lastLoginAt: "2026-08-26T11:00:00Z",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-08-26T11:00:00Z",
+    },
+    {
+      id: "u-adm-1",
+      username: "admin@moa.gov.et",
+      displayName: "Tewodros Kassahun",
+      email: "admin@moa.gov.et",
+      name: "Tewodros Kassahun",
+      role: "Administrator",
+      authRole: "ADMIN",
+      status: "ACTIVE",
+      isActive: true,
+      lastLoginAt: "2026-08-26T12:00:00Z",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-08-26T12:00:00Z",
+    },
+    {
+      id: "u-off-2",
+      username: "marta@moa.gov.et",
+      displayName: "Marta Tadesse",
+      email: "marta@moa.gov.et",
+      name: "Marta Tadesse",
+      role: "ProcurementOfficer",
+      authRole: "OFFICER",
+      status: "PENDING_INVITATION",
+      isActive: false,
+      lastLoginAt: null,
+      createdAt: "2026-08-24T00:00:00Z",
+      updatedAt: "2026-08-24T00:00:00Z",
+    },
+  ],
+  meta: { total: 5, page: 1, pageSize: 15, totalPages: 1 },
+};
+
 export function UserManagementView({
   initialMode = "list",
 }: UserManagementViewProps) {
@@ -90,8 +166,8 @@ export function UserManagementView({
 
   // Data state
   const [usersResponse, setUsersResponse] =
-    useState<PaginatedResponse<ApiUser> | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+    useState<PaginatedResponse<ApiUser> | null>(DEFAULT_USERS_RESPONSE);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search & Filter state

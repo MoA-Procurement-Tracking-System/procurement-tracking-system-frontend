@@ -155,14 +155,20 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const rawPlans = await fetchPlans();
       const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
       const officerPlans = getOfficerReviewPlans();
-      const officerIds = new Set(officerPlans.map((p) => p.id));
-      const filtered = mapped.filter((p) => !officerIds.has(p.id));
-      const combined = [...filtered, ...officerPlans];
-      setPlans(combined.length > 0 ? combined : INITIAL_PLANS);
+      
+      const planMap = new Map<string, ProcurementPlan>();
+      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+      officerPlans.forEach((p) => planMap.set(p.id, p));
+      mapped.forEach((p) => planMap.set(p.id, p));
+      
+      setPlans(Array.from(planMap.values()));
     } catch (err) {
       console.error(err);
       const officerPlans = getOfficerReviewPlans();
-      setPlans(officerPlans.length > 0 ? officerPlans : INITIAL_PLANS);
+      const planMap = new Map<string, ProcurementPlan>();
+      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+      officerPlans.forEach((p) => planMap.set(p.id, p));
+      setPlans(Array.from(planMap.values()));
     } finally {
       setLoading(false);
     }
