@@ -38,6 +38,7 @@ export function LoginCard({ onOpenTechSupport }: LoginCardProps) {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!identifier.trim() || !password) return;
+
     await login(identifier, password, rememberMe);
   };
 

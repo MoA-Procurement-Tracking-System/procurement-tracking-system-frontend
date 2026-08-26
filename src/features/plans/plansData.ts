@@ -26,6 +26,16 @@ export interface ProcurementPlan {
   createdBy: string;
   createdAt: string;
   activitiesCount: number;
+  // Extended fields for Committee Dashboards & decisions integration
+  estimatedTotal?: string;
+  isPriority?: boolean;
+  progress?: number;
+  progressText?: string;
+  deadlineDate?: string;
+  deadlineText?: string;
+  decisionRecordedDate?: string;
+  committeeDecision?: "Approved" | "Rejected";
+  rejectionReason?: string;
 }
 
 export const PLAN_CATEGORY_CHOICES: {
