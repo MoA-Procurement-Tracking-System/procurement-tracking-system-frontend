@@ -81,6 +81,16 @@ const DEMO_USERS: Record<
     displayName: "Tewodros Kassahun",
     role: "ADMIN",
   },
+  "yabfikre@gmail.com": {
+    name: "Yeabsira Fikre",
+    displayName: "Yeabsira Fikre",
+    role: "ADMIN",
+  },
+  "fikreyabsira@gmail.com": {
+    name: "Yeabsira Fikre",
+    displayName: "Yeabsira Fikre",
+    role: "ADMIN",
+  },
 };
 
 export async function authenticate(
@@ -117,7 +127,7 @@ export async function authenticate(
       role,
     };
 
-    return {
+    const session: AuthSession = {
       status: rawUser.mustChangePassword
         ? "PASSWORD_CHANGE_REQUIRED"
         : "AUTHENTICATED",
@@ -126,13 +136,22 @@ export async function authenticate(
         Date.now() + (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
       ).toISOString(),
     };
+
+    if (typeof document !== "undefined") {
+      const maxAge = rememberMe ? 30 * 86400 : 86400;
+      document.cookie = `moa_session=${encodeURIComponent(
+        JSON.stringify(session)
+      )}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    }
+
+    return session;
   } catch (err) {
     // If backend is unavailable or demo user fallback
     const demo = DEMO_USERS[cleanId];
     if (demo) {
       const demoToken = `demo-token-${demo.role.toLowerCase()}-${Date.now()}`;
       authTokenManager.setToken(demoToken);
-      return {
+      const session: AuthSession = {
         status: "AUTHENTICATED",
         user: {
           id: `demo-${cleanId.replace(/[^a-z0-9]/g, "-")}`,
@@ -143,6 +162,14 @@ export async function authenticate(
         },
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
+
+      if (typeof document !== "undefined") {
+        document.cookie = `moa_session=${encodeURIComponent(
+          JSON.stringify(session)
+        )}; path=/; max-age=86400; SameSite=Lax`;
+      }
+
+      return session;
     }
 
     if (err instanceof ApiClientError) {
@@ -296,6 +323,9 @@ export async function createInvitedUser(
 
 export async function signOut(): Promise<void> {
   authTokenManager.clearToken();
+  if (typeof document !== "undefined") {
+    document.cookie = "moa_session=; path=/; max-age=0; SameSite=Lax";
+  }
   try {
     await apiClient.post("/auth/logout", {});
   } catch {

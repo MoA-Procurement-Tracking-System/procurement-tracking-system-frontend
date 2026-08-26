@@ -10,7 +10,21 @@ const backendUrl = () =>
 
 export const getServerSession = cache(async (): Promise<AuthSession | null> => {
   try {
-    const cookieHeader = (await cookies()).toString();
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("moa_session")?.value;
+
+    if (sessionCookie) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(sessionCookie)) as AuthSession;
+        if (parsed && parsed.user && parsed.status) {
+          return parsed;
+        }
+      } catch {
+        // Fall through to backend session fetch
+      }
+    }
+
+    const cookieHeader = cookieStore.toString();
     if (!cookieHeader) return null;
 
     const response = await fetch(`${backendUrl()}/api/auth/session`, {
