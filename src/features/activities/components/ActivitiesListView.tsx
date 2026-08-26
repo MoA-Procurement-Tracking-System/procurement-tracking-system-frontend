@@ -116,13 +116,16 @@ export function ActivitiesListView({
           createdAt: "2026-08-26",
           fundingSource: "African Development Bank (AfDB)",
           fundingAllocationPercent: 100,
-          component: act.details?.componentAllocations?.[0]?.id ?? "Component 1",
+          component:
+            act.details?.componentAllocations?.[0]?.id ?? "Component 1",
           subcomponent: "1.1 Subcomponent",
           componentAllocationPercent: 100,
           isLotRequired: false,
-          classificationCode: act.details?.form?.classificationCode ?? "42100000",
+          classificationCode:
+            act.details?.form?.classificationCode ?? "42100000",
           classificationDescription: "Procurement Package",
-          locationRegion: act.details?.form?.location ?? plan.organizationRegion,
+          locationRegion:
+            act.details?.form?.location ?? plan.organizationRegion,
           roadmap: (act.details?.roadmap ?? []).map((stage, sIndex) => ({
             id: `stg-${sIndex + 1}`,
             stageName: stage.name,

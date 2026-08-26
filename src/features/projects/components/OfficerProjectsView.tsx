@@ -167,7 +167,7 @@ export function OfficerProjectsView({
     );
   }
 
-  function submitPlanToDirector(planReference: string) {
+  function submitPlanToDirector() {
     if (!selectedProject || !selectedPlan) return;
 
     const updatedPlan: ProcurementPlanSummary = {

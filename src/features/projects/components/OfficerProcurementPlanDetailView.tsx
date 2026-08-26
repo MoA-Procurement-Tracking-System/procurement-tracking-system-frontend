@@ -25,7 +25,7 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type ActivityStatus = ProcurementActivityStatus;
 
@@ -42,14 +42,13 @@ export function OfficerProcurementPlanDetailView({
   project: OfficerProject;
   savedActivities?: readonly ProcurementActivitySummary[];
 }) {
-  const [localStatus, setLocalStatus] = useState<
-    ProcurementPlanSummary["status"] | null
+  const [submittedPlanReference, setSubmittedPlanReference] = useState<
+    string | null
   >(null);
-  const activePlanStatus = localStatus ?? plan.status;
-
-  useEffect(() => {
-    setLocalStatus(null);
-  }, [plan.reference, plan.status]);
+  const activePlanStatus =
+    submittedPlanReference === plan.reference
+      ? "Submitted to Director"
+      : plan.status;
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [methodFilter, setMethodFilter] = useState("All");
@@ -262,7 +261,10 @@ export function OfficerProcurementPlanDetailView({
         >
           <div className="flex items-center gap-3.5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#edf5f1] text-[#176c55]">
-              <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-[#176c55]" />
+              <CheckCircle2
+                aria-hidden="true"
+                className="h-5 w-5 text-[#176c55]"
+              />
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#10243f]">
@@ -280,7 +282,7 @@ export function OfficerProcurementPlanDetailView({
           <button
             className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#125f4c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] transition cursor-pointer"
             onClick={() => {
-              setLocalStatus("Submitted to Director");
+              setSubmittedPlanReference(plan.reference);
               onSubmitToDirector?.(plan.reference);
             }}
             type="button"
@@ -304,7 +306,8 @@ export function OfficerProcurementPlanDetailView({
               Submitted to Director for Review
             </h2>
             <p className="text-[11px] text-[#176c55]">
-              This procurement plan and all its {activities.length} activities are currently under review by the Director.
+              This procurement plan and all its {activities.length} activities
+              are currently under review by the Director.
             </p>
           </div>
         </section>

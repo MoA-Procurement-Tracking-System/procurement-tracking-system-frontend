@@ -183,8 +183,7 @@ export function parseSavedContracts(serialized: string | null) {
     return parsed
       .filter(isOfficerContract)
       .filter(
-        (contract) =>
-          !contract.details?.activityReference?.startsWith("MOA/"),
+        (contract) => !contract.details?.activityReference?.startsWith("MOA/"),
       );
   } catch {
     return [];

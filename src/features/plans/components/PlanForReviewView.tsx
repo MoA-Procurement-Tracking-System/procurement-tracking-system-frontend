@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -15,7 +15,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { INITIAL_PLANS, type PlanCategory, type PlanStatus, type ProcurementPlan } from "../plansData";
+import {
+  INITIAL_PLANS,
+  type PlanCategory,
+  type PlanStatus,
+  type ProcurementPlan,
+} from "../plansData";
 import {
   INITIAL_PROJECTS,
   type ProjectItem,
@@ -77,8 +82,62 @@ function mapOfficerPlanToDirectorPlan(
   };
 }
 
+function getInitialReviewPlans(): ProcurementPlan[] {
+  try {
+    const savedRecords = parseSavedPlanRecords(
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY)
+        : null,
+    );
+    const savedActivityRecords = parseSavedActivityRecords(
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY)
+        : null,
+    );
+
+    const mergedOfficerProjects = mergeSavedPlans(
+      officerProjects,
+      savedRecords,
+    );
+
+    const officerReviewPlans: ProcurementPlan[] = [];
+
+    for (const project of mergedOfficerProjects) {
+      for (const plan of project.plans) {
+        if (
+          plan.status === "Submitted to Director" ||
+          plan.status === "Returned" ||
+          plan.status === "Committee Review"
+        ) {
+          const planActivities = savedActivityRecords
+            .filter(
+              (r) =>
+                r.projectCode === project.code &&
+                r.planReference === plan.reference,
+            )
+            .map((r) => r.activity);
+
+          officerReviewPlans.push(
+            mapOfficerPlanToDirectorPlan(project, plan, planActivities),
+          );
+        }
+      }
+    }
+
+    if (officerReviewPlans.length > 0) {
+      const officerIds = new Set(officerReviewPlans.map((p) => p.id));
+      const withoutOfficer = INITIAL_PLANS.filter((p) => !officerIds.has(p.id));
+      return [...withoutOfficer, ...officerReviewPlans];
+    }
+  } catch {
+    // fallback
+  }
+
+  return INITIAL_PLANS;
+}
+
 export function PlanForReviewView({}: PlanForReviewViewProps) {
-  const [plans, setPlans] = useState<ProcurementPlan[]>(INITIAL_PLANS);
+  const [plans, setPlans] = useState<ProcurementPlan[]>(getInitialReviewPlans);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,60 +157,6 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4500);
   };
-
-  useEffect(() => {
-    try {
-      const savedRecords = parseSavedPlanRecords(
-        window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY),
-      );
-      const savedActivityRecords = parseSavedActivityRecords(
-        window.localStorage.getItem(OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY),
-      );
-
-      const mergedOfficerProjects = mergeSavedPlans(
-        officerProjects,
-        savedRecords,
-      );
-
-      const officerReviewPlans: ProcurementPlan[] = [];
-
-      for (const project of mergedOfficerProjects) {
-        for (const plan of project.plans) {
-          if (
-            plan.status === "Submitted to Director" ||
-            plan.status === "Returned" ||
-            plan.status === "Committee Review"
-          ) {
-            const planActivities = savedActivityRecords
-              .filter(
-                (r) =>
-                  r.projectCode === project.code &&
-                  r.planReference === plan.reference,
-              )
-              .map((r) => r.activity);
-
-            officerReviewPlans.push(
-              mapOfficerPlanToDirectorPlan(
-                project,
-                plan,
-                planActivities,
-              ),
-            );
-          }
-        }
-      }
-
-      if (officerReviewPlans.length > 0) {
-        setPlans((prev) => {
-          const officerIds = new Set(officerReviewPlans.map((p) => p.id));
-          const withoutOfficer = prev.filter((p) => !officerIds.has(p.id));
-          return [...withoutOfficer, ...officerReviewPlans];
-        });
-      }
-    } catch {
-      // fallback
-    }
-  }, []);
 
   // Filter plans awaiting review only (Submitted to Director or Returned)
   const filteredPlans = plans.filter((p) => {

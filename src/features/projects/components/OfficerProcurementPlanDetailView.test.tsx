@@ -187,10 +187,7 @@ describe("OfficerProcurementPlanDetailView", () => {
       status: "Draft" as const,
     };
     const markup = renderToStaticMarkup(
-      <OfficerProcurementPlanDetailView
-        plan={draftPlan}
-        project={project}
-      />,
+      <OfficerProcurementPlanDetailView plan={draftPlan} project={project} />,
     );
 
     expect(markup).toContain("Plan is ready for review");
