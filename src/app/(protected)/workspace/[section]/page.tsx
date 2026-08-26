@@ -4,6 +4,7 @@ import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLog
 import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
 import { OfficerContractsView } from "@/features/contracts/components/OfficerContractsView";
 import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
+import { DirectorActivityTrackerView } from "@/features/activity-tracker/components/DirectorActivityTrackerView";
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
 import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
@@ -68,10 +69,6 @@ export default async function WorkspaceSectionPage({
     );
   }
 
-  if (section === "projects" && session.user.role === "DIRECTOR") {
-    return <ProjectsManagementView />;
-  }
-
   if (section === "plan-for-review") {
     return <PlanForReviewView user={session.user} />;
   }
@@ -96,6 +93,10 @@ export default async function WorkspaceSectionPage({
     return <UserManagementView />;
   }
 
+  if (section === "projects" && session.user.role === "DIRECTOR") {
+    return <ProjectsManagementView />;
+  }
+
   if (section === "contracts" && session.user.role === "OFFICER") {
     const selectedContractNumber =
       typeof query.contract === "string" ? query.contract : undefined;
@@ -114,7 +115,13 @@ export default async function WorkspaceSectionPage({
     );
   }
 
-  if (section === "activity-tracker" && session.user.role === "OFFICER") {
+  if (section === "activity-tracker") {
+    if (session.user.role === "DIRECTOR") {
+      return <DirectorActivityTrackerView />;
+    }
+    if (session.user.role !== "OFFICER") {
+      redirect("/access-denied");
+    }
     return (
       <OfficerActivityTrackerView
         selectedActivityReference={

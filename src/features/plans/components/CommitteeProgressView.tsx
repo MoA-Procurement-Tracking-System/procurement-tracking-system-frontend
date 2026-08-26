@@ -13,6 +13,11 @@ import {
   Clock,
   Users,
   FileText,
+  RotateCcw,
+  Send,
+  MessageSquare,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,11 +41,7 @@ export interface CommitteeProgressItem {
   totalBudget: number;
   currency: string;
   description: string;
-  overallStatus:
-    | "Approved"
-    | "Pending_Management_Approval"
-    | "Submitted_To_Director"
-    | "Rejected";
+  overallStatus: "Approved" | "Pending_Management_Approval" | "Rejected";
   memberVotes: CommitteeMemberVote[];
 }
 
@@ -254,99 +255,6 @@ export const INITIAL_COMMITTEE_PROGRESS_DATA: CommitteeProgressItem[] = [
     ],
   },
   {
-    id: "cp-05",
-    planNumber: "MoA/CALM/2018/APP-05",
-    planTitle: "2018 EFY Climate Action Landscape Restoration Plan",
-    projectCode: "CALM",
-    projectName: "CALM (Climate Action through Landscape Management)",
-    sector: "Natural Resources & Climate Change",
-    budgetYear: "2018 EFY",
-    totalBudget: 42000000,
-    currency: "ETB",
-    description:
-      "Watershed management tools, soil conservation machinery, and nursery seedling supplies across watershed sites.",
-    overallStatus: "Submitted_To_Director",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
-    id: "cp-06",
-    planNumber: "MoA/LIVESTOCK/2018/APP-06",
-    planTitle: "2018 EFY Pastoral Fodder Reserve & Feed Storage Plan",
-    projectCode: "DRIVE",
-    projectName:
-      "DRIVE (De-Risking, Inclusion and Value Enhancement of Pastoral Economies)",
-    sector: "Livestock & Pastoral Development",
-    budgetYear: "2018 EFY",
-    totalBudget: 19500000,
-    currency: "ETB",
-    description:
-      "Establishment of emergency fodder banks and pasture seed multiplication centers in low-land zones.",
-    overallStatus: "Submitted_To_Director",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
     id: "cp-07",
     planNumber: "MoA/ELRP/2018/APP-07",
     planTitle: "2018 EFY Emergency Desert Locust Surveillance Plan",
@@ -358,7 +266,7 @@ export const INITIAL_COMMITTEE_PROGRESS_DATA: CommitteeProgressItem[] = [
     currency: "ETB",
     description:
       "Locust control sprayers, protective gear, and airborne survey surveillance equipment.",
-    overallStatus: "Rejected",
+    overallStatus: "Pending_Management_Approval",
     memberVotes: [
       {
         id: "m-1",
@@ -448,7 +356,7 @@ export const INITIAL_COMMITTEE_PROGRESS_DATA: CommitteeProgressItem[] = [
 ];
 
 export function CommitteeProgressView() {
-  const [items] = useState<CommitteeProgressItem[]>(
+  const [items, setItems] = useState<CommitteeProgressItem[]>(
     INITIAL_COMMITTEE_PROGRESS_DATA,
   );
   const [searchTerm, setSearchTerm] = useState("");
@@ -459,8 +367,35 @@ export function CommitteeProgressView() {
   const [selectedPlan, setSelectedPlan] =
     useState<CommitteeProgressItem | null>(null);
 
-  // Filter items
+  // In-page revision comment state for returning rejected plan to officer
+  const [resendComment, setResendComment] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleResendToOfficer = () => {
+    if (!selectedPlan) return;
+
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === selectedPlan.id
+          ? { ...item, overallStatus: "Rejected" }
+          : item,
+      ),
+    );
+
+    const planNo = selectedPlan.planNumber;
+    setSelectedPlan(null);
+    setResendComment("");
+
+    setToastMessage(
+      `Plan ${planNo} has been returned to the Officer for revision with your instructions.`,
+    );
+    setTimeout(() => setToastMessage(null), 5000);
+  };
+
+  // Filter items (excluding Submitted_To_Director plans from Committee Progress)
   const filteredItems = items.filter((item) => {
+    if ((item.overallStatus as string) === "Submitted_To_Director")
+      return false;
     const matchesSearch =
       item.planNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.planTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -561,9 +496,7 @@ export function CommitteeProgressView() {
                     : selectedPlan.overallStatus ===
                         "Pending_Management_Approval"
                       ? "text-blue-700"
-                      : selectedPlan.overallStatus === "Submitted_To_Director"
-                        ? "text-sky-700"
-                        : "text-rose-700"
+                      : "text-rose-700"
                 }`}
               >
                 {selectedPlan.overallStatus}
@@ -654,6 +587,55 @@ export function CommitteeProgressView() {
               ))}
             </div>
           </div>
+
+          {/* IN-PAGE REVISION & RESEND SECTION FOR REJECTED PLANS */}
+          {selectedPlan.overallStatus === "Rejected" && (
+            <div className="rounded-2xl border border-amber-200/90 bg-amber-50/50 p-6 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-amber-200/60 pb-3">
+                <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold shrink-0">
+                  <RotateCcw className="h-4.5 w-4.5 text-amber-800" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-amber-950">
+                    Return Plan to Officer for Revision
+                  </h3>
+                  <p className="text-xs text-amber-800/80">
+                    Provide feedback or instructions detailing adjustments
+                    required by the officer before resubmitting the plan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-[#0A3C2F]" />
+                  <span>
+                    Feedback / Revision Instructions for Officer{" "}
+                    <span className="text-rose-600">*</span>
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={resendComment}
+                  onChange={(e) => setResendComment(e.target.value)}
+                  placeholder="Type feedback and revision instructions for the procurement officer..."
+                  className="w-full p-3 rounded-xl border border-amber-300/80 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none text-xs text-slate-800 bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleResendToOfficer}
+                  disabled={!resendComment.trim()}
+                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-[#0A3C2F] hover:bg-[#072a21] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-2xs transition-all cursor-pointer"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Resend to Officer for Revision</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* VIEW 2: MAIN COMMITTEE PROGRESS TABLE */
@@ -708,9 +690,6 @@ export function CommitteeProgressView() {
                   <option value="Approved">Approved</option>
                   <option value="Pending_Management_Approval">
                     Pending_Management_Approval
-                  </option>
-                  <option value="Submitted_To_Director">
-                    Submitted_To_Director
                   </option>
                   <option value="Rejected">Rejected</option>
                 </select>
@@ -843,10 +822,7 @@ export function CommitteeProgressView() {
                                   : item.overallStatus ===
                                       "Pending_Management_Approval"
                                     ? "text-blue-700"
-                                    : item.overallStatus ===
-                                        "Submitted_To_Director"
-                                      ? "text-sky-700"
-                                      : "text-rose-700"
+                                    : "text-rose-700"
                               }`}
                             >
                               {item.overallStatus}
@@ -871,6 +847,14 @@ export function CommitteeProgressView() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION BANNER */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-semibold animate-in slide-in-from-bottom-4">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

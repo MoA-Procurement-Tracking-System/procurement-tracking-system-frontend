@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Home,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   AlertCircle,
   Search,
@@ -19,7 +20,12 @@ import {
   ArrowLeft,
   UserCheck,
   FileText,
+  ArrowRightLeft,
 } from "lucide-react";
+import {
+  gregorianToEthiopian,
+  formatEthiopianDate,
+} from "../../../../projects/utils/ethiopianCalendar";
 import {
   INITIAL_OFFICERS,
   SECTOR_OPTIONS,
@@ -222,11 +228,23 @@ export function CreateProjectView({
     });
   };
 
-  // Officer Selection Handlers
+  // Officer Selection & Pagination Handlers
+  const [officerPageIndex, setOfficerPageIndex] = useState(0);
+  const OFFICER_PAGE_SIZE = 4;
+
   const filteredOfficers = INITIAL_OFFICERS.filter(
     (off) =>
       off.name.toLowerCase().includes(officerSearchQuery.toLowerCase()) ||
       off.email.toLowerCase().includes(officerSearchQuery.toLowerCase()),
+  );
+
+  const totalOfficerPages = Math.ceil(
+    filteredOfficers.length / OFFICER_PAGE_SIZE,
+  );
+
+  const paginatedOfficers = filteredOfficers.slice(
+    officerPageIndex * OFFICER_PAGE_SIZE,
+    (officerPageIndex + 1) * OFFICER_PAGE_SIZE,
   );
 
   const toggleOfficer = (id: string) => {
@@ -556,22 +574,6 @@ export function CreateProjectView({
                     </div>
 
                     {/* Budget Year */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-800 block">
-                        Budget Year *
-                      </label>
-                      <select
-                        value={budgetYear}
-                        onChange={(e) => setBudgetYear(e.target.value)}
-                        className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:border-emerald-500 outline-none cursor-pointer transition-all"
-                      >
-                        {BUDGET_YEAR_OPTIONS.map((yr) => (
-                          <option key={yr} value={yr}>
-                            {yr}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
                     {/* Status */}
                     <div className="space-y-1.5">
@@ -949,32 +951,84 @@ export function CreateProjectView({
                   </div>
                 </div>
 
-                {/* Timeline */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                      Project Start Date (Optional)
+                {/* Timeline with Dual Calendar (GC ⇄ EC) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
+                  {/* Start Date Dual Calendar */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
+                      <Calendar className="h-4 w-4 text-[#0A3C2F]" />
+                      <span>Project Start Date (Optional)</span>
                     </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none"
-                    />
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-slate-500 uppercase px-1">
+                        <span>GREGORIAN</span>
+                        <span>ETHIOPIAN</span>
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-[#0A3C2F] outline-none"
+                        />
+                        <ArrowRightLeft className="h-4 w-4 text-slate-400 shrink-0" />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              startDate && gregorianToEthiopian(startDate)
+                                ? formatEthiopianDate(
+                                    gregorianToEthiopian(startDate)!,
+                                  )
+                                : ""
+                            }
+                            placeholder="DD-Month-YYYY"
+                            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 font-semibold outline-none pr-8"
+                          />
+                          <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                      Project End Date (Optional)
+                  {/* End Date Dual Calendar */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
+                      <Calendar className="h-4 w-4 text-[#0A3C2F]" />
+                      <span>Project End Date (Optional)</span>
                     </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-emerald-500 outline-none"
-                    />
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-slate-500 uppercase px-1">
+                        <span>GREGORIAN</span>
+                        <span>ETHIOPIAN</span>
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-[#0A3C2F] outline-none"
+                        />
+                        <ArrowRightLeft className="h-4 w-4 text-slate-400 shrink-0" />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              endDate && gregorianToEthiopian(endDate)
+                                ? formatEthiopianDate(
+                                    gregorianToEthiopian(endDate)!,
+                                  )
+                                : ""
+                            }
+                            placeholder="DD-Month-YYYY"
+                            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 font-semibold outline-none pr-8"
+                          />
+                          <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1050,49 +1104,142 @@ export function CreateProjectView({
                     />
                   </div>
 
-                  {/* Officers Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {filteredOfficers.map((officer) => {
-                      const isChecked = selectedOfficerIds.includes(officer.id);
-                      return (
-                        <div
-                          key={officer.id}
-                          onClick={() => toggleOfficer(officer.id)}
-                          className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                            isChecked
-                              ? "bg-white border-emerald-500 shadow-xs ring-1 ring-emerald-500/30"
-                              : "bg-white border-slate-200 hover:border-slate-300"
-                          }`}
+                  {/* Officer Selectable Table with Pagination */}
+                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                            <th className="py-2.5 px-3 text-center w-12">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  paginatedOfficers.length > 0 &&
+                                  paginatedOfficers.every((o) =>
+                                    selectedOfficerIds.includes(o.id),
+                                  )
+                                }
+                                onChange={() => {
+                                  const allPaginatedSelected =
+                                    paginatedOfficers.every((o) =>
+                                      selectedOfficerIds.includes(o.id),
+                                    );
+                                  if (allPaginatedSelected) {
+                                    setSelectedOfficerIds((prev) =>
+                                      prev.filter(
+                                        (id) =>
+                                          !paginatedOfficers.some(
+                                            (o) => o.id === id,
+                                          ),
+                                      ),
+                                    );
+                                  } else {
+                                    const newIds = new Set([
+                                      ...selectedOfficerIds,
+                                      ...paginatedOfficers.map((o) => o.id),
+                                    ]);
+                                    setSelectedOfficerIds(Array.from(newIds));
+                                  }
+                                }}
+                                className="h-4 w-4 accent-[#0A3C2F] rounded cursor-pointer"
+                              />
+                            </th>
+                            <th className="py-2.5 px-3">Officer Name</th>
+                            <th className="py-2.5 px-3">Email Address</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {paginatedOfficers.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={3}
+                                className="py-6 text-center text-slate-500"
+                              >
+                                No matching officers found.
+                              </td>
+                            </tr>
+                          ) : (
+                            paginatedOfficers.map((officer) => {
+                              const isChecked = selectedOfficerIds.includes(
+                                officer.id,
+                              );
+                              return (
+                                <tr
+                                  key={officer.id}
+                                  onClick={() => toggleOfficer(officer.id)}
+                                  className={`cursor-pointer transition-colors ${
+                                    isChecked
+                                      ? "bg-emerald-50/60 font-semibold"
+                                      : "hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <td className="py-2.5 px-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleOfficer(officer.id);
+                                      }}
+                                      className="h-4 w-4 accent-[#0A3C2F] rounded cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3 font-bold text-slate-900">
+                                    {officer.name}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
+                                    {officer.email}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Officer Table Pagination */}
+                    <div className="flex items-center justify-between p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-600">
+                      <span>
+                        Showing{" "}
+                        {filteredOfficers.length > 0
+                          ? officerPageIndex * OFFICER_PAGE_SIZE + 1
+                          : 0}{" "}
+                        to{" "}
+                        {Math.min(
+                          (officerPageIndex + 1) * OFFICER_PAGE_SIZE,
+                          filteredOfficers.length,
+                        )}{" "}
+                        of {filteredOfficers.length} Officers
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={officerPageIndex === 0}
+                          onClick={() =>
+                            setOfficerPageIndex((p) => Math.max(0, p - 1))
+                          }
+                          className="h-7 w-7 flex items-center justify-center rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all shrink-0 ${
-                                isChecked
-                                  ? "bg-emerald-600 border-emerald-600 text-white"
-                                  : "bg-slate-50 border-slate-300"
-                              }`}
-                            >
-                              {isChecked && (
-                                <Check className="h-3.5 w-3.5 stroke-[3]" />
-                              )}
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-slate-900 text-xs">
-                                {officer.name}
-                              </p>
-                              <p className="text-[11px] text-slate-500">
-                                {officer.email}
-                              </p>
-                            </div>
-                          </div>
-
-                          <span className="bg-slate-100 text-slate-600 font-extrabold text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-md">
-                            {officer.roleTag}
-                          </span>
-                        </div>
-                      );
-                    })}
+                          <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
+                        </button>
+                        <span className="px-2 font-semibold">
+                          {officerPageIndex + 1} / {totalOfficerPages || 1}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={officerPageIndex >= totalOfficerPages - 1}
+                          onClick={() =>
+                            setOfficerPageIndex((p) =>
+                              Math.min(totalOfficerPages - 1, p + 1),
+                            )
+                          }
+                          className="h-7 w-7 flex items-center justify-center rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

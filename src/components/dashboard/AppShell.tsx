@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import type { AuthUser } from "../../lib/authTypes";
 import { ROLE_LABELS } from "../../lib/authTypes";
 import {
@@ -68,9 +68,21 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigation = getNavigationForRole(user.role);
   const userInitials = initials(user.displayName);
+
+  const handleNavClick = (
+    href: string,
+    event: MouseEvent<HTMLAnchorElement>,
+  ) => {
+    setIsMobileMenuOpen(false);
+    if (pathname === href) {
+      event.preventDefault();
+      router.refresh();
+    }
+  };
 
   const sidebar = (
     <aside className="flex h-full w-64 flex-col justify-between bg-[#0A3C2F] text-white border-r border-[#125442] shrink-0 z-20">
@@ -114,7 +126,7 @@ export function AppShell({
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(event) => handleNavClick(item.href, event)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? "bg-[#A3E635] text-[#082920] font-semibold shadow-sm"
