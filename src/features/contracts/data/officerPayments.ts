@@ -1,6 +1,6 @@
 import type { ContractDateValue, OfficerContract } from "./officerContracts";
 
-export const OFFICER_PAYMENTS_STORAGE_KEY = "moa-pts:officer-payments:v1";
+export const OFFICER_PAYMENTS_STORAGE_KEY = "moa-pts:officer-payments:v2";
 
 export type ContractPaymentType =
   | "Advance"

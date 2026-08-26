@@ -18,7 +18,7 @@ const activity: ProcurementActivitySummary = {
   description: "Procurement of Veterinary Vaccines",
   estimatedAmount: 45_000_000,
   method: "RFB - National",
-  reference: "MOA/DRV/G/01",
+  reference: "ET-MoA-000001-GO-RFB",
   status: "In Progress",
 };
 
@@ -40,7 +40,7 @@ describe("officer activity tracking", () => {
       (item) => item.reference === "PP-DRIVE-2016-01",
     )!;
     const completedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "MOA/DRV/G/06",
+      (item) => item.reference === "ET-MoA-000006-GO-RFQ",
     )!;
     const record = createInitialActivityTrackingRecord(
       project.code,
@@ -69,7 +69,7 @@ describe("officer activity tracking", () => {
       status: "Completed",
       totalPaid: completedActivity.estimatedAmount,
       details: {
-        activityReference: "MOA/DRV/G/06",
+        activityReference: "ET-MoA-000006-GO-RFQ",
         planReference: "PP-DRIVE-2016-01",
         projectCode: "PRJ-24-001",
       },
@@ -82,7 +82,7 @@ describe("officer activity tracking", () => {
       (item) => item.reference === "PP-DRIVE-2016-01",
     )!;
     const contractedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "MOA/DRV/G/01",
+      (item) => item.reference === "ET-MoA-000001-GO-RFB",
     )!;
     const record = createInitialActivityTrackingRecord(
       project.code,
@@ -103,7 +103,7 @@ describe("officer activity tracking", () => {
     expect(contract).toMatchObject({
       status: "Active / Under Implementation",
       details: {
-        activityReference: "MOA/DRV/G/01",
+        activityReference: "ET-MoA-000001-GO-RFB",
         planReference: "PP-DRIVE-2016-01",
         projectCode: "PRJ-24-001",
       },
@@ -118,7 +118,7 @@ describe("officer activity tracking", () => {
       (item) => item.reference === "PP-DRIVE-2016-01",
     )!;
     const delayedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "MOA/DRV/G/02",
+      (item) => item.reference === "ET-MoA-000002-GO-RFB",
     )!;
     const record = createInitialActivityTrackingRecord(
       project.code,

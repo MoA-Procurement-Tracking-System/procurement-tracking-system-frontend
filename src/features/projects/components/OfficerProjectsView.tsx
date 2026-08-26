@@ -24,6 +24,7 @@ import {
   parseSavedPlanRecords,
   type ProcurementPlanDraftInput,
   type SavedOfficerPlanRecord,
+  upsertSavedPlanRecord,
 } from "@/features/projects/data/officerPlanDrafts";
 import {
   officerProjects,
@@ -166,6 +167,26 @@ export function OfficerProjectsView({
     );
   }
 
+  function submitPlanToDirector(planReference: string) {
+    if (!selectedProject || !selectedPlan) return;
+
+    const updatedPlan: ProcurementPlanSummary = {
+      ...selectedPlan,
+      status: "Submitted to Director",
+    };
+
+    const nextRecords = upsertSavedPlanRecord(savedPlanRecords, {
+      plan: updatedPlan,
+      projectCode: selectedProject.code,
+    });
+
+    setSavedPlanRecords(nextRecords);
+    window.localStorage.setItem(
+      OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+      JSON.stringify(nextRecords),
+    );
+  }
+
   if (selectedProject && mode === "create-plan") {
     return (
       <CreateProcurementPlanView
@@ -202,6 +223,7 @@ export function OfficerProjectsView({
   if (selectedProject && selectedPlan) {
     return (
       <OfficerProcurementPlanDetailView
+        onSubmitToDirector={submitPlanToDirector}
         plan={selectedPlan}
         project={selectedProject}
         savedActivities={selectedPlanActivities}

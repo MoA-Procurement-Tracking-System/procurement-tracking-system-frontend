@@ -1,7 +1,7 @@
 import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 import { officerProjects } from "../../projects/data/officerProjects";
 
-export const OFFICER_CONTRACTS_STORAGE_KEY = "moa-pts:officer-contracts:v1";
+export const OFFICER_CONTRACTS_STORAGE_KEY = "moa-pts:officer-contracts:v2";
 
 export type ContractCurrency = "ETB" | "UA" | "USD";
 export type ContractStatus =
@@ -91,9 +91,10 @@ export const officerContracts: readonly OfficerContract[] =
             : isDelayed
               ? Math.round(activity.estimatedAmount * 0.35 * 100) / 100
               : Math.round(activity.estimatedAmount * 0.45 * 100) / 100;
-          const contractSuffix = `${plan.reference.split("-").at(-1)}-${activity.reference
-            .split("/")
-            .at(-1)}`;
+          const activitySequence = activity.reference.includes("/")
+            ? activity.reference.split("/").at(-1)
+            : (activity.reference.split("-")[2] ?? activity.reference);
+          const contractSuffix = `${plan.reference.split("-").at(-1)}-${activitySequence}`;
           const dateValue = (stage: (typeof roadmap)[number]) => ({
             ethiopian: stage.ethiopianDate,
             gregorian: stage.gregorianDate,
@@ -179,7 +180,12 @@ export function parseSavedContracts(serialized: string | null) {
   try {
     const parsed: unknown = JSON.parse(serialized);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isOfficerContract);
+    return parsed
+      .filter(isOfficerContract)
+      .filter(
+        (contract) =>
+          !contract.details?.activityReference?.startsWith("MOA/"),
+      );
   } catch {
     return [];
   }

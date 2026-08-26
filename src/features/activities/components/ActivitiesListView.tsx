@@ -17,12 +17,24 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProcurementPlan } from "../../plans/plansData";
+import type { PlanCategory, ProcurementPlan } from "../../plans/plansData";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
 import {
   INITIAL_ACTIVITIES,
   type ProcurementActivity,
+  type ProcurementMethod,
 } from "../activitiesData";
+import { officerProjects } from "../../projects/data/officerProjects";
+import {
+  mergeSavedPlans,
+  OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+  parseSavedPlanRecords,
+} from "../../projects/data/officerPlanDrafts";
+import {
+  OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+  parseSavedActivityRecords,
+} from "../../projects/data/officerActivityDrafts";
+import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 
 interface ActivitiesListViewProps {
   plan: ProcurementPlan;
@@ -38,11 +50,95 @@ export function ActivitiesListView({
   parentSection = "projects",
   onBackClick,
 }: ActivitiesListViewProps) {
-  const [activities] = useState<ProcurementActivity[]>(
-    INITIAL_ACTIVITIES.filter(
+  const [activities] = useState<ProcurementActivity[]>(() => {
+    const directMatches = INITIAL_ACTIVITIES.filter(
       (a) => a.planId === plan.id || a.projectCode === project.code,
-    ),
-  );
+    );
+    if (directMatches.length > 0 && !plan.id.startsWith("officer-")) {
+      return directMatches;
+    }
+
+    try {
+      const planRef = plan.id.startsWith("officer-")
+        ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+        : plan.id;
+      const savedRecords = parseSavedPlanRecords(
+        typeof window !== "undefined"
+          ? window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY)
+          : null,
+      );
+      const savedActivityRecords = parseSavedActivityRecords(
+        typeof window !== "undefined"
+          ? window.localStorage.getItem(OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY)
+          : null,
+      );
+
+      const mergedOfficerProjects = mergeSavedPlans(
+        officerProjects,
+        savedRecords,
+      );
+      const officerProject = mergedOfficerProjects.find(
+        (p) => p.code === plan.projectCode,
+      );
+      const officerPlan = officerProject?.plans.find(
+        (p) => p.reference === planRef || p.name === plan.planName,
+      );
+
+      if (officerProject && officerPlan) {
+        const officerActs = getPlanActivities(
+          officerProject,
+          officerPlan,
+          savedActivityRecords
+            .filter(
+              (r) =>
+                r.projectCode === officerProject.code &&
+                r.planReference === officerPlan.reference,
+            )
+            .map((r) => r.activity),
+        );
+
+        return officerActs.map((act) => ({
+          id: `act-officer-${act.reference}`,
+          planId: plan.id,
+          planName: plan.planName,
+          projectCode: plan.projectCode,
+          category: act.category as PlanCategory,
+          method: (act.method.includes("RFQ")
+            ? "RFQ / Shopping"
+            : act.method.includes("QCBS")
+              ? "QCBS"
+              : "RFB - National") as ProcurementMethod,
+          activityRefNo: act.reference,
+          description: act.description,
+          estimatedAmount: act.estimatedAmount,
+          currency: plan.id.includes("UA") ? "UA" : "ETB",
+          status: "Draft",
+          createdAt: "2026-08-26",
+          fundingSource: "African Development Bank (AfDB)",
+          fundingAllocationPercent: 100,
+          component: act.details?.componentAllocations?.[0]?.id ?? "Component 1",
+          subcomponent: "1.1 Subcomponent",
+          componentAllocationPercent: 100,
+          isLotRequired: false,
+          classificationCode: act.details?.form?.classificationCode ?? "42100000",
+          classificationDescription: "Procurement Package",
+          locationRegion: act.details?.form?.location ?? plan.organizationRegion,
+          roadmap: (act.details?.roadmap ?? []).map((stage, sIndex) => ({
+            id: `stg-${sIndex + 1}`,
+            stageName: stage.name,
+            originalPlannedDate: stage.gregorianDate,
+            plannedDurationDays: Number(stage.days) || 14,
+            stageStatus: stage.notApplicable
+              ? "Not Applicable"
+              : ("Not Started" as const),
+            remarks: stage.remarks,
+          })),
+        }));
+      }
+    } catch {}
+
+    return directMatches;
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [methodFilter, setMethodFilter] = useState<string>("ALL");

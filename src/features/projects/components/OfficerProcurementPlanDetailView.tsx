@@ -12,31 +12,44 @@ import type {
   ProcurementActivitySummary,
 } from "@/features/projects/data/officerActivityDrafts";
 import {
+  ArrowRight,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
   Plus,
   Search,
+  Send,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ActivityStatus = ProcurementActivityStatus;
 
 type PlanActivity = ProcurementActivitySummary;
 
 export function OfficerProcurementPlanDetailView({
+  onSubmitToDirector,
   plan,
   project,
   savedActivities = [],
 }: {
+  onSubmitToDirector?: (planReference: string) => void;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
   savedActivities?: readonly ProcurementActivitySummary[];
 }) {
+  const [localStatus, setLocalStatus] = useState<
+    ProcurementPlanSummary["status"] | null
+  >(null);
+  const activePlanStatus = localStatus ?? plan.status;
+
+  useEffect(() => {
+    setLocalStatus(null);
+  }, [plan.reference, plan.status]);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [methodFilter, setMethodFilter] = useState("All");
@@ -195,7 +208,7 @@ export function OfficerProcurementPlanDetailView({
               <span aria-hidden="true" className="text-slate-300">
                 •
               </span>
-              <StatusText className="text-[10px]" label={plan.status} />
+              <StatusText className="text-[10px]" label={activePlanStatus} />
               <span aria-hidden="true" className="text-slate-300">
                 •
               </span>
@@ -238,6 +251,64 @@ export function OfficerProcurementPlanDetailView({
           </div>
         </div>
       </header>
+
+      {activePlanStatus !== "Submitted to Director" &&
+      activePlanStatus !== "Committee Review" &&
+      activePlanStatus !== "Approved" &&
+      activePlanStatus !== "Finally Approved" ? (
+        <section
+          aria-label="Submit plan for review"
+          className="flex flex-col gap-4 rounded-xl border border-[#c7d7d0] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#edf5f1] text-[#176c55]">
+              <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-[#176c55]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[#10243f]">
+                {activePlanStatus === "Returned"
+                  ? "Plan revised and ready for resubmission"
+                  : "Plan is ready for review"}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {activePlanStatus === "Returned"
+                  ? "Modifications have been applied. Resubmit to the Director for approval."
+                  : "All activities have been drafted. Submit to the Director for final approval."}
+              </p>
+            </div>
+          </div>
+          <button
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#125f4c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] transition cursor-pointer"
+            onClick={() => {
+              setLocalStatus("Submitted to Director");
+              onSubmitToDirector?.(plan.reference);
+            }}
+            type="button"
+          >
+            {activePlanStatus === "Returned"
+              ? "Resubmit to Director"
+              : "Submit to Director"}
+            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </button>
+        </section>
+      ) : activePlanStatus === "Submitted to Director" ? (
+        <section
+          aria-label="Plan submission status"
+          className="flex items-center gap-3.5 rounded-xl border border-[#c7d7d0] bg-[#edf5f1] p-4 shadow-2xs"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d8e8e0] text-[#176c55]">
+            <Send aria-hidden="true" className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-[#10243f]">
+              Submitted to Director for Review
+            </h2>
+            <p className="text-[11px] text-[#176c55]">
+              This procurement plan and all its {activities.length} activities are currently under review by the Director.
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       <section
         aria-labelledby="activities-title"

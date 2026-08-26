@@ -1,4 +1,5 @@
 import {
+  activityReferenceFor,
   procurementMethodOptions,
   roadmapForMethod,
   type ProcurementMethodKey,
@@ -212,10 +213,12 @@ export function getPlanActivities(
   savedActivities: readonly ProcurementActivitySummary[] = [],
 ) {
   const generated = createFixturePlanActivities(project, plan);
-  const normalizedSaved = savedActivities.map((savedActivity) => ({
-    ...savedActivity,
-    category: plan.category,
-  }));
+  const normalizedSaved = savedActivities
+    .filter((savedActivity) => !savedActivity.reference.startsWith("MOA/"))
+    .map((savedActivity) => ({
+      ...savedActivity,
+      category: plan.category,
+    }));
   const savedByReference = new Map(
     normalizedSaved.map((savedActivity) => [
       savedActivity.reference,
@@ -240,8 +243,6 @@ export function createFixturePlanActivities(
   project: OfficerProject,
   plan: ProcurementPlanSummary,
 ): ProcurementActivitySummary[] {
-  const activityProjectCode =
-    project.shortName === "DRIVE" ? "DRV" : project.shortName;
   const remaining: Record<ActivityStatus, number> = {
     Completed: plan.completedActivities,
     Delayed: plan.delayedActivities,
@@ -281,14 +282,6 @@ export function createFixturePlanActivities(
     const status = statuses[index] ?? "In Progress";
     const roadmap = fixtureRoadmap(methodKey, status, index);
     const currentStage = fixtureCurrentStage(roadmap, status, index);
-    const categoryCode =
-      plan.category === "Goods"
-        ? "G"
-        : plan.category === "Works"
-          ? "W"
-          : plan.category === "Non-Consulting Services"
-            ? "NCS"
-            : "CS";
 
     return {
       category: plan.category,
@@ -321,7 +314,13 @@ export function createFixturePlanActivities(
       },
       estimatedAmount: template.amount,
       method: method.label,
-      reference: `MOA/${activityProjectCode}/${categoryCode}/${String(index + 1).padStart(2, "0")}`,
+      reference: activityReferenceFor(
+        project,
+        plan,
+        plan.category,
+        methodKey,
+        index,
+      ),
       status,
     };
   });

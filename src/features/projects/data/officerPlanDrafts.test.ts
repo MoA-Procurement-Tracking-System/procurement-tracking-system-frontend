@@ -73,4 +73,22 @@ describe("officer plan draft persistence", () => {
     expect(record.plan.category).toBe("Consultancy Services");
     expect(record.plan).not.toHaveProperty("categories");
   });
+
+  it("merges status updates on existing plans when submitted to director", () => {
+    const project = officerProjects[0];
+    const initialPlan = project.plans[0];
+    const submittedPlan = {
+      ...initialPlan,
+      status: "Submitted to Director" as const,
+    };
+
+    const projects = mergeSavedPlans(officerProjects, [
+      { plan: submittedPlan, projectCode: project.code },
+    ]);
+
+    const updated = projects[0].plans.find(
+      (p) => p.reference === initialPlan.reference,
+    );
+    expect(updated?.status).toBe("Submitted to Director");
+  });
 });
