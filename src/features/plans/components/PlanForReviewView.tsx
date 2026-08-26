@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -16,11 +16,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  INITIAL_PLANS,
   type PlanCategory,
   type PlanStatus,
   type ProcurementPlan,
 } from "../plansData";
+import {
+  fetchPlans,
+  submitVote,
+  mapBackendPlanToFrontend,
+} from "../../../lib/plansApi";
+import type { AuthUser } from "../../../lib/authTypes";
 import {
   INITIAL_PROJECTS,
   type ProjectItem,
@@ -47,7 +52,7 @@ import {
 import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 
 interface PlanForReviewViewProps {
-  userRole?: "DIRECTOR" | "ENDORSING_COMMITTEE" | "ADMIN";
+  user: AuthUser;
 }
 
 function mapOfficerPlanToDirectorPlan(
@@ -82,7 +87,7 @@ function mapOfficerPlanToDirectorPlan(
   };
 }
 
-function getInitialReviewPlans(): ProcurementPlan[] {
+function getOfficerReviewPlans(): ProcurementPlan[] {
   try {
     const savedRecords = parseSavedPlanRecords(
       typeof window !== "undefined"
@@ -124,21 +129,51 @@ function getInitialReviewPlans(): ProcurementPlan[] {
       }
     }
 
-    if (officerReviewPlans.length > 0) {
-      const officerIds = new Set(officerReviewPlans.map((p) => p.id));
-      const withoutOfficer = INITIAL_PLANS.filter((p) => !officerIds.has(p.id));
-      return [...withoutOfficer, ...officerReviewPlans];
-    }
+    return officerReviewPlans;
   } catch {
-    // fallback
+    return [];
   }
-
-  return INITIAL_PLANS;
 }
 
-export function PlanForReviewView({}: PlanForReviewViewProps) {
-  const [plans, setPlans] = useState<ProcurementPlan[]>(getInitialReviewPlans);
+export function PlanForReviewView({ user }: PlanForReviewViewProps) {
+  const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
+  const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const loadPlans = useCallback(async () => {
+    try {
+      setLoading(true);
+      const rawPlans = await fetchPlans();
+      const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
+      const officerPlans = getOfficerReviewPlans();
+      const officerIds = new Set(officerPlans.map((p) => p.id));
+      const filtered = mapped.filter((p) => !officerIds.has(p.id));
+      setPlans([...filtered, ...officerPlans]);
+    } catch (err) {
+      console.error(err);
+      const officerPlans = getOfficerReviewPlans();
+      if (officerPlans.length > 0) {
+        setPlans(officerPlans);
+      } else {
+        showToast("Failed to load plans from server.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadPlans();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadPlans]);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -150,18 +185,18 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
     null,
   );
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [returnRemarks, setReturnRemarks] = useState("");
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4500);
-  };
-
-  // Filter plans awaiting review only (Submitted to Director or Returned)
+  // Filter plans awaiting review only
   const filteredPlans = plans.filter((p) => {
-    const isAwaitingReview =
-      p.status === "Submitted to Director" || p.status === "Returned";
+    let isAwaitingReview = false;
+    if (user.role === "ENDORSING_COMMITTEE") {
+      const alreadyVoted = p.committeeDecision !== undefined;
+      isAwaitingReview = p.status === "Committee Review" && !alreadyVoted;
+    } else {
+      isAwaitingReview =
+        p.status === "Submitted to Director" || p.status === "Returned";
+    }
     const matchesSearch =
       p.planName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.projectCode.toLowerCase().includes(searchTerm.toLowerCase());
@@ -310,6 +345,42 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
     showToast(
       `Plan "${plan.planName}" returned to Procurement Officer for revision.`,
     );
+  };
+
+  // Committee Decision 1: Approve
+  const handleCommitteeApprove = async (plan: ProcurementPlan) => {
+    try {
+      await submitVote(plan.id, "APPROVE");
+      showToast(`Plan "${plan.planName}" has been endorsed and approved!`);
+      await loadPlans();
+      setSelectedPlanForReview(null);
+      setReturnRemarks("");
+    } catch (err) {
+      console.error(err);
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to submit approval vote.";
+      showToast(errMsg);
+    }
+  };
+
+  // Committee Decision 2: Reject
+  const handleCommitteeReject = async (plan: ProcurementPlan) => {
+    if (!returnRemarks.trim()) {
+      showToast("Reason for rejection is mandatory.");
+      return;
+    }
+    try {
+      await submitVote(plan.id, "REJECT", returnRemarks.trim());
+      showToast(`Plan "${plan.planName}" was rejected and returned.`);
+      await loadPlans();
+      setSelectedPlanForReview(null);
+      setReturnRemarks("");
+    } catch (err) {
+      console.error(err);
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to submit rejection vote.";
+      showToast(errMsg);
+    }
   };
 
   const handleSavePlanEdits = (savedPlan: ProcurementPlan) => {
@@ -517,41 +588,81 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
                 <h3 className="text-sm font-bold text-slate-900">
-                  Director Decision & Workflow Actions
+                  {user.role === "ENDORSING_COMMITTEE"
+                    ? "Committee Decision & Workflow Actions"
+                    : "Director Decision & Workflow Actions"}
                 </h3>
               </div>
 
               {/* Revision Remarks Textarea */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  Revision Notes (If returning to Officer)
+                  {user.role === "ENDORSING_COMMITTEE"
+                    ? "Reason for Rejection / Notes"
+                    : "Revision Notes (If returning to Officer)"}
+                  {user.role === "ENDORSING_COMMITTEE" && (
+                    <span className="text-rose-500 ml-1">
+                      * Mandatory for rejection
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={4}
                   value={returnRemarks}
                   onChange={(e) => setReturnRemarks(e.target.value)}
-                  placeholder="Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+                  placeholder={
+                    user.role === "ENDORSING_COMMITTEE"
+                      ? "Specify reason for rejection..."
+                      : "Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+                  }
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
                 />
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => handleApprovePlan(selectedPlanForReview)}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  <Send className="h-4 w-4" />
-                  <span>Approve & Send to Endorsement Committee</span>
-                </button>
+                {user.role === "ENDORSING_COMMITTEE" ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleCommitteeApprove(selectedPlanForReview)
+                      }
+                      className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>Endorse & Approve Plan</span>
+                    </button>
 
-                <button
-                  onClick={() => handleReturnPlan(selectedPlanForReview)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Send Plan Back to Officer for Revision</span>
-                </button>
+                    <button
+                      onClick={() =>
+                        handleCommitteeReject(selectedPlanForReview)
+                      }
+                      disabled={!returnRemarks.trim()}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Reject & Return Plan</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleApprovePlan(selectedPlanForReview)}
+                      className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>Approve & Send to Endorsement Committee</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleReturnPlan(selectedPlanForReview)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Send Plan Back to Officer for Revision</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -617,7 +728,16 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-              {filteredPlans.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="py-12 text-center text-slate-500 font-medium"
+                  >
+                    Loading plans from server...
+                  </td>
+                </tr>
+              ) : filteredPlans.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500">
                     <FileText className="mx-auto h-8 w-8 text-slate-300 mb-2" />
