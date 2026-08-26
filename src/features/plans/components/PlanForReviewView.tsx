@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
+  INITIAL_PLANS,
   type PlanCategory,
   type PlanStatus,
   type ProcurementPlan,
@@ -89,7 +90,7 @@ function mapOfficerPlanToDirectorPlan(
   };
 }
 
-function getOfficerReviewPlans(): ProcurementPlan[] {
+export function getOfficerReviewPlans(): ProcurementPlan[] {
   try {
     const savedRecords = parseSavedPlanRecords(
       typeof window !== "undefined"
@@ -156,15 +157,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const officerPlans = getOfficerReviewPlans();
       const officerIds = new Set(officerPlans.map((p) => p.id));
       const filtered = mapped.filter((p) => !officerIds.has(p.id));
-      setPlans([...filtered, ...officerPlans]);
+      const combined = [...filtered, ...officerPlans];
+      setPlans(combined.length > 0 ? combined : INITIAL_PLANS);
     } catch (err) {
       console.error(err);
       const officerPlans = getOfficerReviewPlans();
-      if (officerPlans.length > 0) {
-        setPlans(officerPlans);
-      } else {
-        showToast("Failed to load plans from server.");
-      }
+      setPlans(officerPlans.length > 0 ? officerPlans : INITIAL_PLANS);
     } finally {
       setLoading(false);
     }

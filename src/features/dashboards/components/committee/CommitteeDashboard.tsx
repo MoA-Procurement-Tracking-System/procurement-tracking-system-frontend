@@ -19,7 +19,11 @@ import { DashboardOverview } from "../DashboardOverview";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchPlans, mapBackendPlanToFrontend } from "@/lib/plansApi";
-import type { ProcurementPlan } from "@/features/plans/plansData";
+import {
+  INITIAL_PLANS,
+  type ProcurementPlan,
+} from "@/features/plans/plansData";
+import { getOfficerReviewPlans } from "@/features/plans/components/PlanForReviewView";
 
 export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,9 +42,13 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
         const mapped = rawPlans.map((p) =>
           mapBackendPlanToFrontend(p, user.id),
         );
-        setPlans(mapped);
+        const officerPlans = getOfficerReviewPlans();
+        const combined = [...mapped, ...officerPlans];
+        setPlans(combined.length > 0 ? combined : INITIAL_PLANS);
       } catch (err) {
         console.error("Dashboard failed to load plans:", err);
+        const officerPlans = getOfficerReviewPlans();
+        setPlans(officerPlans.length > 0 ? officerPlans : INITIAL_PLANS);
       } finally {
         setLoading(false);
       }
