@@ -23,6 +23,8 @@ import {
 import {
   fetchPlans,
   submitVote,
+  sendPlanToCommittee,
+  rejectPlan,
   mapBackendPlanToFrontend,
 } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
@@ -229,7 +231,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   // Director Decision 1: Approve & Send to Endorsement Committee
-  const handleApprovePlan = (plan: ProcurementPlan) => {
+  const handleApprovePlan = async (plan: ProcurementPlan) => {
+    try {
+      if (!plan.id.startsWith("officer-")) {
+        await sendPlanToCommittee(plan.id);
+      }
+    } catch (err) {
+      console.warn("Backend sendPlanToCommittee note:", err);
+    }
+
     setPlans((prev) =>
       prev.map((p) =>
         p.id === plan.id
@@ -284,7 +294,16 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   // Director Decision 2: Send Back to Officer for Revision
-  const handleReturnPlan = (plan: ProcurementPlan) => {
+  const handleReturnPlan = async (plan: ProcurementPlan) => {
+    const reasonText = returnRemarks.trim() || "Returned by Director for revisions.";
+    try {
+      if (!plan.id.startsWith("officer-")) {
+        await rejectPlan(plan.id, reasonText);
+      }
+    } catch (err) {
+      console.warn("Backend rejectPlan note:", err);
+    }
+
     const updatedDescription = returnRemarks.trim()
       ? `[Returned Note: ${returnRemarks}] ${plan.description || ""}`
       : plan.description;

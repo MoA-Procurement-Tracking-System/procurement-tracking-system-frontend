@@ -16,23 +16,61 @@ export interface BackendCommitteeVote {
 
 export interface BackendPlan {
   id: string;
-  status: "DRAFT" | "WITH_COMMITTEE" | "APPROVED" | "REJECTED";
-  committeeRound: number;
-  committeeVoteDeadline: string | null;
+  projectId: string;
+  status: "DRAFT" | "SUBMITTED" | "WITH_COMMITTEE" | "APPROVED" | "REJECTED";
+  committeeRound?: number;
+  committeeVoteDeadline?: string | null;
   title: string;
-  budgetYear: string | null;
-  procurementCategory:
-    "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" | null;
+  budgetYear?: string | null;
+  procurementCategory?:
+    | "GOODS"
+    | "WORKS"
+    | "CONSULTANCY"
+    | "NON_CONSULTING"
+    | null;
   periodStart: string;
   periodEnd: string;
-  organization: string | null;
-  description?: string;
+  organization?: string | null;
+  description?: string | null;
+  gpnDate?: string | null;
   approvalDate?: string | null;
-  createdBy: string;
+  createdBy?: string;
   createdAt: string;
-  activities?: { id: string; estimatedBudget: number }[];
+  updatedAt?: string;
+  activities?: {
+    id: string;
+    reference?: string;
+    description?: string;
+    estimatedBudget: number;
+    currency?: string;
+    status?: string;
+  }[];
   project?: { id: string; code: string; name: string };
   committeeVotes?: BackendCommitteeVote[];
+}
+
+export interface CreatePlanInput {
+  projectId: string;
+  title: string;
+  budgetYear?: string;
+  procurementCategory?: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING";
+  organization?: string;
+  description?: string;
+  periodStart: string;
+  periodEnd: string;
+  gpnDate?: string;
+}
+
+export interface UpdatePlanInput {
+  title?: string;
+  budgetYear?: string;
+  procurementCategory?: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING";
+  organization?: string;
+  description?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  gpnDate?: string;
+  status?: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
 }
 
 export async function fetchPlans(): Promise<BackendPlan[]> {
@@ -48,7 +86,7 @@ export async function fetchPlans(): Promise<BackendPlan[]> {
 }
 
 export async function fetchPlanById(id: string): Promise<BackendPlan> {
-  const response = await fetch(`/api/plans/${id}`, {
+  const response = await fetch(`/api/plans/${encodeURIComponent(id)}`, {
     method: "GET",
     headers: { accept: "application/json" },
     cache: "no-store",
@@ -59,12 +97,134 @@ export async function fetchPlanById(id: string): Promise<BackendPlan> {
   return response.json();
 }
 
+export async function createPlan(
+  data: CreatePlanInput,
+): Promise<BackendPlan> {
+  const response = await fetch("/api/plans", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let msg = "Failed to create plan";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+export async function updatePlan(
+  id: string,
+  data: UpdatePlanInput,
+): Promise<BackendPlan> {
+  const response = await fetch(`/api/plans/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let msg = "Failed to update plan";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+/** Officer submits draft plan to Director */
+export async function submitPlanForReview(id: string): Promise<BackendPlan> {
+  const response = await fetch(`/api/plans/${encodeURIComponent(id)}/submit`, {
+    method: "POST",
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let msg = "Failed to submit plan";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+/** Director approves plan and forwards to Endorsing Committee */
+export async function sendPlanToCommittee(id: string): Promise<BackendPlan> {
+  const response = await fetch(
+    `/api/plans/${encodeURIComponent(id)}/send-to-committee`,
+    {
+      method: "POST",
+      headers: { accept: "application/json" },
+    },
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    let msg = "Failed to send plan to committee";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+/** Director rejects/returns plan to Officer with feedback */
+export async function rejectPlan(
+  id: string,
+  reason: string,
+): Promise<BackendPlan> {
+  const response = await fetch(`/api/plans/${encodeURIComponent(id)}/reject`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let msg = "Failed to reject plan";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+/** Committee member votes on plan */
 export async function submitVote(
   planId: string,
   decision: "APPROVE" | "REJECT",
   comment?: string,
 ): Promise<void> {
-  const response = await fetch(`/api/plans/${planId}/vote`, {
+  const response = await fetch(`/api/plans/${encodeURIComponent(planId)}/vote`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -73,7 +233,15 @@ export async function submitVote(
     body: JSON.stringify({ decision, comment }),
   });
   if (!response.ok) {
-    throw new Error((await response.text()) || "Failed to submit vote");
+    const errorText = await response.text();
+    let msg = "Failed to submit vote";
+    try {
+      const parsed = JSON.parse(errorText);
+      msg = parsed.error || parsed.message || msg;
+    } catch {
+      msg = errorText || msg;
+    }
+    throw new Error(msg);
   }
 }
 
@@ -93,34 +261,23 @@ export function mapBackendPlanToFrontend(
   if (backendPlan.status === "WITH_COMMITTEE") status = "Committee Review";
   else if (backendPlan.status === "APPROVED") status = "Finally Approved";
   else if (backendPlan.status === "REJECTED") status = "Returned";
+  else if (backendPlan.status === "SUBMITTED") status = "Submitted to Director";
   else if (backendPlan.status === "DRAFT") status = "Draft";
 
-  // Calculate estimated total from activities if included, otherwise use a default fallback
+  // Calculate estimated total from activities if included
   let estimatedTotalNum = 0;
   if (backendPlan.activities && backendPlan.activities.length > 0) {
     estimatedTotalNum = backendPlan.activities.reduce(
-      (sum, act) => sum + act.estimatedBudget,
+      (sum, act) => sum + (act.estimatedBudget || 0),
       0,
     );
-  } else {
-    // If activities are not loaded in the list GET, fallback to some mock defaults matching DRIVE vs BREFONS values
-    if (backendPlan.project?.code === "DRIVE") {
-      estimatedTotalNum = 145200000;
-    } else {
-      estimatedTotalNum = 12400000;
-    }
   }
 
   // Format estimatedTotal as string
-  let estimatedTotal = `${(estimatedTotalNum / 1000000).toFixed(1)}M ETB`;
-  if (
-    backendPlan.project?.code === "DRIVE" &&
-    backendPlan.title?.includes("Q3")
-  ) {
-    estimatedTotal = `$2.6M USD`;
-  } else if (backendPlan.project?.code === "DRIVE") {
-    estimatedTotal = `${(estimatedTotalNum / 1000000).toFixed(1)}M ETB`;
-  }
+  const estimatedTotal =
+    estimatedTotalNum > 0
+      ? `${(estimatedTotalNum / 1000000).toFixed(1)}M ETB`
+      : "0.0M ETB";
 
   // Calculate progress details from committeeVotes relation
   const votes = backendPlan.committeeVotes || [];
@@ -152,7 +309,7 @@ export function mapBackendPlanToFrontend(
 
   return {
     id: backendPlan.id,
-    projectId: backendPlan.project?.id || "fallback-proj",
+    projectId: backendPlan.projectId || backendPlan.project?.id || "proj-id",
     projectCode: backendPlan.project?.code || "BREFONS",
     projectName: backendPlan.project?.name || "MoA Project",
     planName: backendPlan.title || "Untitled Plan",
@@ -165,9 +322,9 @@ export function mapBackendPlanToFrontend(
       ? new Date(backendPlan.periodEnd).toISOString().split("T")[0]
       : "",
     organizationRegion: backendPlan.organization || "Federal",
-    description: backendPlan.description,
+    description: backendPlan.description || undefined,
     status,
-    createdBy: backendPlan.createdBy || "System",
+    createdBy: backendPlan.createdBy || "Assigned Officer",
     createdAt: backendPlan.createdAt,
     activitiesCount: backendPlan.activities ? backendPlan.activities.length : 0,
     estimatedTotal,

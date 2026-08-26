@@ -37,6 +37,7 @@ import {
 
 interface CreateProjectViewProps {
   initialData?: ProjectItem | null;
+  availableOfficers?: ProjectOfficer[];
   onBackClick: () => void;
   onSaveProject: (project: ProjectItem) => void;
 }
@@ -70,6 +71,7 @@ const WIZARD_STEPS = [
 
 export function CreateProjectView({
   initialData,
+  availableOfficers,
   onBackClick,
   onSaveProject,
 }: CreateProjectViewProps) {
@@ -222,8 +224,13 @@ export function CreateProjectView({
     });
   };
 
+  const officersList =
+    availableOfficers && availableOfficers.length > 0
+      ? availableOfficers
+      : INITIAL_OFFICERS;
+
   // Officer Selection Handlers
-  const filteredOfficers = INITIAL_OFFICERS.filter(
+  const filteredOfficers = officersList.filter(
     (off) =>
       off.name.toLowerCase().includes(officerSearchQuery.toLowerCase()) ||
       off.email.toLowerCase().includes(officerSearchQuery.toLowerCase()),
@@ -236,14 +243,14 @@ export function CreateProjectView({
   };
 
   const handleSelectAllOfficers = () => {
-    setSelectedOfficerIds(INITIAL_OFFICERS.map((o) => o.id));
+    setSelectedOfficerIds(officersList.map((o) => o.id));
   };
 
   const handleClearOfficers = () => {
     setSelectedOfficerIds([]);
   };
 
-  const assignedOfficers: ProjectOfficer[] = INITIAL_OFFICERS.filter((o) =>
+  const assignedOfficers: ProjectOfficer[] = officersList.filter((o) =>
     selectedOfficerIds.includes(o.id),
   );
 

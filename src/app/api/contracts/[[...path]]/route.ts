@@ -8,20 +8,20 @@ type RouteContext = { params: Promise<{ path?: string[] }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return proxyToBackend(request, "plans", path);
+  return proxyToBackend(request, "contracts", path);
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return proxyToBackend(request, "plans", path);
+  return proxyToBackend(request, "contracts", path);
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return proxyToBackend(request, "plans", path);
+  return proxyToBackend(request, "contracts", path);
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return proxyToBackend(request, "plans", path);
+  return proxyToBackend(request, "contracts", path);
 }

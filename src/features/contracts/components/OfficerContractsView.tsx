@@ -32,6 +32,10 @@ import {
   type OfficerContractPayment,
 } from "../data/officerPayments";
 import {
+  createContract,
+  recordContractPayment,
+} from "@/lib/contractsApi";
+import {
   contractFiscalYear,
   filterOfficerContracts,
 } from "../data/contractFilters";
@@ -139,23 +143,49 @@ export function OfficerContractsView({
     });
   }, [contracts, fiscalYear, searchQuery, status]);
 
-  function saveContract(contract: OfficerContract) {
+  async function saveContract(contract: OfficerContract) {
     const nextContracts = addSavedContract(savedContracts, contract);
     setSavedContracts(nextContracts);
     window.localStorage.setItem(
       OFFICER_CONTRACTS_STORAGE_KEY,
       JSON.stringify(nextContracts),
     );
+
+    // Async backend contract creation
+    try {
+      await createContract({
+        contractNo: contract.contractNumber,
+        totalValue: contract.originalAmount || 100000,
+        currency: contract.currency || "ETB",
+        region: contract.details?.organizationRegion || "Federal",
+        sector: "Agriculture",
+      });
+    } catch (err) {
+      console.warn("Backend createContract note:", err);
+    }
+
     router.push("/workspace/contracts");
   }
 
-  function savePayment(payment: OfficerContractPayment) {
+  async function savePayment(payment: OfficerContractPayment) {
     const nextPayments = addSavedPayment(savedPayments, payment);
     setSavedPayments(nextPayments);
     window.localStorage.setItem(
       OFFICER_PAYMENTS_STORAGE_KEY,
       JSON.stringify(nextPayments),
     );
+
+    // Async backend payment creation
+    try {
+      await recordContractPayment(payment.contractNumber || "contract-id", {
+        amount: payment.amount,
+        referenceNo: payment.reference || `VOU-${Date.now()}`,
+        idempotencyKey: `pay-${Date.now()}`,
+      });
+    } catch (err) {
+      console.warn("Backend recordContractPayment note:", err);
+    }
+
     router.push("/workspace/contracts");
   }
 
