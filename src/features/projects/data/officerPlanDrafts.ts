@@ -4,7 +4,7 @@ import type {
   ProcurementPlanSummary,
 } from "./officerProjects";
 
-export const OFFICER_PLAN_DRAFTS_STORAGE_KEY = "moa-pts:officer-plan-drafts:v1";
+export const OFFICER_PLAN_DRAFTS_STORAGE_KEY = "moa-pts:officer-plan-drafts:v2";
 
 export interface ProcurementPlanDraftInput {
   budgetYear: string;
@@ -67,22 +67,27 @@ export function mergeSavedPlans(
   records: readonly SavedOfficerPlanRecord[],
 ): readonly OfficerProject[] {
   return projects.map((project) => {
-    const savedPlans = records
-      .filter((record) => record.projectCode === project.code)
-      .map((record) => record.plan)
-      .filter(
-        (plan) =>
-          !project.plans.some(
-            (existingPlan) => existingPlan.reference === plan.reference,
-          ),
-      );
+    const projectRecords = records.filter(
+      (record) => record.projectCode === project.code,
+    );
+    if (projectRecords.length === 0) return project;
 
-    if (savedPlans.length === 0) return project;
+    const recordByRef = new Map(
+      projectRecords.map((record) => [record.plan.reference, record.plan]),
+    );
+
+    const mergedPlans = project.plans.map(
+      (plan) => recordByRef.get(plan.reference) ?? plan,
+    );
+    const existingRefs = new Set(project.plans.map((plan) => plan.reference));
+    const newPlans = projectRecords
+      .map((record) => record.plan)
+      .filter((plan) => !existingRefs.has(plan.reference));
 
     return {
       ...project,
-      activePlans: project.activePlans + savedPlans.length,
-      plans: [...project.plans, ...savedPlans],
+      activePlans: project.activePlans + newPlans.length,
+      plans: [...mergedPlans, ...newPlans],
     };
   });
 }
@@ -106,17 +111,25 @@ export function parseSavedPlanRecords(
   }
 }
 
+export function upsertSavedPlanRecord(
+  records: readonly SavedOfficerPlanRecord[],
+  record: SavedOfficerPlanRecord,
+): SavedOfficerPlanRecord[] {
+  const withoutExisting = records.filter(
+    (existing) =>
+      !(
+        existing.projectCode === record.projectCode &&
+        existing.plan.reference === record.plan.reference
+      ),
+  );
+  return [...withoutExisting, record];
+}
+
 export function addSavedPlanRecord(
   records: readonly SavedOfficerPlanRecord[],
   record: SavedOfficerPlanRecord,
 ): SavedOfficerPlanRecord[] {
-  const duplicate = records.some(
-    (existing) =>
-      existing.projectCode === record.projectCode &&
-      existing.plan.reference === record.plan.reference,
-  );
-
-  return duplicate ? [...records] : [...records, record];
+  return upsertSavedPlanRecord(records, record);
 }
 
 function nextPlanReference(project: OfficerProject, budgetYear: string) {
@@ -159,13 +172,21 @@ function normalizeProcurementPlanSummary(
     normalizeStoredCategory(plan.category) ??
     normalizeStoredCategory(legacyCategory);
 
+  const isValidStatus =
+    plan.status === "Draft" ||
+    plan.status === "Submitted to Director" ||
+    plan.status === "Committee Review" ||
+    plan.status === "Finally Approved" ||
+    plan.status === "Approved" ||
+    plan.status === "Returned";
+
   if (
     !category ||
     !(
       typeof plan.name === "string" &&
       typeof plan.reference === "string" &&
       typeof plan.budgetYear === "string" &&
-      plan.status === "Draft" &&
+      isValidStatus &&
       (plan.currency === "ETB" ||
         plan.currency === "USD" ||
         plan.currency === "UA") &&

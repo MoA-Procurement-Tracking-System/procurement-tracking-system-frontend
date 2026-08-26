@@ -1,5 +1,5 @@
 export const OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY =
-  "moa-pts:officer-activity-drafts:v1";
+  "moa-pts:officer-activity-drafts:v2";
 
 export type ProcurementActivityStatus =
   "Completed" | "Delayed" | "In Progress" | "Not Started";
@@ -91,7 +91,9 @@ export function parseSavedActivityRecords(
   try {
     const parsed: unknown = JSON.parse(serializedRecords);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isSavedOfficerActivityRecord);
+    return parsed
+      .filter(isSavedOfficerActivityRecord)
+      .filter((record) => !record.activity.reference.startsWith("MOA/"));
   } catch {
     return [];
   }

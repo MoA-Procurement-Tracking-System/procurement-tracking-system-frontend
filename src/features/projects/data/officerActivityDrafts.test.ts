@@ -12,7 +12,7 @@ const record: SavedOfficerActivityRecord = {
     description: "Supply of veterinary cold-chain equipment",
     estimatedAmount: 2_500_000,
     method: "RFQ / Shopping",
-    reference: "MOA/DRV/G/13",
+    reference: "ET-MoA-000013-GO-RFQ",
     status: "Not Started",
   },
   planReference: "PP-DRIVE-2016-01",

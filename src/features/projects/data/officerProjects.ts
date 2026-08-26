@@ -1,5 +1,11 @@
 export type ProjectStatus = "Active" | "Inactive";
-export type ProcurementPlanStatus = "Approved" | "Draft" | "Returned";
+export type ProcurementPlanStatus =
+  | "Approved"
+  | "Committee Review"
+  | "Draft"
+  | "Finally Approved"
+  | "Returned"
+  | "Submitted to Director";
 export type ProcurementCategory =
   "Goods" | "Works" | "Non-Consulting Services" | "Consultancy Services";
 

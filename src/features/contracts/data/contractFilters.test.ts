@@ -30,7 +30,7 @@ describe("officer contract filters", () => {
     const contract: OfficerContract = {
       ...officerContracts[0],
       details: {
-        activityReference: "MOA/DRV/G/01",
+        activityReference: "ET-MoA-000001-GO-RFB",
         amendments: [],
         amountWithVat: 45_000_000,
         netOfVat: 39_130_434.78,
@@ -40,8 +40,8 @@ describe("officer contract filters", () => {
     };
 
     for (const searchQuery of [
-      "001-01-01",
-      "drv/g/01",
+      "001-01-000001",
+      "000001-go-rfb",
       "veterinary vaccines",
       "agricultural supply",
     ]) {
@@ -58,7 +58,7 @@ describe("officer contract filters", () => {
     const contract: OfficerContract = {
       ...officerContracts[0],
       details: {
-        activityReference: "MOA/DRV/G/01",
+        activityReference: "ET-MoA-000001-GO-RFB",
         amendments: [],
         amountWithVat: 45_000_000,
         netOfVat: 39_130_434.78,

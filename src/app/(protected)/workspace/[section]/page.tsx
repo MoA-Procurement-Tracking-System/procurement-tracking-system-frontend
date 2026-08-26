@@ -7,6 +7,7 @@ import { OfficerActivityTrackerView } from "@/features/activity-tracker/componen
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
 import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
+import { MyDecisionsView } from "@/features/plans/components/MyDecisionsView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -72,7 +73,11 @@ export default async function WorkspaceSectionPage({
   }
 
   if (section === "plan-for-review") {
-    return <PlanForReviewView />;
+    return <PlanForReviewView user={session.user} />;
+  }
+
+  if (section === "my-decisions") {
+    return <MyDecisionsView user={session.user} />;
   }
 
   if (section === "committee-progress") {

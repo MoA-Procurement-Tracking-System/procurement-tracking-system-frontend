@@ -125,6 +125,7 @@ export function CreateProcurementPlanView({
   );
   const categoryError = validationAttempted && !selectedCategory;
   const nameError = validationAttempted && !form.planName.trim();
+  const budgetYearError = validationAttempted && !form.budgetYear.trim();
   const periodFromError = validationAttempted && !form.periodFrom;
   const periodToError =
     validationAttempted && (!form.periodTo || dateOrderError);
@@ -196,6 +197,7 @@ export function CreateProcurementPlanView({
     if (
       !selectedCategory ||
       !form.planName.trim() ||
+      !form.budgetYear.trim() ||
       !form.periodFrom ||
       !form.periodTo ||
       dateOrderError
@@ -386,24 +388,25 @@ export function CreateProcurementPlanView({
                 </CompactFormField>
               </div>
               <CompactFormField
+                errorMessage={
+                  budgetYearError ? "Fiscal year is required." : undefined
+                }
                 htmlFor="budget-year"
                 label="Ethiopian Fiscal Year (EFY)"
                 required
               >
-                <select
+                <input
+                  aria-invalid={budgetYearError}
                   className={compactFieldClasses}
                   id="budget-year"
                   onChange={(event) =>
                     updateField("budgetYear", event.target.value)
                   }
+                  placeholder="e.g. 2017"
                   required
+                  type="text"
                   value={form.budgetYear}
-                >
-                  <option value="2016">2016</option>
-                  <option value="2017">2017</option>
-                  <option value="2018">2018</option>
-                  <option value="2019">2019</option>
-                </select>
+                />
               </CompactFormField>
             </div>
 
