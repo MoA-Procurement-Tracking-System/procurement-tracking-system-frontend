@@ -15,6 +15,9 @@ import {
   CheckCircle2,
   Lock,
   Sparkles,
+  ShieldCheck,
+  RotateCcw,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProcurementPlan } from "../../plans/plansData";
@@ -30,6 +33,8 @@ interface ActivitiesListViewProps {
   userRole?: "OFFICER" | "DIRECTOR" | "ADMIN";
   parentSection?: "projects" | "plan-for-review";
   onBackClick: () => void;
+  onApprovePlan?: (plan: ProcurementPlan) => void;
+  onReturnPlan?: (plan: ProcurementPlan, remarks: string) => void;
 }
 
 export function ActivitiesListView({
@@ -37,6 +42,8 @@ export function ActivitiesListView({
   project,
   parentSection = "projects",
   onBackClick,
+  onApprovePlan,
+  onReturnPlan,
 }: ActivitiesListViewProps) {
   const [activities] = useState<ProcurementActivity[]>(
     INITIAL_ACTIVITIES.filter(
@@ -51,7 +58,9 @@ export function ActivitiesListView({
   // Selected Activity for Detailed View
   const [selectedActivity, setSelectedActivity] =
     useState<ProcurementActivity | null>(null);
+  const [directorReturnRemarks, setDirectorReturnRemarks] = useState("");
 
+  const isDirectorReview = parentSection === "plan-for-review";
   // Active Detail Tab state (1: Key Details, 2: Related Info, 3: Additional Details, 4: Roadmap)
   const [activeDetailTab, setActiveDetailTab] = useState<1 | 2 | 3 | 4>(1);
 
@@ -788,6 +797,53 @@ export function ActivitiesListView({
               </table>
             </div>
           </div>
+
+          {/* Director Decision & Workflow Actions Card (Aligned Below Activities Directory Table) */}
+          {isDirectorReview && onApprovePlan && onReturnPlan && (
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5 mt-6">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Director Decision & Workflow Actions
+                </h3>
+              </div>
+
+              {/* Revision Remarks Textarea */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Revision Notes (If returning to Officer)
+                </label>
+                <textarea
+                  rows={3}
+                  value={directorReturnRemarks}
+                  onChange={(e) => setDirectorReturnRemarks(e.target.value)}
+                  placeholder="Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
+                />
+              </div>
+
+              {/* Action Buttons Aligned Side-by-Side Below Comment Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => onApprovePlan(plan)}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Send className="h-4 w-4 text-[#A3E635]" />
+                  <span>Approve & Send to Committee</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onReturnPlan(plan, directorReturnRemarks)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4 text-rose-600" />
+                  <span>Return to Officer for Revision</span>
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

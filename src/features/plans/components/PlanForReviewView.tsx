@@ -143,6 +143,15 @@ export function PlanForReviewView({}: PlanForReviewViewProps) {
         userRole="DIRECTOR"
         parentSection="plan-for-review"
         onBackClick={() => setActivitiesPlan(null)}
+        onApprovePlan={(p) => {
+          handleApprovePlan(p);
+          setActivitiesPlan(null);
+        }}
+        onReturnPlan={(p, remarks) => {
+          setReturnRemarks(remarks);
+          handleReturnPlan(p);
+          setActivitiesPlan(null);
+        }}
       />
     );
   }
