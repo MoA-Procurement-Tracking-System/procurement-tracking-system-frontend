@@ -97,7 +97,7 @@ export function ActivitiesListView({
             .map((r) => r.activity),
         );
 
-        return officerActs.map((act) => ({
+        return officerActs.map((act): ProcurementActivity => ({
           id: `act-officer-${act.reference}`,
           planId: plan.id,
           planName: plan.planName,
@@ -108,6 +108,12 @@ export function ActivitiesListView({
             : act.method.includes("QCBS")
               ? "QCBS"
               : "RFB - National") as ProcurementMethod,
+          marketApproach: "Open - National",
+          qualificationApproach: "Post-qualification",
+          domesticPreference: false,
+          reviewType: "Prior",
+          requiresUnAgency: false,
+          isInProcess: false,
           activityRefNo: act.reference,
           description: act.description,
           estimatedAmount: act.estimatedAmount,

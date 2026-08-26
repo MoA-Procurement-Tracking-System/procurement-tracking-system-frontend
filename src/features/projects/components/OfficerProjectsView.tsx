@@ -29,6 +29,7 @@ import {
 import {
   officerProjects,
   type OfficerProject,
+  type ProcurementPlanSummary,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
