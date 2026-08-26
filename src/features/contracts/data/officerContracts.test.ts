@@ -15,7 +15,7 @@ const contract: OfficerContract = {
   currency: "ETB",
   currentAmount: 11_500_000,
   details: {
-    activityReference: "MOA/DRV/W/02",
+    activityReference: "ET-MoA-000002-CW-RFB",
     amendments: [{ amount: 1_500_000, id: 1 }],
     amountWithVat: 10_000_000,
     netOfVat: 8_695_652.17,

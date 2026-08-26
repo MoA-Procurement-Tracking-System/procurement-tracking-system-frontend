@@ -266,7 +266,7 @@ export const INITIAL_ACTIVITIES: ProcurementActivity[] = [
     isInProcess: false,
 
     // Step 2 - Related Info
-    activityRefNo: "ET-MOA-2018-GO-RFB-001",
+    activityRefNo: "ET-MoA-000001-GO-RFB",
     description:
       "Supply and delivery of 120 Units of Solar Powered Irrigation Pumps for Smallholder Farmers",
     estimatedAmount: 48000000,
@@ -358,7 +358,7 @@ export const INITIAL_ACTIVITIES: ProcurementActivity[] = [
     isInProcess: false,
 
     // Step 2
-    activityRefNo: "ET-MOA-2018-GO-RFQ-002",
+    activityRefNo: "ET-MoA-000002-GO-RFQ",
     description:
       "Procurement of Field Inspection Laptops and GPS Handheld Tracking Devices",
     estimatedAmount: 2500000,
@@ -405,7 +405,7 @@ export const INITIAL_ACTIVITIES: ProcurementActivity[] = [
     isInProcess: false,
 
     // Step 2
-    activityRefNo: "ET-MOA-2018-CS-QCBS-001",
+    activityRefNo: "ET-MoA-000001-CS-QCBS",
     description:
       "Consultancy Services for Feasibility Study and Detailed Engineering Design of Regional Pastoral Water Infrastructure",
     estimatedAmount: 450000,

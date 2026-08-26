@@ -1,7 +1,7 @@
 import type { ProcurementActivitySummary } from "@/features/projects/data/officerActivityDrafts";
 
 export const OFFICER_ACTIVITY_TRACKING_STORAGE_KEY =
-  "moa-pts:officer-activity-tracking:v1";
+  "moa-pts:officer-activity-tracking:v2";
 
 export type ActivityProcessStatus =
   | "Bid Opened / Under Evaluation"
@@ -232,7 +232,9 @@ export function parseActivityTrackingRecords(serialized: string | null) {
   try {
     const parsed: unknown = JSON.parse(serialized);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isOfficerActivityTrackingRecord);
+    return parsed
+      .filter(isOfficerActivityTrackingRecord)
+      .filter((record) => !record.activityReference.startsWith("MOA/"));
   } catch {
     return [];
   }

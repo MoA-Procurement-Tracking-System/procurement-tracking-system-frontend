@@ -25,8 +25,8 @@ describe("OfficerProcurementPlanDetailView", () => {
     expect(markup).toContain("All Categories");
     expect(markup).toContain("All Methods");
     expect(markup).toContain("All Statuses");
-    expect(markup).toContain("MOA/DRV/G/01");
-    expect(markup).toContain("activity=MOA%2FDRV%2FG%2F01");
+    expect(markup).toContain("ET-MoA-000001-GO-RFB");
+    expect(markup).toContain("activity=ET-MoA-000001-GO-RFB");
     expect(markup).toContain("Showing 1 to 4 of 12 results");
   });
 
@@ -85,7 +85,7 @@ describe("OfficerProcurementPlanDetailView", () => {
       (candidate) => candidate.reference === "PP-BREFONS-2016-02",
     )!;
     const generatedActivity = getPlanActivities(project, plan).find(
-      (activity) => activity.reference === "MOA/BREFONS/W/02",
+      (activity) => activity.reference === "ET-MoA-000002-CW-RFB",
     )!;
     const roadmap = [
       {
@@ -167,7 +167,7 @@ describe("OfficerProcurementPlanDetailView", () => {
             description: "Supply of veterinary cold-chain equipment",
             estimatedAmount: 2_500_000,
             method: "RFQ / Shopping",
-            reference: "MOA/DRV/G/01",
+            reference: "ET-MoA-000001-GO-RFQ",
             status: "Not Started",
           },
         ]}
@@ -178,5 +178,39 @@ describe("OfficerProcurementPlanDetailView", () => {
     expect(markup).toContain("2,500,000.00");
     expect(markup).toContain("Supply of veterinary cold-chain equipment");
     expect(markup).toContain("Not Started");
+  });
+
+  it("displays the Plan is ready for review banner and Submit to Director action for draft plans", () => {
+    const project = officerProjects[0];
+    const draftPlan = {
+      ...project.plans[0],
+      status: "Draft" as const,
+    };
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementPlanDetailView plan={draftPlan} project={project} />,
+    );
+
+    expect(markup).toContain("Plan is ready for review");
+    expect(markup).toContain(
+      "All activities have been drafted. Submit to the Director for final approval.",
+    );
+    expect(markup).toContain("Submit to Director");
+  });
+
+  it("displays submitted status banner when plan is submitted to director", () => {
+    const project = officerProjects[0];
+    const submittedPlan = {
+      ...project.plans[0],
+      status: "Submitted to Director" as const,
+    };
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementPlanDetailView
+        plan={submittedPlan}
+        project={project}
+      />,
+    );
+
+    expect(markup).toContain("Submitted to Director for Review");
+    expect(markup).not.toContain("Plan is ready for review");
   });
 });

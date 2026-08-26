@@ -86,7 +86,7 @@ const detailedActivity: ProcurementActivitySummary = {
   },
   estimatedAmount: 2_500_000,
   method: "RFB - National",
-  reference: "MOA/DRV/G/13",
+  reference: "ET-MoA-000013-GO-RFB",
   status: "Not Started",
 };
 

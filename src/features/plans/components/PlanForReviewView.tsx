@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -15,7 +15,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { type ProcurementPlan } from "../plansData";
+import {
+  type PlanCategory,
+  type PlanStatus,
+  type ProcurementPlan,
+} from "../plansData";
 import {
   fetchPlans,
   submitVote,
@@ -28,9 +32,107 @@ import {
 } from "../../dashboards/components/director/projects/projectsData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { ActivitiesListView } from "../../activities/components/ActivitiesListView";
+import {
+  officerProjects,
+  type OfficerProject,
+  type ProcurementCategory,
+  type ProcurementPlanSummary,
+} from "../../projects/data/officerProjects";
+import {
+  mergeSavedPlans,
+  OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+  parseSavedPlanRecords,
+  upsertSavedPlanRecord,
+} from "../../projects/data/officerPlanDrafts";
+import {
+  OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+  parseSavedActivityRecords,
+  type ProcurementActivitySummary,
+} from "../../projects/data/officerActivityDrafts";
+import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
+}
+
+function mapOfficerPlanToDirectorPlan(
+  project: OfficerProject,
+  plan: ProcurementPlanSummary,
+  savedActivities: readonly ProcurementActivitySummary[],
+): ProcurementPlan {
+  const activities = getPlanActivities(project, plan, savedActivities);
+  return {
+    id: `officer-${project.code}-${plan.reference}`,
+    projectId: `proj-${project.code}`,
+    projectCode: project.code,
+    projectName: project.name,
+    planName: plan.name,
+    budgetYear: plan.budgetYear,
+    category: plan.category as PlanCategory,
+    planPeriodFrom: plan.planPeriod?.from?.gregorian ?? "2025-07-08",
+    planPeriodTo: plan.planPeriod?.to?.gregorian ?? "2026-07-07",
+    organizationRegion:
+      plan.organizationRegion ?? project.organizationRegion ?? "Federal",
+    description: plan.description,
+    status: (plan.status === "Submitted to Director"
+      ? "Submitted to Director"
+      : plan.status === "Returned"
+        ? "Returned"
+        : plan.status === "Committee Review"
+          ? "Committee Review"
+          : "Submitted to Director") as PlanStatus,
+    createdBy: project.assignedOfficers?.[0] ?? "Assigned Officer",
+    createdAt: "2026-08-26",
+    activitiesCount: activities.length,
+  };
+}
+
+function getOfficerReviewPlans(): ProcurementPlan[] {
+  try {
+    const savedRecords = parseSavedPlanRecords(
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY)
+        : null,
+    );
+    const savedActivityRecords = parseSavedActivityRecords(
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY)
+        : null,
+    );
+
+    const mergedOfficerProjects = mergeSavedPlans(
+      officerProjects,
+      savedRecords,
+    );
+
+    const officerReviewPlans: ProcurementPlan[] = [];
+
+    for (const project of mergedOfficerProjects) {
+      for (const plan of project.plans) {
+        if (
+          plan.status === "Submitted to Director" ||
+          plan.status === "Returned" ||
+          plan.status === "Committee Review"
+        ) {
+          const planActivities = savedActivityRecords
+            .filter(
+              (r) =>
+                r.projectCode === project.code &&
+                r.planReference === plan.reference,
+            )
+            .map((r) => r.activity);
+
+          officerReviewPlans.push(
+            mapOfficerPlanToDirectorPlan(project, plan, planActivities),
+          );
+        }
+      }
+    }
+
+    return officerReviewPlans;
+  } catch {
+    return [];
+  }
 }
 
 export function PlanForReviewView({ user }: PlanForReviewViewProps) {
@@ -44,26 +146,34 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       setLoading(true);
       const rawPlans = await fetchPlans();
       const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
-      setPlans(mapped);
+      const officerPlans = getOfficerReviewPlans();
+      const officerIds = new Set(officerPlans.map((p) => p.id));
+      const filtered = mapped.filter((p) => !officerIds.has(p.id));
+      setPlans([...filtered, ...officerPlans]);
     } catch (err) {
       console.error(err);
-      showToast("Failed to load plans from server.");
+      const officerPlans = getOfficerReviewPlans();
+      if (officerPlans.length > 0) {
+        setPlans(officerPlans);
+      } else {
+        showToast("Failed to load plans from server.");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadPlans();
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [loadPlans]);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -131,6 +241,42 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           : p,
       ),
     );
+
+    if (plan.id.startsWith("officer-")) {
+      try {
+        const records = parseSavedPlanRecords(
+          window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY),
+        );
+        const matchingProject = officerProjects.find(
+          (p) => p.code === plan.projectCode,
+        );
+        const matchingPlan = matchingProject?.plans.find((p) =>
+          plan.id.endsWith(p.reference),
+        ) ?? {
+          activities: plan.activitiesCount,
+          budgetYear: plan.budgetYear,
+          category: plan.category as ProcurementCategory,
+          completedActivities: 0,
+          currency: "ETB" as const,
+          delayedActivities: 0,
+          description: plan.description,
+          estimatedValue: 0,
+          inProgressActivities: 0,
+          name: plan.planName,
+          reference: plan.id.replace(`officer-${plan.projectCode}-`, ""),
+          status: "Committee Review" as const,
+        };
+        const nextRecords = upsertSavedPlanRecord(records, {
+          plan: { ...matchingPlan, status: "Committee Review" },
+          projectCode: plan.projectCode,
+        });
+        window.localStorage.setItem(
+          OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+          JSON.stringify(nextRecords),
+        );
+      } catch {}
+    }
+
     setSelectedPlanForReview(null);
     showToast(
       `Plan "${plan.planName}" approved and forwarded to Endorsement Committee!`,
@@ -139,19 +285,61 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
   // Director Decision 2: Send Back to Officer for Revision
   const handleReturnPlan = (plan: ProcurementPlan) => {
+    const updatedDescription = returnRemarks.trim()
+      ? `[Returned Note: ${returnRemarks}] ${plan.description || ""}`
+      : plan.description;
+
     setPlans((prev) =>
       prev.map((p) =>
         p.id === plan.id
           ? {
               ...p,
               status: "Returned",
-              description: returnRemarks.trim()
-                ? `[Returned Note: ${returnRemarks}] ${p.description || ""}`
-                : p.description,
+              description: updatedDescription,
             }
           : p,
       ),
     );
+
+    if (plan.id.startsWith("officer-")) {
+      try {
+        const records = parseSavedPlanRecords(
+          window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY),
+        );
+        const matchingProject = officerProjects.find(
+          (p) => p.code === plan.projectCode,
+        );
+        const matchingPlan = matchingProject?.plans.find((p) =>
+          plan.id.endsWith(p.reference),
+        ) ?? {
+          activities: plan.activitiesCount,
+          budgetYear: plan.budgetYear,
+          category: plan.category as ProcurementCategory,
+          completedActivities: 0,
+          currency: "ETB" as const,
+          delayedActivities: 0,
+          description: updatedDescription,
+          estimatedValue: 0,
+          inProgressActivities: 0,
+          name: plan.planName,
+          reference: plan.id.replace(`officer-${plan.projectCode}-`, ""),
+          status: "Returned" as const,
+        };
+        const nextRecords = upsertSavedPlanRecord(records, {
+          plan: {
+            ...matchingPlan,
+            description: updatedDescription,
+            status: "Returned",
+          },
+          projectCode: plan.projectCode,
+        });
+        window.localStorage.setItem(
+          OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+          JSON.stringify(nextRecords),
+        );
+      } catch {}
+    }
+
     setSelectedPlanForReview(null);
     setReturnRemarks("");
     showToast(

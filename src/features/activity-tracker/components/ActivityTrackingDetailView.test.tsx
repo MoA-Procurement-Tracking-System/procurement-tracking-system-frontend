@@ -119,13 +119,13 @@ const item: OfficerTrackedActivityItem = {
     },
     estimatedAmount: 4_500_000,
     method: "Request for Bids (RFB)",
-    reference: "MOA/UNIQUE/GO/099",
+    reference: "ET-MoA-000099-GO-RFB",
     status: "In Progress",
   },
   plan,
   project,
   tracking: {
-    activityReference: "MOA/UNIQUE/GO/099",
+    activityReference: "ET-MoA-000099-GO-RFB",
     activityStatus: "Cleared",
     generalRemarks: "Contract signed; implementation mobilization pending.",
     planReference: plan.reference,
@@ -175,7 +175,7 @@ describe("ActivityTrackingDetailView", () => {
     expect(markup).toContain("Procurement Roadmap Tracking");
     expect(markup).toContain("Contract Transition");
 
-    expect(markup).toContain("MOA/UNIQUE/GO/099");
+    expect(markup).toContain("ET-MoA-000099-GO-RFB");
     expect(markup).toContain("Unique Cold-Chain Procurement Plan");
     expect(markup).toContain("2018 EFY");
     expect(markup).toContain("Request for Bids (RFB)");
@@ -197,7 +197,7 @@ describe("ActivityTrackingDetailView", () => {
     )!;
     const summaryActivity = {
       ...getPlanActivities(brefonsProject, worksPlan).find(
-        (activity) => activity.reference === "MOA/BREFONS/W/02",
+        (activity) => activity.reference === "ET-MoA-000002-CW-RFB",
       )!,
       details: undefined,
     };
