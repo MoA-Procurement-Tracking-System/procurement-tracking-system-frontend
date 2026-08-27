@@ -43,8 +43,10 @@ describe("auth API", () => {
         method: "POST",
         credentials: "include",
         body: JSON.stringify({
+          identifier: "custom-officer@moa.gov.et",
           email: "custom-officer@moa.gov.et",
           password: "secret",
+          rememberMe: true,
         }),
       }),
     );
@@ -131,25 +133,26 @@ describe("auth API", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/auth/reset-password"),
+      expect.stringContaining("/auth/create-password"),
       expect.objectContaining({
         body: JSON.stringify({
           token: "invitation-token",
           newPassword: "New-Password2!",
+          confirmPassword: "New-Password2!",
         }),
       }),
     );
   });
 
-  it("provisions a non-admin user with name, email and role", async () => {
+  it("provisions a non-admin user with displayName, email and role", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          data: {
+          user: {
             id: "2",
             email: "officer-new@moa.gov.et",
-            name: "Procurement Officer",
-            role: "ProcurementOfficer",
+            displayName: "Procurement Officer",
+            role: "OFFICER",
           },
           invitationExpiresAt: new Date().toISOString(),
           message: "Invitation sent successfully",
@@ -168,9 +171,9 @@ describe("auth API", () => {
       expect.stringContaining("/admin/users"),
       expect.objectContaining({
         body: JSON.stringify({
-          name: "Procurement Officer",
+          displayName: "Procurement Officer",
           email: "officer-new@moa.gov.et",
-          role: "ProcurementOfficer",
+          role: "OFFICER",
         }),
       }),
     );
@@ -180,11 +183,11 @@ describe("auth API", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          data: {
+          user: {
             id: "3",
             email: "committee@moa.gov.et",
-            name: "Committee Member",
-            role: "ManagementTeam",
+            displayName: "Committee Member",
+            role: "ENDORSING_COMMITTEE",
           },
           invitationExpiresAt: new Date().toISOString(),
           message: "Invitation sent successfully",
@@ -203,9 +206,9 @@ describe("auth API", () => {
       expect.stringContaining("/admin/users"),
       expect.objectContaining({
         body: JSON.stringify({
-          name: "Committee Member",
+          displayName: "Committee Member",
           email: "committee@moa.gov.et",
-          role: "ManagementTeam",
+          role: "ENDORSING_COMMITTEE",
         }),
       }),
     );

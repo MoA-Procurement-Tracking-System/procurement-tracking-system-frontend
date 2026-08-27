@@ -18,7 +18,46 @@ export const authTokenManager = {
    * Get the current in-memory access token.
    */
   getToken(): string | null {
-    return inMemoryAccessToken;
+    if (inMemoryAccessToken) {
+      return inMemoryAccessToken;
+    }
+
+    if (typeof document !== "undefined") {
+      const cookieNames = ["moa_user_session", "moa_session"];
+      for (const name of cookieNames) {
+        const regex = new RegExp(`(?:^|;\\s*)${name}=([^;]*)`);
+        const match = document.cookie.match(regex);
+        if (match && match[1]) {
+          const raw = match[1];
+          let parsed: any = null;
+
+          // 1. Try base64 decoding
+          try {
+            const decoded = decodeURIComponent(escape(atob(raw)));
+            parsed = JSON.parse(decoded);
+          } catch {
+            // 2. Try URI decoding
+            try {
+              parsed = JSON.parse(decodeURIComponent(raw));
+            } catch {
+              // 3. Try direct parse
+              try {
+                parsed = JSON.parse(raw);
+              } catch {
+                // failed
+              }
+            }
+          }
+
+          if (parsed && typeof parsed.accessToken === "string") {
+            inMemoryAccessToken = parsed.accessToken;
+            return inMemoryAccessToken;
+          }
+        }
+      }
+    }
+
+    return null;
   },
 
   /**

@@ -36,62 +36,24 @@ function mapPrismaRoleToUserRole(role: string): UserRole {
   }
 }
 
-// Fallback accounts for development and offline resilience
-const DEMO_USERS: Record<
-  string,
-  { name: string; role: UserRole; displayName: string }
-> = {
-  "officer@moa.gov.et": {
-    name: "Abebe Bikila",
-    displayName: "Abebe Bikila",
-    role: "OFFICER",
-  },
-  officer: {
-    name: "Abebe Bikila",
-    displayName: "Abebe Bikila",
-    role: "OFFICER",
-  },
-  "director@moa.gov.et": {
-    name: "Dr. Aster Kebede",
-    displayName: "Dr. Aster Kebede",
-    role: "DIRECTOR",
-  },
-  director: {
-    name: "Dr. Aster Kebede",
-    displayName: "Dr. Aster Kebede",
-    role: "DIRECTOR",
-  },
-  "genet@moa.gov.et": {
-    name: "Genet Tadesse",
-    displayName: "Genet Tadesse",
-    role: "ENDORSING_COMMITTEE",
-  },
-  genet: {
-    name: "Genet Tadesse",
-    displayName: "Genet Tadesse",
-    role: "ENDORSING_COMMITTEE",
-  },
-  "admin@moa.gov.et": {
-    name: "Tewodros Kassahun",
-    displayName: "Tewodros Kassahun",
-    role: "ADMIN",
-  },
-  admin: {
-    name: "Tewodros Kassahun",
-    displayName: "Tewodros Kassahun",
-    role: "ADMIN",
-  },
-  "yabfikre@gmail.com": {
-    name: "Yeabsira Fikre",
-    displayName: "Yeabsira Fikre",
-    role: "ADMIN",
-  },
-  "fikreyabsira@gmail.com": {
-    name: "Yeabsira Fikre",
-    displayName: "Yeabsira Fikre",
-    role: "ADMIN",
-  },
-};
+
+
+export const FRONTEND_SESSION_COOKIE = "moa_user_session";
+
+function writeSessionCookie(session: AuthSession, rememberMe: boolean = false): void {
+  if (typeof document === "undefined") return;
+  const maxAge = rememberMe ? 30 * 86400 : 86400;
+  try {
+    const jsonStr = JSON.stringify(session);
+    const base64Str = btoa(unescape(encodeURIComponent(jsonStr)));
+    document.cookie = `${FRONTEND_SESSION_COOKIE}=${base64Str}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    document.cookie = `moa_session=${base64Str}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  } catch {
+    const encoded = encodeURIComponent(JSON.stringify(session));
+    document.cookie = `${FRONTEND_SESSION_COOKIE}=${encoded}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    document.cookie = `moa_session=${encoded}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  }
+}
 
 export async function authenticate(
   identifier: string,
@@ -104,8 +66,10 @@ export async function authenticate(
     const res = await apiClient.post<any>(
       "/auth/login",
       {
+        identifier: cleanId,
         email: cleanId,
         password,
+        rememberMe,
       },
       { skipAuth: true },
     );
@@ -113,12 +77,14 @@ export async function authenticate(
     const loginData = res.data || res;
     const rawUser = loginData.user || {};
     const tokens = loginData.tokens || {};
+    const token =
+      tokens.accessToken || loginData.sessionToken || loginData.accessToken;
 
-    if (tokens.accessToken) {
-      authTokenManager.setToken(tokens.accessToken);
+    if (token) {
+      authTokenManager.setToken(token);
     }
 
-    const role = mapPrismaRoleToUserRole(rawUser.role);
+    const role = mapPrismaRoleToUserRole(rawUser.role || rawUser.authRole);
     const user: AuthUser = {
       id: rawUser.id || `user-${Date.now()}`,
       email: rawUser.email || cleanId,
@@ -135,43 +101,13 @@ export async function authenticate(
       expiresAt: new Date(
         Date.now() + (rememberMe ? 30 : 1) * 24 * 60 * 60 * 1000,
       ).toISOString(),
+      accessToken: token,
     };
 
-    if (typeof document !== "undefined") {
-      const maxAge = rememberMe ? 30 * 86400 : 86400;
-      document.cookie = `moa_session=${encodeURIComponent(
-        JSON.stringify(session)
-      )}; path=/; max-age=${maxAge}; SameSite=Lax`;
-    }
+    writeSessionCookie(session, rememberMe);
 
     return session;
   } catch (err) {
-    // If backend is unavailable or demo user fallback
-    const demo = DEMO_USERS[cleanId];
-    if (demo) {
-      const demoToken = `demo-token-${demo.role.toLowerCase()}-${Date.now()}`;
-      authTokenManager.setToken(demoToken);
-      const session: AuthSession = {
-        status: "AUTHENTICATED",
-        user: {
-          id: `demo-${cleanId.replace(/[^a-z0-9]/g, "-")}`,
-          email: cleanId.includes("@") ? cleanId : `${cleanId}@moa.gov.et`,
-          username: cleanId.split("@")[0],
-          displayName: demo.displayName,
-          role: demo.role,
-        },
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      };
-
-      if (typeof document !== "undefined") {
-        document.cookie = `moa_session=${encodeURIComponent(
-          JSON.stringify(session)
-        )}; path=/; max-age=86400; SameSite=Lax`;
-      }
-
-      return session;
-    }
-
     if (err instanceof ApiClientError) {
       throw new AuthApiError(err.message);
     }
@@ -197,17 +133,23 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export async function resetPassword(
   token: string,
   newPassword: string,
-  _confirmPassword?: string,
+  confirmPassword?: string,
 ): Promise<void> {
   try {
-    await apiClient.post("/auth/reset-password", {
-      token,
-      newPassword,
-    });
+    await apiClient.post(
+      "/auth/reset-password",
+      {
+        token,
+        newPassword,
+        confirmPassword: confirmPassword || newPassword,
+      },
+      { skipAuth: true },
+    );
   } catch (err) {
     if (err instanceof ApiClientError) {
       throw new AuthApiError(err.message);
     }
+    throw err;
   }
 }
 
@@ -247,7 +189,22 @@ export async function createPassword(
   newPassword: string,
   confirmPassword?: string,
 ): Promise<void> {
-  return resetPassword(token, newPassword, confirmPassword);
+  try {
+    await apiClient.post(
+      "/auth/create-password",
+      {
+        token,
+        newPassword,
+        confirmPassword: confirmPassword || newPassword,
+      },
+      { skipAuth: true },
+    );
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      throw new AuthApiError(err.message);
+    }
+    throw err;
+  }
 }
 
 export async function updateProfile(
@@ -271,52 +228,48 @@ export async function createInvitedUser(
   email: string,
   role: ProvisionableRole,
 ): Promise<InvitedUserResponse> {
-  const backendRole =
-    role === "DIRECTOR"
-      ? "ProcurementDirector"
-      : role === "ENDORSING_COMMITTEE"
-      ? "ManagementTeam"
-      : "ProcurementOfficer";
+  const cleanDisplayName = displayName.trim();
+  const cleanEmail = email.trim().toLowerCase();
 
   try {
     const res = await apiClient.post<any>("/admin/users", {
-      name: displayName.trim(),
-      email: email.trim().toLowerCase(),
-      role: backendRole,
+      displayName: cleanDisplayName,
+      email: cleanEmail,
+      role,
     });
 
-    const userObj = res.data || res;
+    const userObj = res.user || res.data || res;
     return {
       user: {
         id: userObj.id || `inv-${Date.now()}`,
-        email: userObj.email || email,
-        username: userObj.username || email.split("@")[0],
-        displayName: userObj.name || displayName,
+        email: userObj.email || cleanEmail,
+        username: userObj.username || cleanEmail.split("@")[0],
+        displayName: userObj.displayName || userObj.name || cleanDisplayName,
         role,
       },
       invitationExpiresAt: new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(),
-      message: "Invitation sent successfully",
+      message: res.message || `Invitation email sent successfully to ${cleanEmail}.`,
       invitationLink: res.invitationLink,
     };
   } catch (err) {
     if (err instanceof ApiClientError) {
       throw new AuthApiError(err.message);
     }
-    // Fallback response
+    // Fallback response if offline
     return {
       user: {
         id: `inv-${Date.now()}`,
-        email,
-        username: email.split("@")[0],
-        displayName,
+        email: cleanEmail,
+        username: cleanEmail.split("@")[0],
+        displayName: cleanDisplayName,
         role,
       },
       invitationExpiresAt: new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(),
-      message: "Invitation sent successfully",
+      message: `Invitation email sent successfully to ${cleanEmail}.`,
     };
   }
 }
@@ -324,6 +277,7 @@ export async function createInvitedUser(
 export async function signOut(): Promise<void> {
   authTokenManager.clearToken();
   if (typeof document !== "undefined") {
+    document.cookie = `${FRONTEND_SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
     document.cookie = "moa_session=; path=/; max-age=0; SameSite=Lax";
   }
   try {

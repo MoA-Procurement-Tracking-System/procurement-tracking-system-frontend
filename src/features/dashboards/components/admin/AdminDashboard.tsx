@@ -141,33 +141,33 @@ const DEFAULT_ADMIN_LOGS: AuditLogEntry[] = [
 export function AdminDashboard({ user }: { user: AuthUser }) {
   const heading = getDashboardHeading("ADMIN");
 
-  const [users, setUsers] = useState<ApiUser[]>(DEFAULT_ADMIN_USERS);
-  const [totalUserCount, setTotalUserCount] = useState<number>(DEFAULT_ADMIN_USERS.length);
-  const [isUsersLoading, setIsUsersLoading] = useState(false);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [totalUserCount, setTotalUserCount] = useState<number>(0);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
 
-  const [logs, setLogs] = useState<AuditLogEntry[]>(DEFAULT_ADMIN_LOGS);
-  const [isLogsLoading, setIsLogsLoading] = useState(false);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       const usersRes = await fetchUsers({ pageSize: 50 });
-      if (usersRes.data && usersRes.data.length > 0) {
+      if (usersRes && Array.isArray(usersRes.data)) {
         setUsers(usersRes.data);
-        setTotalUserCount(usersRes.meta.total);
+        setTotalUserCount(usersRes.meta?.total ?? usersRes.data.length);
       }
     } catch {
-      // Keep fallback state
+      // Keep empty state
     }
 
     try {
       const logsRes = await fetchAuditLogs({ pageSize: 5 });
-      if (logsRes.data && logsRes.data.length > 0) {
+      if (logsRes && Array.isArray(logsRes.data)) {
         setLogs(logsRes.data);
       }
     } catch {
-      // Keep fallback state
+      // Keep empty state
     }
   }, []);
 
@@ -176,9 +176,9 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
     fetchUsers({ pageSize: 50 })
       .then((usersRes) => {
-        if (active && usersRes.data && usersRes.data.length > 0) {
+        if (active && usersRes && Array.isArray(usersRes.data)) {
           setUsers(usersRes.data);
-          setTotalUserCount(usersRes.meta.total);
+          setTotalUserCount(usersRes.meta?.total ?? usersRes.data.length);
         }
       })
       .catch(() => {})
@@ -188,7 +188,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
     fetchAuditLogs({ pageSize: 5 })
       .then((logsRes) => {
-        if (active && logsRes.data && logsRes.data.length > 0) {
+        if (active && logsRes && Array.isArray(logsRes.data)) {
           setLogs(logsRes.data);
         }
       })

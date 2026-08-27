@@ -111,8 +111,8 @@ const DEFAULT_LOGS_RESPONSE: PaginatedResponse<AuditLogEntry> = {
 
 export function SystemLogsView() {
   const [logsResponse, setLogsResponse] =
-    useState<PaginatedResponse<AuditLogEntry> | null>(DEFAULT_LOGS_RESPONSE);
-  const [isLoading, setIsLoading] = useState(false);
+    useState<PaginatedResponse<AuditLogEntry> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search and Filter State
@@ -147,88 +147,22 @@ export function SystemLogsView() {
     })
       .then((result) => {
         if (active) {
-          if (result && result.data && result.data.length > 0) {
+          if (result && Array.isArray(result.data)) {
             setLogsResponse(result);
           } else {
-            const fallbackLogs: AuditLogEntry[] = [
-              {
-                id: "log-1",
-                action: "USER_LOGIN_SUCCESS",
-                entityType: "AUTH",
-                entityId: "u-off-1",
-                userId: "u-off-1",
-                user: { id: "u-off-1", name: "Abebe Bikila", email: "officer@moa.gov.et" },
-                changes: { status: "Authenticated via web session", ipAddress: "196.189.16.42" },
-                createdAt: "2026-08-26T09:30:00Z",
-              },
-              {
-                id: "log-2",
-                action: "PLAN_SUBMITTED",
-                entityType: "PLAN",
-                entityId: "plan-3",
-                userId: "u-off-1",
-                user: { id: "u-off-1", name: "Abebe Bikila", email: "officer@moa.gov.et" },
-                changes: { plan: "BREFONS - Consultancy Services Plan", status: "Submitted to Director", ipAddress: "196.189.16.42" },
-                createdAt: "2026-08-26T10:00:00Z",
-              },
-              {
-                id: "log-3",
-                action: "PLAN_SENT_TO_COMMITTEE",
-                entityType: "PLAN",
-                entityId: "plan-3",
-                userId: "u-dir-1",
-                user: { id: "u-dir-1", name: "Dr. Aster Kebede", email: "director@moa.gov.et" },
-                changes: { decision: "Approved and sent to Endorsement Committee", ipAddress: "196.189.16.10" },
-                createdAt: "2026-08-26T10:30:00Z",
-              },
-              {
-                id: "log-4",
-                action: "USER_INVITED",
-                entityType: "USER",
-                entityId: "u-com-1",
-                userId: "u-adm-1",
-                user: { id: "u-adm-1", name: "Tewodros Kassahun", email: "admin@moa.gov.et" },
-                changes: { role: "ManagementTeam (Endorsement Committee)", email: "genet@moa.gov.et", ipAddress: "196.189.16.2" },
-                createdAt: "2026-08-26T11:00:00Z",
-              },
-            ];
             setLogsResponse({
-              data: fallbackLogs,
-              meta: { total: fallbackLogs.length, page: 1, pageSize: PAGE_SIZE, totalPages: 1 },
+              data: [],
+              meta: { total: 0, page: 1, pageSize: PAGE_SIZE, totalPages: 1 },
             });
           }
           setLoadError(null);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (active) {
-          const fallbackLogs: AuditLogEntry[] = [
-            {
-              id: "log-1",
-              action: "USER_LOGIN_SUCCESS",
-              entityType: "AUTH",
-              entityId: "u-off-1",
-              userId: "u-off-1",
-              user: { id: "u-off-1", name: "Abebe Bikila", email: "officer@moa.gov.et" },
-              changes: { status: "Authenticated via web session", ipAddress: "196.189.16.42" },
-              createdAt: "2026-08-26T09:30:00Z",
-            },
-            {
-              id: "log-2",
-              action: "PLAN_SENT_TO_COMMITTEE",
-              entityType: "PLAN",
-              entityId: "plan-3",
-              userId: "u-dir-1",
-              user: { id: "u-dir-1", name: "Dr. Aster Kebede", email: "director@moa.gov.et" },
-              changes: { decision: "Approved and sent to Endorsement Committee", ipAddress: "196.189.16.10" },
-              createdAt: "2026-08-26T10:30:00Z",
-            },
-          ];
-          setLogsResponse({
-            data: fallbackLogs,
-            meta: { total: fallbackLogs.length, page: 1, pageSize: PAGE_SIZE, totalPages: 1 },
-          });
-          setLoadError(null);
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load audit logs from database.",
+          );
         }
       })
       .finally(() => {
