@@ -11,7 +11,7 @@
 import { authTokenManager } from "./authTokenManager";
 
 export const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000/api";
 
 export class ApiClientError extends Error {
   status?: number;
