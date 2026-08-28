@@ -12,7 +12,6 @@ import {
   Filter,
   CheckCircle2,
   Lock,
-  Sparkles,
   ShieldCheck,
   RotateCcw,
   Send,
@@ -1007,10 +1006,6 @@ export function DirectorActivitiesListView({
                     </tr>
                   ) : (
                     filteredActivities.map((act, index) => {
-                      const completedStages = act.roadmap.filter(
-                        (s) => s.stageStatus === "Completed",
-                      ).length;
-                      const totalStages = act.roadmap.length;
                       const computedStatus = getActivityStatus(act);
 
                       const statusColorStyle =

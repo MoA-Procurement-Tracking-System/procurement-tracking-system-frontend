@@ -2,20 +2,14 @@
 
 import {
   Inbox,
-  FileCheck,
-  CheckCircle2,
   XCircle,
   Info,
   Search,
   History,
-  ChevronRight,
   ClipboardCheck,
-  TrendingUp,
   Clock,
-  FileText,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
-import { DashboardOverview } from "../DashboardOverview";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchPlans, mapBackendPlanToFrontend } from "@/lib/plansApi";

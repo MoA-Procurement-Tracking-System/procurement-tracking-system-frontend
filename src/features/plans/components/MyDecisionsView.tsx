@@ -6,8 +6,6 @@ import {
   Filter,
   CheckCircle2,
   XCircle,
-  Clock,
-  History,
   Home,
   ChevronRight,
   ArrowLeft,

@@ -1,11 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   fetchProjects,
-  fetchProjectById,
   createProject,
-  updateProject,
   assignOfficerToProject,
-  removeOfficerFromProject,
   mapBackendProjectToProjectItem,
   mapBackendProjectToOfficerProject,
   type BackendProject,

@@ -42,53 +42,6 @@ export interface AuditLogEntry {
   } | null;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-async function adminRequest<T>(
-  path: string,
-  options?: { method?: string; body?: object },
-): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(path, {
-      method: options?.method ?? "GET",
-      headers: options?.body
-        ? { "Content-Type": "application/json" }
-        : undefined,
-      credentials: "same-origin",
-      cache: "no-store",
-      body: options?.body ? JSON.stringify(options.body) : undefined,
-    });
-  } catch {
-    throw new AuthApiError(
-      "Unable to reach the administration service. Please try again.",
-    );
-  }
-
-  const text = await response.text();
-  let payload: unknown = null;
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
-    }
-  }
-
-  if (!response.ok) {
-    const msg =
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof (payload as Record<string, unknown>).message === "string"
-        ? ((payload as Record<string, unknown>).message as string)
-        : "The request could not be completed.";
-    throw new AuthApiError(msg);
-  }
-
-  return payload as T;
-}
-
 // ─── User Management API ────────────────────────────────────────────────────
 
 export interface FetchUsersParams {

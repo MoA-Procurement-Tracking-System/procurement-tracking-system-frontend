@@ -13,11 +13,8 @@ import {
   RotateCcw,
   ArrowLeft,
   UserCheck,
-  CheckCircle2,
-  AlertTriangle,
   LockKeyhole,
   BriefcaseBusiness,
-  LayoutDashboard,
   Route,
   CalendarDays,
   ArrowUpDown,
@@ -461,14 +458,6 @@ function DirectorActivityTrackerList({
 
   const fiscalYearOptions = useMemo(
     () => Array.from(new Set(items.map((item) => item.plan.budgetYear))),
-    [items],
-  );
-
-  const officerOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(items.flatMap((item) => item.project.assignedOfficers ?? [])),
-      ).filter(Boolean),
     [items],
   );
 

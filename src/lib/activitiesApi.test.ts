@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   fetchActivities,
-  fetchActivityById,
   createActivity,
   updateStageDates,
   recordActualStageDates,

@@ -93,7 +93,7 @@ export function CreateProjectView({
   const [status, setStatus] = useState<"Active" | "Inactive">(
     initialData?.status || "Active",
   );
-  const [budgetYear, setBudgetYear] = useState(
+  const [budgetYear] = useState(
     initialData?.budgetYear || BUDGET_YEAR_OPTIONS[0],
   );
   const [sector, setSector] = useState(

@@ -1,9 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   fetchContracts,
-  fetchContractById,
   createContract,
-  fetchContractPayments,
   recordContractPayment,
   type BackendContract,
   type BackendPayment,

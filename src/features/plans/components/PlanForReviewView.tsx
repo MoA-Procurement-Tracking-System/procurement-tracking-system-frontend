@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  ClipboardCheck,
   CheckCircle2,
   RotateCcw,
   Send,
@@ -28,7 +27,6 @@ import {
 } from "../plansData";
 import {
   fetchPlans,
-  submitVote,
   sendPlanToCommittee,
   rejectPlan,
   mapBackendPlanToFrontend,
@@ -38,12 +36,8 @@ import {
   INITIAL_PROJECTS,
   type ProjectItem,
 } from "../../dashboards/components/director/projects/projectsData";
-import {
-  INITIAL_ACTIVITIES,
-  type ProcurementActivity,
-} from "../../activities/activitiesData";
+import { type ProcurementActivity } from "../../activities/activitiesData";
 import { CreatePlanForm } from "./CreatePlanForm";
-import { ActivitiesListView } from "../../activities/components/ActivitiesListView";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import {
   officerProjects,
@@ -195,7 +189,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [budgetYearFilter, setBudgetYearFilter] = useState<string>("ALL");
   const [regionFilter, setRegionFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter] = useState<string>("ALL");
 
   // Selection states
   const [selectedPlanForReview, setSelectedPlanForReview] =
@@ -229,10 +223,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     setTimeout(() => {
       setIsSaving(false);
     }, 350);
-  };
-
-  const openPlanForReview = (plan: ProcurementPlan) => {
-    setActivitiesPlan(plan);
   };
 
   const [returnRemarks, setReturnRemarks] = useState("");
@@ -428,42 +418,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     showToast(
       `Plan "${plan.planName}" returned to Procurement Officer for revision.`,
     );
-  };
-
-  // Committee Decision 1: Approve
-  const handleCommitteeApprove = async (plan: ProcurementPlan) => {
-    try {
-      await submitVote(plan.id, "APPROVE");
-      showToast(`Plan "${plan.planName}" has been endorsed and approved!`);
-      await loadPlans();
-      setSelectedPlanForReview(null);
-      setReturnRemarks("");
-    } catch (err) {
-      console.error(err);
-      const errMsg =
-        err instanceof Error ? err.message : "Failed to submit approval vote.";
-      showToast(errMsg);
-    }
-  };
-
-  // Committee Decision 2: Reject
-  const handleCommitteeReject = async (plan: ProcurementPlan) => {
-    if (!returnRemarks.trim()) {
-      showToast("Reason for rejection is mandatory.");
-      return;
-    }
-    try {
-      await submitVote(plan.id, "REJECT", returnRemarks.trim());
-      showToast(`Plan "${plan.planName}" was rejected and returned.`);
-      await loadPlans();
-      setSelectedPlanForReview(null);
-      setReturnRemarks("");
-    } catch (err) {
-      console.error(err);
-      const errMsg =
-        err instanceof Error ? err.message : "Failed to submit rejection vote.";
-      showToast(errMsg);
-    }
   };
 
   const handleSavePlanEdits = (savedPlan: ProcurementPlan) => {

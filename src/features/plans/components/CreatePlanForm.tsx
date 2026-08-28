@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Calendar,
-  CheckCircle2,
   ChevronRight,
   FileText,
   Home,
@@ -13,7 +12,6 @@ import {
   Send,
   RotateCcw,
   MessageSquare,
-  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
@@ -116,10 +114,6 @@ export function CreatePlanForm({
       );
     }
   };
-
-  const selectedCategoryInfo = PLAN_CATEGORY_CHOICES.find(
-    (c) => c.category === category,
-  );
 
   // Is Director trying to view/edit a Draft plan?
   const isDraftPlanForDirector = isDirector && status === "Draft";

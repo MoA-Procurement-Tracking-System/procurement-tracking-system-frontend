@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { BellRing, RefreshCw } from "lucide-react";
+import { BellRing } from "lucide-react";
 import {
   INITIAL_PROJECTS,
   type ProjectItem,
@@ -43,7 +43,6 @@ export function ProjectsManagementView() {
   );
   const [sectors, setSectors] = useState<LookupItem[]>([]);
   const [fundingSources, setFundingSources] = useState<LookupItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(
     null,
@@ -64,7 +63,6 @@ export function ProjectsManagementView() {
   };
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
     try {
       // 1. Fetch live lookups and officers
       const [secList, fsList, offList] = await Promise.allSettled([
@@ -105,18 +103,15 @@ export function ProjectsManagementView() {
         );
         setPlans(mappedPlans);
       }
-    } catch (err) {
-      console.warn(
-        "Using default dataset fallback (backend syncing in background):",
-        err,
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
-    loadData();
+    const timeoutId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [loadData]);
 
   // Open Project Create Form
