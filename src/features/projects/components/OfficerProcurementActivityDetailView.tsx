@@ -102,11 +102,11 @@ export function OfficerProcurementActivityDetailView({
       value: form?.fundingSource ?? project.fundingSource,
     },
     { label: "Pricing Basis", value: form?.pricingBasis ?? "" },
-    { label: "Subcomponent", value: form?.subcomponent ?? "" },
     {
-      label: "Invitation / Bid Reference",
+      label: "Invitation / Bid Reference Number",
       value: form?.invitationReference ?? "",
     },
+    { label: "Subcomponent", value: form?.subcomponent ?? "" },
     ...(form
       ? [{ label: "Lot Required", value: form.lotRequired ? "Yes" : "No" }]
       : []),
@@ -125,8 +125,6 @@ export function OfficerProcurementActivityDetailView({
     },
     { label: "High-Risk Code", value: form?.highRiskCode ?? "" },
     { label: "Location / Region", value: form?.location ?? "" },
-    { label: "Latitude", value: form?.latitude ?? "" },
-    { label: "Longitude", value: form?.longitude ?? "" },
   ]);
 
   const selectedComponents =

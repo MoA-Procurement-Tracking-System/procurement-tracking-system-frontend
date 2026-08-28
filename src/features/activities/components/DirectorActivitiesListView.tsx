@@ -1,0 +1,1149 @@
+"use client";
+
+import { useState } from "react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  Home,
+  FileText,
+  Clock,
+  Eye,
+  Search,
+  Filter,
+  CheckCircle2,
+  Lock,
+  Sparkles,
+  ShieldCheck,
+  RotateCcw,
+  Send,
+} from "lucide-react";
+import Link from "next/link";
+import type { ProcurementPlan } from "../../plans/plansData";
+import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
+import {
+  INITIAL_ACTIVITIES,
+  type ProcurementActivity,
+} from "../activitiesData";
+
+interface DirectorActivitiesListViewProps {
+  plan: ProcurementPlan;
+  project: ProjectItem;
+  parentSection?: "projects" | "plan-for-review";
+  onBackClick: () => void;
+  onApprovePlan?: (plan: ProcurementPlan) => void;
+  onReturnPlan?: (plan: ProcurementPlan, remarks: string) => void;
+}
+
+export function DirectorActivitiesListView({
+  plan,
+  project,
+  parentSection = "plan-for-review",
+  onBackClick,
+  onApprovePlan,
+  onReturnPlan,
+}: DirectorActivitiesListViewProps) {
+  const isEditable = parentSection === "plan-for-review";
+
+  const [activities, setActivities] = useState<ProcurementActivity[]>(
+    INITIAL_ACTIVITIES.filter(
+      (a) =>
+        a.planId === plan.id ||
+        a.planName === plan.planName ||
+        a.projectCode === plan.projectCode,
+    ),
+  );
+
+  const [currentPlanName, setCurrentPlanName] = useState(plan.planName);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [methodFilter, setMethodFilter] = useState<string>("ALL");
+  const [reviewFilter, setReviewFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // Selected Activity for Detailed 4-Step Stepper View
+  const [selectedActivity, setSelectedActivity] =
+    useState<ProcurementActivity | null>(null);
+  const [directorReturnRemarks, setDirectorReturnRemarks] = useState("");
+
+  // Active Detail Tab state (1: Key Details, 2: Related Info, 3: Additional Details, 4: Roadmap)
+  const [activeDetailTab, setActiveDetailTab] = useState<1 | 2 | 3 | 4>(1);
+
+  const handleUpdateActivityField = <K extends keyof ProcurementActivity>(
+    actId: string,
+    field: K,
+    value: ProcurementActivity[K],
+  ) => {
+    if (!isEditable) return;
+    setActivities((prev) =>
+      prev.map((a) => (a.id === actId ? { ...a, [field]: value } : a)),
+    );
+    if (selectedActivity && selectedActivity.id === actId) {
+      setSelectedActivity((prev) =>
+        prev ? { ...prev, [field]: value } : null,
+      );
+    }
+  };
+
+  const handleUpdateRoadmapDate = (
+    actId: string,
+    stageId: string,
+    newDate: string,
+  ) => {
+    if (!isEditable) return;
+    setActivities((prev) =>
+      prev.map((a) => {
+        if (a.id !== actId) return a;
+        const newRoadmap = a.roadmap.map((s) =>
+          s.id === stageId
+            ? {
+                ...s,
+                revisedTargetDate: newDate,
+                originalPlannedDate: s.originalPlannedDate || newDate,
+              }
+            : s,
+        );
+        return { ...a, roadmap: newRoadmap };
+      }),
+    );
+    if (selectedActivity && selectedActivity.id === actId) {
+      setSelectedActivity((prev) => {
+        if (!prev) return null;
+        const newRoadmap = prev.roadmap.map((s) =>
+          s.id === stageId
+            ? {
+                ...s,
+                revisedTargetDate: newDate,
+                originalPlannedDate: s.originalPlannedDate || newDate,
+              }
+            : s,
+        );
+        return { ...prev, roadmap: newRoadmap };
+      });
+    }
+  };
+
+  const getActivityStatus = (
+    act: ProcurementActivity,
+  ): "Not Started" | "In Progress" | "Completed" | "Delayed" => {
+    const completedStages = act.roadmap.filter(
+      (s) => s.stageStatus === "Completed",
+    ).length;
+    const totalStages = act.roadmap.length;
+    const hasDelay = act.roadmap.some(
+      (s) =>
+        (s.delayDays && s.delayDays > 0) ||
+        s.remarks?.toLowerCase().includes("delay"),
+    );
+
+    if (hasDelay) return "Delayed";
+    if (completedStages === totalStages && totalStages > 0) return "Completed";
+    if (
+      completedStages === 0 &&
+      act.roadmap.every(
+        (s) => s.stageStatus === "Not Started" || !s.stageStatus,
+      )
+    )
+      return "Not Started";
+    return "In Progress";
+  };
+
+  const filteredActivities = activities.filter((act) => {
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      !q ||
+      act.activityRefNo.toLowerCase().includes(q) ||
+      act.description.toLowerCase().includes(q);
+    const matchesMethod = methodFilter === "ALL" || act.method === methodFilter;
+    const matchesReview =
+      reviewFilter === "ALL" || act.reviewType === reviewFilter;
+    const matchesStatus =
+      statusFilter === "ALL" || getActivityStatus(act) === statusFilter;
+    return matchesSearch && matchesMethod && matchesReview && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-4 animate-in fade-in duration-200 pb-8">
+      {/* 1. CLEAN BREADCRUMB NAVIGATION */}
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-1.5 text-xs"
+      >
+        <Link
+          href="/dashboard"
+          className="text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1 shrink-0"
+        >
+          <Home className="h-3.5 w-3.5" />
+        </Link>
+        <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
+        <button
+          onClick={onBackClick}
+          className="text-slate-500 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
+        >
+          {parentSection === "plan-for-review" ? "Plan for Review" : "Projects"}
+        </button>
+        <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
+        <button
+          onClick={() => setSelectedActivity(null)}
+          className={`transition-colors cursor-pointer truncate max-w-[260px] ${
+            selectedActivity
+              ? "text-slate-500 hover:text-slate-900"
+              : "font-bold text-[#0A3C2F]"
+          }`}
+        >
+          {currentPlanName}
+        </button>
+        {selectedActivity && (
+          <>
+            <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
+            <span className="font-bold text-[#0A3C2F] font-mono truncate max-w-[180px]">
+              {selectedActivity.activityRefNo}
+            </span>
+          </>
+        )}
+      </nav>
+
+      {/* 2. COMPREHENSIVE 4-STEP ACTIVITY INSPECTION & EDIT VIEW */}
+      {selectedActivity ? (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Header Card */}
+          <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedActivity(null)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
+                    Table
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    {selectedActivity.activityRefNo}
+                  </span>
+                </div>
+
+                <h1 className="text-base sm:text-lg font-extrabold text-slate-950 tracking-tight leading-snug">
+                  {selectedActivity.description}
+                </h1>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                  <span>
+                    Category:{" "}
+                    <strong className="text-slate-900">
+                      {selectedActivity.category}
+                    </strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Method:{" "}
+                    <strong className="text-slate-900">
+                      {selectedActivity.method}
+                    </strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Estimated Amount:{" "}
+                    <strong className="text-slate-900 font-mono">
+                      {selectedActivity.currency}{" "}
+                      {selectedActivity.estimatedAmount.toLocaleString()}
+                    </strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Review Type:{" "}
+                    <strong className="text-slate-900">
+                      {selectedActivity.reviewType}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* CONNECTED HORIZONTAL STEPPER WIZARD */}
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-2xs">
+            <div className="relative flex items-center justify-between max-w-2xl mx-auto px-4">
+              {/* Connecting Line */}
+              <div className="absolute top-4 left-10 right-10 h-0.5 bg-slate-200 -z-0" />
+              <div
+                className="absolute top-4 left-10 h-0.5 bg-[#0A3C2F] transition-all duration-300 -z-0"
+                style={{
+                  width:
+                    activeDetailTab === 1
+                      ? "0%"
+                      : activeDetailTab === 2
+                        ? "33.33%"
+                        : activeDetailTab === 3
+                          ? "66.66%"
+                          : "100%",
+                }}
+              />
+
+              {[
+                { step: 1, label: "1. Key Details" },
+                { step: 2, label: "2. Related Information" },
+                { step: 3, label: "3. Additional Details" },
+                { step: 4, label: "4. Roadmap" },
+              ].map((tab) => {
+                const isActive = activeDetailTab === tab.step;
+                const isCompleted = activeDetailTab > tab.step;
+
+                return (
+                  <button
+                    key={tab.step}
+                    type="button"
+                    onClick={() =>
+                      setActiveDetailTab(tab.step as 1 | 2 | 3 | 4)
+                    }
+                    className="relative z-10 flex flex-col items-center group cursor-pointer focus:outline-none"
+                  >
+                    {/* Stepper Circle */}
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-extrabold transition-all ${
+                        isActive
+                          ? "border-2 border-[#0A3C2F] bg-white text-[#0A3C2F] ring-4 ring-[#0A3C2F]/10 shadow-xs"
+                          : isCompleted
+                            ? "bg-[#0A3C2F] text-white"
+                            : "border border-slate-300 bg-[#F0F4F8] text-slate-400"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
+                      ) : (
+                        tab.step
+                      )}
+                    </div>
+
+                    {/* Stepper Title Label */}
+                    <span
+                      className={`mt-2 text-[11px] whitespace-nowrap transition-colors ${
+                        isActive
+                          ? "font-extrabold text-[#0A3C2F]"
+                          : isCompleted
+                            ? "font-bold text-slate-800"
+                            : "font-medium text-slate-400"
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* STEP 1: KEY DETAILS */}
+          {activeDetailTab === 1 && (
+            <section className="rounded-xl border border-slate-200 bg-white shadow-2xs p-6 sm:p-7 space-y-1">
+              {/* Header */}
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
+                <FileText className="h-4 w-4 text-[#0B5C43]" />
+                <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                  4.1 Step 1 — Key Details & Procurement Framework
+                </h2>
+              </div>
+
+              {/* Rows matching inspiration horizontal key-value rows */}
+              <div className="divide-y divide-slate-100 text-xs">
+                {/* Row 1: Category */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Procurement Category
+                  </span>
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>{selectedActivity.category}</span>
+                    <span className="text-slate-400 font-medium">
+                      (Inherited from Plan)
+                    </span>
+                  </span>
+                </div>
+
+                {/* Row 2: Method */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Procurement Method
+                  </span>
+                  <span className="font-extrabold text-[#0B5C43]">
+                    {selectedActivity.method} (National Competitive Bidding
+                    (NCB))
+                  </span>
+                </div>
+
+                {/* Row 3: Market Approach */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Market Approach
+                  </span>
+                  <span className="font-extrabold text-slate-900">
+                    Open - {selectedActivity.marketApproach}
+                  </span>
+                </div>
+
+                {/* Row 4: Qualification Approach */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Qualification Approach
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {selectedActivity.qualificationApproach}
+                  </span>
+                </div>
+
+                {/* Row 5: Review Type / Oversight */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Review Type / Oversight
+                  </span>
+                  <span className="font-extrabold text-[#C25E00]">
+                    {selectedActivity.reviewType} Review
+                  </span>
+                </div>
+
+                {/* Row 6: Domestic / Regional Preference */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Domestic / Regional Preference
+                  </span>
+                  <span className="font-bold text-slate-900">No</span>
+                </div>
+
+                {/* Row 7: Procurement Process */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Procurement Process
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    Single Stage One Envelope
+                  </span>
+                </div>
+
+                {/* Row 8: Procurement Document Type */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Procurement Document Type
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    Request for Bids SPD ({selectedActivity.category}) - 1
+                    envelope
+                  </span>
+                </div>
+
+                {/* Row 9: Framework Flags */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Framework Flags
+                  </span>
+                  <div className="flex items-center gap-4 text-slate-600 font-semibold">
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" /> UN
+                      Contracting:{" "}
+                      <strong className="text-slate-900 font-bold ml-1">
+                        No
+                      </strong>
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />{" "}
+                      In-Process (Migrated):{" "}
+                      <strong className="text-slate-900 font-bold ml-1">
+                        No
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 2: RELATED INFORMATION */}
+          {activeDetailTab === 2 && (
+            <section className="rounded-xl border border-slate-200 bg-white shadow-2xs p-6 sm:p-7 space-y-6">
+              {/* Header */}
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
+                <FileText className="h-4 w-4 text-[#0B5C43]" />
+                <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                  4.2 Step 2 — Related Information & Activity Details
+                </h2>
+              </div>
+
+              {/* Inherited Project & Plan Context Banner (Unfragmented Horizontal Rows - Image 1 Style) */}
+              <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4 sm:p-5">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0B5C43]">
+                    INHERITED PROJECT & PLAN CONTEXT
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Read-only metadata
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      PROJECT
+                    </span>
+                    <span className="font-extrabold text-slate-900">
+                      {project?.name ||
+                        "DRIVE - De-Risking, Inclusion and Value Enhancement"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      PROJECT CODE
+                    </span>
+                    <span className="font-extrabold text-[#0B5C43]">
+                      {project?.code || "PRJ-24-001"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      PROCUREMENT PLAN
+                    </span>
+                    <span className="font-extrabold text-slate-900">
+                      {plan?.planName || "2018 EFY Annual Procurement Plan"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      PLAN REFERENCE
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      {plan?.projectCode
+                        ? `PP-${plan.projectCode}`
+                        : "PP-DRIVE-2018-01"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      FISCAL YEAR
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      {plan?.budgetYear || "2018 EFY (2025/2026)"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
+                    <span className="w-full sm:w-60 font-bold text-slate-500 shrink-0 uppercase text-[10px]">
+                      RESPONSIBLE OFFICER
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      Yeabsira Fikre
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Activity Baseline Fields matching inspiration rows */}
+              <div className="divide-y divide-slate-100 text-xs">
+                {/* Activity Reference */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Activity Reference
+                  </span>
+                  <span className="font-extrabold text-[#0B5C43]">
+                    {selectedActivity.activityRefNo}
+                  </span>
+                </div>
+
+                {/* Estimated Amount (Now Editable with Neutral Attention Border) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-2">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Estimated Amount (ETB)
+                  </span>
+                  {isEditable ? (
+                    <div className="flex items-center gap-2 max-w-xs w-full">
+                      <input
+                        type="number"
+                        value={selectedActivity.estimatedAmount}
+                        onChange={(e) =>
+                          handleUpdateActivityField(
+                            selectedActivity.id,
+                            "estimatedAmount",
+                            Number(e.target.value) || 0,
+                          )
+                        }
+                        className="w-full rounded-xl border-2 border-slate-400 hover:border-slate-600 bg-white px-3 py-2 text-xs font-bold font-mono text-[#0B5C43] shadow-2xs outline-none transition-all focus:border-[#0B5C43] focus:ring-2 focus:ring-[#0B5C43]/10"
+                      />
+                      <span className="text-xs font-bold text-slate-600 font-mono">
+                        ({selectedActivity.currency})
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-extrabold text-slate-900 font-mono">
+                      ETB {selectedActivity.estimatedAmount.toLocaleString()}.00
+                      ({selectedActivity.currency})
+                    </span>
+                  )}
+                </div>
+
+                {/* Primary Funding Source */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Primary Funding Source
+                  </span>
+                  <span className="font-bold text-slate-900">World Bank</span>
+                </div>
+
+                {/* Pricing Basis */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Pricing Basis
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    Not Applicable
+                  </span>
+                </div>
+
+                {/* Subcomponent */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Subcomponent
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    Livestock Value Chains and Trade Facilitation
+                  </span>
+                </div>
+
+                {/* Lot Required */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-1.5">
+                  <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
+                    Lot Required
+                  </span>
+                  <span className="font-bold text-slate-900">No</span>
+                </div>
+
+                {/* Activity Description (Editable Input with Neutral Attention Border) */}
+                <div className="py-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 text-xs uppercase tracking-wide">
+                      Activity Description
+                    </label>
+                  </div>
+                  {isEditable ? (
+                    <textarea
+                      rows={3}
+                      value={selectedActivity.description}
+                      onChange={(e) =>
+                        handleUpdateActivityField(
+                          selectedActivity.id,
+                          "description",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full rounded-xl border-2 border-slate-400 hover:border-slate-600 bg-white p-3.5 text-xs font-semibold text-slate-900 shadow-2xs outline-none transition-all focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10"
+                      placeholder="Enter activity description..."
+                    />
+                  ) : (
+                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-800 leading-relaxed">
+                      {selectedActivity.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Comments / Remarks (Editable Input with Neutral Attention Border) */}
+                <div className="py-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 text-xs uppercase tracking-wide">
+                      Comments / Remarks
+                    </label>
+                  </div>
+                  {isEditable ? (
+                    <textarea
+                      rows={2}
+                      value={
+                        selectedActivity.remarks ||
+                        "Approved procurement activity baseline."
+                      }
+                      onChange={(e) =>
+                        handleUpdateActivityField(
+                          selectedActivity.id,
+                          "remarks",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full rounded-xl border-2 border-slate-400 hover:border-slate-600 bg-white p-3.5 text-xs font-semibold text-slate-900 shadow-2xs outline-none transition-all focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10"
+                      placeholder="Enter remarks or approval notes..."
+                    />
+                  ) : (
+                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-800 leading-relaxed">
+                      {selectedActivity.remarks ||
+                        "Approved procurement activity baseline."}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 3: ADDITIONAL DETAILS (Matching Image 2 Screenshot) */}
+          {activeDetailTab === 3 && (
+            <section className="rounded-xl border border-slate-200 bg-white shadow-2xs p-6 sm:p-7 space-y-6">
+              {/* Header */}
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
+                <FileText className="h-4 w-4 text-[#0B5C43]" />
+                <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                  4.3 Step 3 — Additional Details & Allocations
+                </h2>
+              </div>
+
+              {/* Allocations (Image 2 style: rounded inputs with green % pill) */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Project Component Allocation
+                  </label>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5 flex items-center justify-between shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800">
+                      Livestock Value Chains and Trade Facilitation
+                    </span>
+                    <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-700 border border-emerald-200">
+                      100%
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Financing Allocation
+                  </label>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5 flex items-center justify-between shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800">
+                      IDA-E0380
+                    </span>
+                    <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-700 border border-emerald-200">
+                      100%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Administrative Classification Codes (Image 2 grid layout) */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="grid gap-4 sm:grid-cols-3 text-xs">
+                  <div>
+                    <span className="block font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                      CLASSIFICATION CODE
+                    </span>
+                    <span className="font-extrabold text-slate-900 font-mono text-sm">
+                      23181500
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="block font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                      EVALUATION OPTION CODE
+                    </span>
+                    <span className="font-extrabold text-slate-900 text-sm">
+                      Most Advantageous Bid
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="block font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                      HIGH-RISK CODE
+                    </span>
+                    <span className="font-extrabold text-slate-900 text-sm">
+                      No
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 text-xs">
+                  <span className="block font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                    LOCATION / REGION
+                  </span>
+                  <span className="font-extrabold text-slate-900 text-sm">
+                    FPCU / Federal
+                  </span>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 4: ROADMAP MILESTONES */}
+          {activeDetailTab === 4 && (
+            <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-2xs space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0A3C2F] flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-[#0A3C2F]" />
+                  4.1 Activity Roadmap & Stage Milestones
+                </h3>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                  Method: {selectedActivity.method}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase">
+                    <tr>
+                      <th className="py-2.5 px-3 w-8 text-center">#</th>
+                      <th className="py-2.5 px-3">Stage Name</th>
+                      <th className="py-2.5 px-3 font-mono">
+                        Original Baseline
+                      </th>
+                      <th className="py-2.5 px-3 font-mono">
+                        Target Date {isEditable ? "(Editable)" : ""}
+                      </th>
+                      <th className="py-2.5 px-3 font-mono">Actual Date</th>
+                      <th className="py-2.5 px-3 text-center">Stage Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/80 text-slate-700 bg-white">
+                    {selectedActivity.roadmap.map((stage, idx) => (
+                      <tr key={stage.id} className="hover:bg-slate-50/70">
+                        <td className="py-2 px-3 text-center font-bold text-slate-400">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3 font-bold text-slate-900">
+                          {stage.stageName}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-slate-500">
+                          {stage.originalPlannedDate || "—"}
+                        </td>
+                        <td className="py-2 px-3 font-mono">
+                          {isEditable ? (
+                            <input
+                              type="date"
+                              value={
+                                stage.revisedTargetDate ||
+                                stage.originalPlannedDate ||
+                                ""
+                              }
+                              onChange={(e) =>
+                                handleUpdateRoadmapDate(
+                                  selectedActivity.id,
+                                  stage.id,
+                                  e.target.value,
+                                )
+                              }
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold font-mono text-slate-900 outline-none transition-all focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer"
+                            />
+                          ) : (
+                            <span className="font-semibold text-slate-800">
+                              {stage.revisedTargetDate ||
+                                stage.originalPlannedDate ||
+                                "—"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 font-mono font-bold text-emerald-700">
+                          {stage.actualDate || "—"}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-[10px] font-extrabold rounded ${
+                              stage.stageStatus === "Completed"
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : stage.stageStatus === "In Progress"
+                                  ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                  : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {stage.stageStatus || "Not Started"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* MAIN TABULAR ACTIVITY DIRECTORY (DIRECTOR VIEW) */
+        <div className="space-y-4">
+          {/* Context Header Card */}
+          <section className="rounded-xl border border-slate-200/80 bg-white p-4.5 shadow-2xs space-y-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onBackClick}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </button>
+              <span className="text-slate-300">•</span>
+              <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                {project.code}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Plan Name
+              </label>
+              <input
+                type="text"
+                value={currentPlanName}
+                onChange={(e) => setCurrentPlanName(e.target.value)}
+                placeholder="Enter plan name..."
+                className="w-full text-base sm:text-lg font-extrabold text-slate-950 rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10 outline-none transition-all"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <span>
+                Category:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.category}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>
+                Fiscal Year:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.budgetYear}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>
+                Region:{" "}
+                <strong className="text-slate-900 font-bold">
+                  {plan.organizationRegion}
+                </strong>
+              </span>
+            </div>
+          </section>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search package activities by Ref No or Description..."
+                className="w-full pl-10 pr-4 py-1.5 text-xs rounded-lg border border-slate-300 focus:border-[#0A3C2F] outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <select
+                  value={methodFilter}
+                  onChange={(e) => setMethodFilter(e.target.value)}
+                  className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
+                >
+                  <option value="ALL">All Methods</option>
+                  <option value="RFB - National">RFB - National</option>
+                  <option value="RFB - International">
+                    RFB - International
+                  </option>
+                  <option value="RFQ / Shopping">RFQ / Shopping</option>
+                  <option value="QCBS">QCBS</option>
+                  <option value="Direct Procurement">Direct Procurement</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+                <select
+                  value={reviewFilter}
+                  onChange={(e) => setReviewFilter(e.target.value)}
+                  className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
+                >
+                  <option value="ALL">All Reviews</option>
+                  <option value="Prior">Prior Review</option>
+                  <option value="Post">Post Review</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent font-semibold text-slate-700 outline-none text-xs"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Delayed">Delayed</option>
+                  <option value="Not Started">Not Started</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* PACKAGE ACTIVITIES DIRECTORY TABLE (SCREENSHOT 1) */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-8 text-center">#</th>
+                    <th className="py-2.5 px-3 min-w-[170px]">
+                      Activity Ref No
+                    </th>
+                    <th className="py-2.5 px-3 min-w-[240px]">
+                      Description & Scope
+                    </th>
+                    <th className="py-2.5 px-3 min-w-[150px]">
+                      Method / Market
+                    </th>
+                    <th className="py-2.5 px-3 min-w-[90px]">Review</th>
+                    <th className="py-2.5 px-3 min-w-[120px]">
+                      Estimated Amount
+                    </th>
+                    <th className="py-2.5 px-3 text-center min-w-[110px]">
+                      Status
+                    </th>
+                    <th className="py-2.5 px-3 text-center min-w-[80px]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {filteredActivities.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="py-8 text-center text-slate-500"
+                      >
+                        <FileText className="mx-auto h-7 w-7 text-slate-300 mb-1" />
+                        <p className="font-semibold text-slate-700 text-xs">
+                          No procurement activities found
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredActivities.map((act, index) => {
+                      const completedStages = act.roadmap.filter(
+                        (s) => s.stageStatus === "Completed",
+                      ).length;
+                      const totalStages = act.roadmap.length;
+                      const computedStatus = getActivityStatus(act);
+
+                      const statusColorStyle =
+                        computedStatus === "Completed"
+                          ? "text-[#166534] font-bold"
+                          : computedStatus === "Delayed"
+                            ? "text-[#b91c1c] font-extrabold"
+                            : computedStatus === "In Progress"
+                              ? "text-blue-700 font-bold"
+                              : "text-slate-500 font-semibold";
+
+                      return (
+                        <tr
+                          key={act.id}
+                          onClick={() => setSelectedActivity(act)}
+                          className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                        >
+                          <td className="py-2 px-3 font-mono text-slate-400 font-semibold text-center">
+                            {index + 1}
+                          </td>
+
+                          <td className="py-2 px-3 font-mono font-bold text-slate-900 text-xs">
+                            {act.activityRefNo}
+                          </td>
+
+                          <td className="py-2 px-3 max-w-xs">
+                            <p className="font-bold text-slate-900 text-xs leading-snug">
+                              {act.description}
+                            </p>
+                          </td>
+
+                          <td className="py-2 px-3 text-xs">
+                            <div className="font-bold text-[#0A3C2F]">
+                              {act.method}
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              {act.marketApproach}
+                            </div>
+                          </td>
+
+                          <td className="py-2 px-3">
+                            <span
+                              className={`text-xs font-extrabold ${
+                                act.reviewType === "Prior"
+                                  ? "text-amber-800"
+                                  : "text-slate-700"
+                              }`}
+                            >
+                              {act.reviewType}
+                            </span>
+                          </td>
+
+                          <td className="py-2 px-3 font-mono font-bold text-slate-900 text-xs">
+                            {act.currency}{" "}
+                            {act.estimatedAmount.toLocaleString()}
+                          </td>
+
+                          <td className="py-2 px-3 text-center">
+                            <span
+                              className={`inline-block text-xs ${statusColorStyle}`}
+                            >
+                              {computedStatus}
+                            </span>
+                          </td>
+
+                          <td className="py-2 px-3 text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedActivity(act);
+                              }}
+                              title="View Activity Details"
+                              className="flex h-6 w-6 items-center justify-center rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer mx-auto"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Director Decision & Workflow Actions Card */}
+          {onApprovePlan && onReturnPlan && (
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5 mt-6">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Director Decision & Workflow Actions
+                </h3>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Revision Notes (If returning to Officer)
+                </label>
+                <textarea
+                  rows={3}
+                  value={directorReturnRemarks}
+                  onChange={(e) => setDirectorReturnRemarks(e.target.value)}
+                  placeholder="Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => onApprovePlan(plan)}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Send className="h-4 w-4 text-[#A3E635]" />
+                  <span>Approve & Send to Committee</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onReturnPlan(plan, directorReturnRemarks)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4 text-rose-600" />
+                  <span>Return to Officer for Revision</span>
+                </button>
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -281,15 +281,16 @@ export function ProjectsManagementView() {
   };
 
   return (
-    <div className="relative">
-      {/* Notification Toast */}
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-3 rounded-xl bg-slate-900 text-white px-4 py-3 shadow-xl border border-slate-700 animate-in slide-in-from-top-3 max-w-md">
-          <BellRing className="h-4 w-4 text-emerald-400 shrink-0" />
+          <BellRing className="h-4 w-4 text-[#A3E635] shrink-0" />
           <p className="text-xs font-medium leading-relaxed">{toastMessage}</p>
         </div>
       )}
 
+      {/* RENDER VIEW ACCORDING TO VIEW MODE */}
       {viewMode === "list" && (
         <ProjectsDirectoryView
           projects={projects}
@@ -301,7 +302,6 @@ export function ProjectsManagementView() {
 
       {viewMode === "project-form" && (
         <CreateProjectView
-          key={editingProject?.id || "new"}
           initialData={editingProject}
           availableOfficers={availableOfficers.length > 0 ? availableOfficers : undefined}
           onBackClick={() => {
@@ -317,7 +317,10 @@ export function ProjectsManagementView() {
           project={selectedProject}
           plans={plans}
           userRole="DIRECTOR"
-          onBackToProjects={() => setViewMode("list")}
+          onBackToProjects={() => {
+            setSelectedProject(null);
+            setViewMode("list");
+          }}
           onEditPlanClick={handleEditPlanClick}
           onViewActivitiesClick={handleViewActivitiesClick}
         />
@@ -328,6 +331,7 @@ export function ProjectsManagementView() {
           project={selectedProject}
           initialData={editingPlan}
           userRole="DIRECTOR"
+          readOnly={true}
           onBackClick={() => {
             setEditingPlan(null);
             setViewMode("plans-list");
@@ -339,10 +343,10 @@ export function ProjectsManagementView() {
       {viewMode === "activities-list" &&
         selectedProject &&
         selectedPlanForActivities && (
-          <ActivitiesListView
+          <DirectorActivitiesListView
             plan={selectedPlanForActivities}
             project={selectedProject}
-            userRole="DIRECTOR"
+            parentSection="projects"
             onBackClick={() => {
               setSelectedPlanForActivities(null);
               setViewMode("plans-list");
