@@ -159,11 +159,11 @@ export async function changePassword(
   newPassword: string,
   confirmPassword?: string,
 ): Promise<AuthSession> {
+  void confirmPassword;
   try {
     const res = await apiClient.post<any>("/auth/change-password", {
       currentPassword,
       newPassword,
-      confirmPassword: confirmPassword || newPassword,
     });
     return (
       res.data || {
