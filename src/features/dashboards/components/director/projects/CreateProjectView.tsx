@@ -43,6 +43,7 @@ import {
 
 interface CreateProjectViewProps {
   initialData?: ProjectItem | null;
+  availableOfficers?: ProjectOfficer[];
   onBackClick: () => void;
   onSaveProject: (project: ProjectItem) => void;
 }
@@ -76,6 +77,7 @@ const WIZARD_STEPS = [
 
 export function CreateProjectView({
   initialData,
+  availableOfficers,
   onBackClick,
   onSaveProject,
 }: CreateProjectViewProps) {
@@ -91,7 +93,7 @@ export function CreateProjectView({
   const [status, setStatus] = useState<"Active" | "Inactive">(
     initialData?.status || "Active",
   );
-  const [budgetYear, setBudgetYear] = useState(
+  const [budgetYear] = useState(
     initialData?.budgetYear || BUDGET_YEAR_OPTIONS[0],
   );
   const [sector, setSector] = useState(
@@ -228,11 +230,16 @@ export function CreateProjectView({
     });
   };
 
-  // Officer Selection & Pagination Handlers
   const [officerPageIndex, setOfficerPageIndex] = useState(0);
   const OFFICER_PAGE_SIZE = 4;
 
-  const filteredOfficers = INITIAL_OFFICERS.filter(
+  const officersList =
+    availableOfficers && availableOfficers.length > 0
+      ? availableOfficers
+      : INITIAL_OFFICERS;
+
+  // Officer Selection & Pagination Handlers
+  const filteredOfficers = officersList.filter(
     (off) =>
       off.name.toLowerCase().includes(officerSearchQuery.toLowerCase()) ||
       off.email.toLowerCase().includes(officerSearchQuery.toLowerCase()),
@@ -254,14 +261,14 @@ export function CreateProjectView({
   };
 
   const handleSelectAllOfficers = () => {
-    setSelectedOfficerIds(INITIAL_OFFICERS.map((o) => o.id));
+    setSelectedOfficerIds(officersList.map((o) => o.id));
   };
 
   const handleClearOfficers = () => {
     setSelectedOfficerIds([]);
   };
 
-  const assignedOfficers: ProjectOfficer[] = INITIAL_OFFICERS.filter((o) =>
+  const assignedOfficers: ProjectOfficer[] = officersList.filter((o) =>
     selectedOfficerIds.includes(o.id),
   );
 

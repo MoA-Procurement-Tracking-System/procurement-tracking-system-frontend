@@ -35,7 +35,6 @@ import {
 import {
   ArrowUpDown,
   CalendarDays,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -1222,79 +1221,6 @@ function QuickFilterButton({
     >
       {label} <span className="font-semibold text-slate-400">{count}</span>
     </button>
-  );
-}
-
-function CompactDateInput({
-  label,
-  max,
-  min,
-  onChange,
-  value,
-}: {
-  label: string;
-  max?: string;
-  min?: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <label className="relative block min-w-0">
-      <span className="sr-only">{label}</span>
-      <CalendarDays
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
-      />
-      <input
-        aria-label={label}
-        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
-        max={max}
-        min={min}
-        onChange={(event) => onChange(event.target.value)}
-        type="date"
-        value={value}
-      />
-    </label>
-  );
-}
-
-function CompactSelect({
-  icon,
-  label,
-  onChange,
-  options,
-  value,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  onChange: (value: string) => void;
-  options: readonly { label: string; value: string }[];
-  value: string;
-}) {
-  return (
-    <label className="relative block min-w-0">
-      <span className="sr-only">{label}</span>
-      {icon ? (
-        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500">
-          {icon}
-        </span>
-      ) : null}
-      <select
-        className={`h-10 w-full cursor-pointer appearance-none truncate rounded-sm border border-slate-300 bg-[#fbfcfd] py-2 pr-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15 ${icon ? "pl-9" : "pl-3"}`}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-500"
-      />
-    </label>
   );
 }
 

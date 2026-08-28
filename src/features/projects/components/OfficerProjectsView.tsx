@@ -32,6 +32,8 @@ import {
   type ProcurementPlanSummary,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
+import { createPlan, submitPlanForReview } from "@/lib/plansApi";
+import { createActivity } from "@/lib/activitiesApi";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -101,7 +103,7 @@ export function OfficerProjectsView({
         ).find((activity) => activity.reference === selectedActivityReference)
       : undefined;
 
-  function savePlan(
+  async function savePlan(
     input: ProcurementPlanDraftInput,
     action: "activity" | "draft",
   ) {
@@ -129,6 +131,30 @@ export function OfficerProjectsView({
         OFFICER_PLAN_DRAFTS_STORAGE_KEY,
         JSON.stringify(nextRecords),
       );
+
+      // Async backend creation
+      try {
+        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+          "GOODS";
+        if (input.category === "Works") catEnum = "WORKS";
+        else if (input.category === "Consultancy Services")
+          catEnum = "CONSULTANCY";
+        else if (input.category === "Non-Consulting Services")
+          catEnum = "NON_CONSULTING";
+
+        await createPlan({
+          projectId: selectedProject.code,
+          title: input.planName.trim(),
+          budgetYear: `${input.budgetYear} EFY`,
+          procurementCategory: catEnum,
+          organization: input.organizationRegion,
+          description: input.remarks || undefined,
+          periodStart: new Date(input.periodFrom || "2025-07-08").toISOString(),
+          periodEnd: new Date(input.periodTo || "2026-07-07").toISOString(),
+        });
+      } catch (err) {
+        console.warn("Backend createPlan note:", err);
+      }
     }
 
     if (action === "activity") {
@@ -147,7 +173,7 @@ export function OfficerProjectsView({
     );
   }
 
-  function saveActivity(activity: ProcurementActivitySummary) {
+  async function saveActivity(activity: ProcurementActivitySummary) {
     if (!selectedProject || !selectedPlan) return;
 
     const nextRecords = addSavedActivityRecord(savedActivityRecords, {
@@ -160,6 +186,27 @@ export function OfficerProjectsView({
       OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
       JSON.stringify(nextRecords),
     );
+
+    // Async backend activity creation
+    try {
+      await createActivity({
+        planId: selectedPlan.reference,
+        procurementMethodId: "pm-standard",
+        description: activity.description || "Activity description",
+        estimatedBudget: Number(activity.estimatedAmount) || 500000,
+        currency: selectedPlan.currency || "ETB",
+        fundings: [
+          {
+            fundingSource: selectedProject.fundingSource || "World Bank",
+            loanGrantNumber: selectedProject.financingNumbers?.[0] || undefined,
+            allocationPct: 100,
+          },
+        ],
+      });
+    } catch (err) {
+      console.warn("Backend createActivity note:", err);
+    }
+
     router.push(
       "/workspace/projects?project=" +
         encodeURIComponent(selectedProject.code) +
@@ -168,7 +215,7 @@ export function OfficerProjectsView({
     );
   }
 
-  function submitPlanToDirector() {
+  async function submitPlanToDirector() {
     if (!selectedProject || !selectedPlan) return;
 
     const updatedPlan: ProcurementPlanSummary = {
@@ -186,6 +233,13 @@ export function OfficerProjectsView({
       OFFICER_PLAN_DRAFTS_STORAGE_KEY,
       JSON.stringify(nextRecords),
     );
+
+    // Async backend plan submission
+    try {
+      await submitPlanForReview(selectedPlan.reference);
+    } catch (err) {
+      console.warn("Backend submitPlanForReview note:", err);
+    }
   }
 
   if (selectedProject && mode === "create-plan") {

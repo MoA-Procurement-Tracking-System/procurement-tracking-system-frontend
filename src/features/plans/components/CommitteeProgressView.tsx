@@ -16,8 +16,6 @@ import {
   RotateCcw,
   Send,
   MessageSquare,
-  AlertCircle,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 

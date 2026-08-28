@@ -6,8 +6,6 @@ import {
   Filter,
   CheckCircle2,
   XCircle,
-  Clock,
-  History,
   Home,
   ChevronRight,
   ArrowLeft,
@@ -16,7 +14,8 @@ import {
 import Link from "next/link";
 import { fetchPlans, mapBackendPlanToFrontend } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
-import type { ProcurementPlan } from "../plansData";
+import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
+import { getOfficerReviewPlans } from "./PlanForReviewView";
 
 interface DecisionRecord {
   id: string;
@@ -51,9 +50,21 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
         const mapped = rawPlans.map((p) =>
           mapBackendPlanToFrontend(p, user.id),
         );
-        setPlans(mapped);
+        const officerPlans = getOfficerReviewPlans();
+
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        mapped.forEach((p) => planMap.set(p.id, p));
+
+        setPlans(Array.from(planMap.values()));
       } catch (err) {
         console.error("Failed to load decisions:", err);
+        const officerPlans = getOfficerReviewPlans();
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        setPlans(Array.from(planMap.values()));
       } finally {
         setLoading(false);
       }

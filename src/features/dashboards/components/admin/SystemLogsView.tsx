@@ -101,14 +101,23 @@ export function SystemLogsView() {
     })
       .then((result) => {
         if (active) {
-          setLogsResponse(result);
+          if (result && Array.isArray(result.data)) {
+            setLogsResponse(result);
+          } else {
+            setLogsResponse({
+              data: [],
+              meta: { total: 0, page: 1, pageSize: PAGE_SIZE, totalPages: 1 },
+            });
+          }
           setLoadError(null);
         }
       })
       .catch((err) => {
         if (active) {
           setLoadError(
-            err instanceof Error ? err.message : "Failed to load audit logs.",
+            err instanceof Error
+              ? err.message
+              : "Failed to load audit logs from database.",
           );
         }
       })

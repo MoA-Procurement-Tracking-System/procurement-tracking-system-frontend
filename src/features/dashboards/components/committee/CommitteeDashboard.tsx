@@ -2,24 +2,22 @@
 
 import {
   Inbox,
-  FileCheck,
-  CheckCircle2,
   XCircle,
   Info,
   Search,
   History,
-  ChevronRight,
   ClipboardCheck,
-  TrendingUp,
   Clock,
-  FileText,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
-import { DashboardOverview } from "../DashboardOverview";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { fetchPlans, mapBackendPlanToFrontend } from "@/lib/plansApi";
-import type { ProcurementPlan } from "@/features/plans/plansData";
+import {
+  INITIAL_PLANS,
+  type ProcurementPlan,
+} from "@/features/plans/plansData";
+import { getOfficerReviewPlans } from "@/features/plans/components/PlanForReviewView";
 
 export function CommitteeDashboard({ user }: { user: AuthUser }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,9 +36,21 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
         const mapped = rawPlans.map((p) =>
           mapBackendPlanToFrontend(p, user.id),
         );
-        setPlans(mapped);
+        const officerPlans = getOfficerReviewPlans();
+
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        mapped.forEach((p) => planMap.set(p.id, p));
+
+        setPlans(Array.from(planMap.values()));
       } catch (err) {
         console.error("Dashboard failed to load plans:", err);
+        const officerPlans = getOfficerReviewPlans();
+        const planMap = new Map<string, ProcurementPlan>();
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+        officerPlans.forEach((p) => planMap.set(p.id, p));
+        setPlans(Array.from(planMap.values()));
       } finally {
         setLoading(false);
       }

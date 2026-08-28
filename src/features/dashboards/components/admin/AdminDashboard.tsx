@@ -37,17 +37,21 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   const loadData = useCallback(async () => {
     try {
       const usersRes = await fetchUsers({ pageSize: 50 });
-      setUsers(usersRes.data);
-      setTotalUserCount(usersRes.meta.total);
+      if (usersRes && Array.isArray(usersRes.data)) {
+        setUsers(usersRes.data);
+        setTotalUserCount(usersRes.meta?.total ?? usersRes.data.length);
+      }
     } catch {
-      // Keep existing state
+      // Keep empty state
     }
 
     try {
       const logsRes = await fetchAuditLogs({ pageSize: 5 });
-      setLogs(logsRes.data);
+      if (logsRes && Array.isArray(logsRes.data)) {
+        setLogs(logsRes.data);
+      }
     } catch {
-      // Keep existing state
+      // Keep empty state
     }
   }, []);
 
@@ -56,9 +60,9 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
     fetchUsers({ pageSize: 50 })
       .then((usersRes) => {
-        if (active) {
+        if (active && usersRes && Array.isArray(usersRes.data)) {
           setUsers(usersRes.data);
-          setTotalUserCount(usersRes.meta.total);
+          setTotalUserCount(usersRes.meta?.total ?? usersRes.data.length);
         }
       })
       .catch(() => {})
@@ -68,7 +72,9 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
 
     fetchAuditLogs({ pageSize: 5 })
       .then((logsRes) => {
-        if (active) setLogs(logsRes.data);
+        if (active && logsRes && Array.isArray(logsRes.data)) {
+          setLogs(logsRes.data);
+        }
       })
       .catch(() => {})
       .finally(() => {

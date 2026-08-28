@@ -14,6 +14,7 @@ export interface AuthSession {
   status: AuthStatus;
   user: AuthUser;
   expiresAt: string;
+  accessToken?: string;
 }
 
 export type ProvisionableRole = Exclude<UserRole, "ADMIN">;

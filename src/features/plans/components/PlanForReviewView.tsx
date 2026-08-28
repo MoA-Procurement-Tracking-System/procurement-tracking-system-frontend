@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  ClipboardCheck,
   CheckCircle2,
   RotateCcw,
   Send,
@@ -21,13 +20,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
+  INITIAL_PLANS,
   type PlanCategory,
   type PlanStatus,
   type ProcurementPlan,
 } from "../plansData";
 import {
   fetchPlans,
-  submitVote,
+  sendPlanToCommittee,
+  rejectPlan,
   mapBackendPlanToFrontend,
 } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
@@ -35,12 +36,8 @@ import {
   INITIAL_PROJECTS,
   type ProjectItem,
 } from "../../dashboards/components/director/projects/projectsData";
-import {
-  INITIAL_ACTIVITIES,
-  type ProcurementActivity,
-} from "../../activities/activitiesData";
+import { type ProcurementActivity } from "../../activities/activitiesData";
 import { CreatePlanForm } from "./CreatePlanForm";
-import { ActivitiesListView } from "../../activities/components/ActivitiesListView";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import {
   officerProjects,
@@ -97,7 +94,7 @@ function mapOfficerPlanToDirectorPlan(
   };
 }
 
-function getOfficerReviewPlans(): ProcurementPlan[] {
+export function getOfficerReviewPlans(): ProcurementPlan[] {
   try {
     const savedRecords = parseSavedPlanRecords(
       typeof window !== "undefined"
@@ -162,17 +159,20 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const rawPlans = await fetchPlans();
       const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
       const officerPlans = getOfficerReviewPlans();
-      const officerIds = new Set(officerPlans.map((p) => p.id));
-      const filtered = mapped.filter((p) => !officerIds.has(p.id));
-      setPlans([...filtered, ...officerPlans]);
+
+      const planMap = new Map<string, ProcurementPlan>();
+      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+      officerPlans.forEach((p) => planMap.set(p.id, p));
+      mapped.forEach((p) => planMap.set(p.id, p));
+
+      setPlans(Array.from(planMap.values()));
     } catch (err) {
       console.error(err);
       const officerPlans = getOfficerReviewPlans();
-      if (officerPlans.length > 0) {
-        setPlans(officerPlans);
-      } else {
-        showToast("Failed to load plans from server.");
-      }
+      const planMap = new Map<string, ProcurementPlan>();
+      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+      officerPlans.forEach((p) => planMap.set(p.id, p));
+      setPlans(Array.from(planMap.values()));
     } finally {
       setLoading(false);
     }
@@ -189,7 +189,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [budgetYearFilter, setBudgetYearFilter] = useState<string>("ALL");
   const [regionFilter, setRegionFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter] = useState<string>("ALL");
 
   // Selection states
   const [selectedPlanForReview, setSelectedPlanForReview] =
@@ -223,10 +223,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     setTimeout(() => {
       setIsSaving(false);
     }, 350);
-  };
-
-  const openPlanForReview = (plan: ProcurementPlan) => {
-    setActivitiesPlan(plan);
   };
 
   const [returnRemarks, setReturnRemarks] = useState("");
@@ -288,7 +284,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   // Director Decision 1: Approve & Send to Endorsement Committee
-  const handleApprovePlan = (plan: ProcurementPlan) => {
+  const handleApprovePlan = async (plan: ProcurementPlan) => {
+    try {
+      if (!plan.id.startsWith("officer-")) {
+        await sendPlanToCommittee(plan.id);
+      }
+    } catch (err) {
+      console.warn("Backend sendPlanToCommittee note:", err);
+    }
+
     setPlans((prev) =>
       prev.map((p) =>
         p.id === plan.id
@@ -343,7 +347,17 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   // Director Decision 2: Send Back to Officer for Revision
-  const handleReturnPlan = (plan: ProcurementPlan) => {
+  const handleReturnPlan = async (plan: ProcurementPlan) => {
+    const reasonText =
+      returnRemarks.trim() || "Returned by Director for revisions.";
+    try {
+      if (!plan.id.startsWith("officer-")) {
+        await rejectPlan(plan.id, reasonText);
+      }
+    } catch (err) {
+      console.warn("Backend rejectPlan note:", err);
+    }
+
     const updatedDescription = returnRemarks.trim()
       ? `[Returned Note: ${returnRemarks}] ${plan.description || ""}`
       : plan.description;
@@ -404,42 +418,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     showToast(
       `Plan "${plan.planName}" returned to Procurement Officer for revision.`,
     );
-  };
-
-  // Committee Decision 1: Approve
-  const handleCommitteeApprove = async (plan: ProcurementPlan) => {
-    try {
-      await submitVote(plan.id, "APPROVE");
-      showToast(`Plan "${plan.planName}" has been endorsed and approved!`);
-      await loadPlans();
-      setSelectedPlanForReview(null);
-      setReturnRemarks("");
-    } catch (err) {
-      console.error(err);
-      const errMsg =
-        err instanceof Error ? err.message : "Failed to submit approval vote.";
-      showToast(errMsg);
-    }
-  };
-
-  // Committee Decision 2: Reject
-  const handleCommitteeReject = async (plan: ProcurementPlan) => {
-    if (!returnRemarks.trim()) {
-      showToast("Reason for rejection is mandatory.");
-      return;
-    }
-    try {
-      await submitVote(plan.id, "REJECT", returnRemarks.trim());
-      showToast(`Plan "${plan.planName}" was rejected and returned.`);
-      await loadPlans();
-      setSelectedPlanForReview(null);
-      setReturnRemarks("");
-    } catch (err) {
-      console.error(err);
-      const errMsg =
-        err instanceof Error ? err.message : "Failed to submit rejection vote.";
-      showToast(errMsg);
-    }
   };
 
   const handleSavePlanEdits = (savedPlan: ProcurementPlan) => {

@@ -14,34 +14,41 @@ afterEach(() => {
 });
 
 describe("auth API", () => {
-  it("normalizes the identifier and sends remember-me to the same-origin BFF", async () => {
+  it("normalizes the identifier and sends login directly to the backend", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          status: "AUTHENTICATED",
-          user: {
-            id: "1",
-            email: "officer@moa.gov.et",
-            username: "officer",
-            displayName: "Procurement Officer",
-            role: "OFFICER",
+          data: {
+            user: {
+              id: "1",
+              email: "custom-officer@moa.gov.et",
+              name: "Procurement Officer",
+              role: "ProcurementOfficer",
+            },
+            tokens: {
+              accessToken: "sample-token",
+            },
           },
-          expiresAt: new Date().toISOString(),
         }),
         { status: 200 },
       ),
     );
 
-    const session = await authenticate(" Officer ", "secret", true);
+    const session = await authenticate(
+      " custom-officer@moa.gov.et ",
+      "secret",
+      true,
+    );
 
     expect(session.user.role).toBe("OFFICER");
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/login",
+      expect.stringContaining("/auth/login"),
       expect.objectContaining({
         method: "POST",
-        credentials: "same-origin",
+        credentials: "include",
         body: JSON.stringify({
-          identifier: "officer",
+          identifier: "custom-officer@moa.gov.et",
+          email: "custom-officer@moa.gov.et",
           password: "secret",
           rememberMe: true,
         }),
@@ -49,7 +56,7 @@ describe("auth API", () => {
     );
   });
 
-  it("surfaces the backend's generic sign-in error", async () => {
+  it("surfaces the backend sign-in error", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -59,46 +66,47 @@ describe("auth API", () => {
       ),
     );
 
-    await expect(authenticate("unknown", "wrong", false)).rejects.toEqual(
+    await expect(
+      authenticate("unknown@domain.com", "wrong", false),
+    ).rejects.toEqual(
       new AuthApiError("Unable to sign in with those credentials."),
     );
   });
 
-  it("uses the password lifecycle endpoints without returning browser tokens", async () => {
+  it("uses the password lifecycle endpoints", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 204 }));
 
-    await requestPasswordReset(" Officer@MOA.GOV.ET ");
+    await requestPasswordReset(" custom-user@moa.gov.et ");
     await signOut();
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "/api/auth/forgot-password",
+      expect.stringContaining("/auth/forgot-password"),
       expect.objectContaining({
-        body: JSON.stringify({ email: "officer@moa.gov.et" }),
+        body: JSON.stringify({ email: "custom-user@moa.gov.et" }),
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "/api/auth/logout",
-      expect.objectContaining({ body: "{}" }),
+      expect.stringContaining("/auth/logout"),
+      expect.any(Object),
     );
   });
 
-  it("submits all fields required to replace a temporary password", async () => {
+  it("submits password reset and change fields", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          status: "AUTHENTICATED",
-          user: {
-            id: "1",
-            email: "director@moa.gov.et",
-            username: null,
-            displayName: "Director",
-            role: "DIRECTOR",
+          data: {
+            user: {
+              id: "1",
+              email: "director@moa.gov.et",
+              name: "Director",
+              role: "ProcurementDirector",
+            },
           },
-          expiresAt: new Date().toISOString(),
         }),
         { status: 200 },
       ),
@@ -107,18 +115,17 @@ describe("auth API", () => {
     await changePassword("Temporary1!", "New-Password2!", "New-Password2!");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/change-password",
+      expect.stringContaining("/auth/change-password"),
       expect.objectContaining({
         body: JSON.stringify({
           currentPassword: "Temporary1!",
           newPassword: "New-Password2!",
-          confirmPassword: "New-Password2!",
         }),
       }),
     );
   });
 
-  it("creates an invited user's password without a current password", async () => {
+  it("creates an invited user's password", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ message: "Password created." }), {
         status: 200,
@@ -132,7 +139,7 @@ describe("auth API", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/create-password",
+      expect.stringContaining("/auth/create-password"),
       expect.objectContaining({
         body: JSON.stringify({
           token: "invitation-token",
@@ -143,19 +150,18 @@ describe("auth API", () => {
     );
   });
 
-  it("provisions a non-admin user with name, email and role only", async () => {
+  it("provisions a non-admin user with displayName, email and role", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
           user: {
             id: "2",
-            email: "officer@moa.gov.et",
-            username: null,
+            email: "officer-new@moa.gov.et",
             displayName: "Procurement Officer",
             role: "OFFICER",
           },
           invitationExpiresAt: new Date().toISOString(),
-          message: "Invitation sent.",
+          message: "Invitation sent successfully",
         }),
         { status: 201 },
       ),
@@ -163,16 +169,16 @@ describe("auth API", () => {
 
     await createInvitedUser(
       " Procurement Officer ",
-      " Officer@MOA.GOV.ET ",
+      " Officer-New@MOA.GOV.ET ",
       "OFFICER",
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/admin/users",
+      expect.stringContaining("/admin/users"),
       expect.objectContaining({
         body: JSON.stringify({
           displayName: "Procurement Officer",
-          email: "officer@moa.gov.et",
+          email: "officer-new@moa.gov.et",
           role: "OFFICER",
         }),
       }),
@@ -186,12 +192,11 @@ describe("auth API", () => {
           user: {
             id: "3",
             email: "committee@moa.gov.et",
-            username: null,
             displayName: "Committee Member",
             role: "ENDORSING_COMMITTEE",
           },
           invitationExpiresAt: new Date().toISOString(),
-          message: "Invitation sent.",
+          message: "Invitation sent successfully",
         }),
         { status: 201 },
       ),
@@ -204,7 +209,7 @@ describe("auth API", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/admin/users",
+      expect.stringContaining("/admin/users"),
       expect.objectContaining({
         body: JSON.stringify({
           displayName: "Committee Member",
