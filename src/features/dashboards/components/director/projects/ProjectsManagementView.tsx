@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BellRing, RefreshCw } from "lucide-react";
-import { INITIAL_PROJECTS, type ProjectItem, type ProjectOfficer } from "./projectsData";
+import {
+  INITIAL_PROJECTS,
+  type ProjectItem,
+  type ProjectOfficer,
+} from "./projectsData";
 import { ProjectsDirectoryView } from "./ProjectsDirectoryView";
 import { CreateProjectView } from "./CreateProjectView";
 import { ProjectPlansView } from "@/features/plans/components/ProjectPlansView";
@@ -11,7 +15,7 @@ import {
   INITIAL_PLANS,
   type ProcurementPlan,
 } from "@/features/plans/plansData";
-import { ActivitiesListView } from "@/features/activities/components/ActivitiesListView";
+import { DirectorActivitiesListView } from "@/features/activities/components/DirectorActivitiesListView";
 import {
   fetchProjects,
   createProject,
@@ -28,23 +32,25 @@ import {
 import { fetchLookups, fetchOfficers, type LookupItem } from "@/lib/lookupsApi";
 
 type ViewMode =
-  | "list"
-  | "project-form"
-  | "plans-list"
-  | "plan-form"
-  | "activities-list";
+  "list" | "project-form" | "plans-list" | "plan-form" | "activities-list";
 
 export function ProjectsManagementView() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const [plans, setPlans] = useState<ProcurementPlan[]>(INITIAL_PLANS);
-  const [availableOfficers, setAvailableOfficers] = useState<ProjectOfficer[]>([]);
+  const [availableOfficers, setAvailableOfficers] = useState<ProjectOfficer[]>(
+    [],
+  );
   const [sectors, setSectors] = useState<LookupItem[]>([]);
   const [fundingSources, setFundingSources] = useState<LookupItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
-  const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
+  const [editingProject, setEditingProject] = useState<ProjectItem | null>(
+    null,
+  );
+  const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(
+    null,
+  );
   const [editingPlan, setEditingPlan] = useState<ProcurementPlan | null>(null);
   const [selectedPlanForActivities, setSelectedPlanForActivities] =
     useState<ProcurementPlan | null>(null);
@@ -94,11 +100,16 @@ export function ProjectsManagementView() {
       // 3. Fetch plans from backend
       const backendPlans = await fetchPlans();
       if (backendPlans && backendPlans.length > 0) {
-        const mappedPlans = backendPlans.map((p) => mapBackendPlanToFrontend(p));
+        const mappedPlans = backendPlans.map((p) =>
+          mapBackendPlanToFrontend(p),
+        );
         setPlans(mappedPlans);
       }
     } catch (err) {
-      console.warn("Using default dataset fallback (backend syncing in background):", err);
+      console.warn(
+        "Using default dataset fallback (backend syncing in background):",
+        err,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +164,10 @@ export function ProjectsManagementView() {
           });
 
           // Sync assigned officers if new officers were added
-          if (savedProject.assignedOfficers && savedProject.assignedOfficers.length > 0) {
+          if (
+            savedProject.assignedOfficers &&
+            savedProject.assignedOfficers.length > 0
+          ) {
             for (const off of savedProject.assignedOfficers) {
               try {
                 await assignOfficerToProject(savedProject.id, off.id);
@@ -176,11 +190,15 @@ export function ProjectsManagementView() {
         try {
           // Resolve sector ID & funding source ID from lookups or fallback
           const matchedSector =
-            sectors.find((s) => s.label.toLowerCase() === savedProject.sector.toLowerCase()) ||
-            sectors[0];
+            sectors.find(
+              (s) =>
+                s.label.toLowerCase() === savedProject.sector.toLowerCase(),
+            ) || sectors[0];
           const matchedFs =
             fundingSources.find((f) =>
-              f.label.toLowerCase().includes(savedProject.fundingSource.toLowerCase()),
+              f.label
+                .toLowerCase()
+                .includes(savedProject.fundingSource.toLowerCase()),
             ) || fundingSources[0];
 
           const result = await createProject({
@@ -208,7 +226,10 @@ export function ProjectsManagementView() {
           if (result && result.id) {
             createdId = result.id;
             // Assign officers to the created project on backend
-            if (savedProject.assignedOfficers && savedProject.assignedOfficers.length > 0) {
+            if (
+              savedProject.assignedOfficers &&
+              savedProject.assignedOfficers.length > 0
+            ) {
               for (const off of savedProject.assignedOfficers) {
                 try {
                   await assignOfficerToProject(result.id, off.id);
@@ -224,7 +245,9 @@ export function ProjectsManagementView() {
 
         const projectWithId = { ...savedProject, id: createdId };
         setProjects((prev) => [projectWithId, ...prev]);
-        showToast(`New sector project "${savedProject.code}" registered and officer assigned!`);
+        showToast(
+          `New sector project "${savedProject.code}" registered and officer assigned!`,
+        );
       }
     } finally {
       setEditingProject(null);
@@ -252,7 +275,10 @@ export function ProjectsManagementView() {
         );
       } else if (savedPlan.status === "Returned") {
         try {
-          await rejectPlan(savedPlan.id, savedPlan.rejectionReason || "Returned by Director for revisions.");
+          await rejectPlan(
+            savedPlan.id,
+            savedPlan.rejectionReason || "Returned by Director for revisions.",
+          );
         } catch (err) {
           console.warn("Backend rejectPlan note:", err);
         }
@@ -303,7 +329,9 @@ export function ProjectsManagementView() {
       {viewMode === "project-form" && (
         <CreateProjectView
           initialData={editingProject}
-          availableOfficers={availableOfficers.length > 0 ? availableOfficers : undefined}
+          availableOfficers={
+            availableOfficers.length > 0 ? availableOfficers : undefined
+          }
           onBackClick={() => {
             setEditingProject(null);
             setViewMode("list");

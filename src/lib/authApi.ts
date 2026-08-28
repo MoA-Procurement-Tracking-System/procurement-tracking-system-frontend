@@ -36,11 +36,12 @@ function mapPrismaRoleToUserRole(role: string): UserRole {
   }
 }
 
-
-
 export const FRONTEND_SESSION_COOKIE = "moa_user_session";
 
-function writeSessionCookie(session: AuthSession, rememberMe: boolean = false): void {
+function writeSessionCookie(
+  session: AuthSession,
+  rememberMe: boolean = false,
+): void {
   if (typeof document === "undefined") return;
   const maxAge = rememberMe ? 30 * 86400 : 86400;
   try {
@@ -250,7 +251,8 @@ export async function createInvitedUser(
       invitationExpiresAt: new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(),
-      message: res.message || `Invitation email sent successfully to ${cleanEmail}.`,
+      message:
+        res.message || `Invitation email sent successfully to ${cleanEmail}.`,
       invitationLink: res.invitationLink,
     };
   } catch (err) {

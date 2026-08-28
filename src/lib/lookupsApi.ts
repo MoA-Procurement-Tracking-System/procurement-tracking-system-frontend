@@ -27,20 +27,86 @@ export interface OfficerUserItem {
 import { apiClient } from "./apiClient";
 
 const FALLBACK_LOOKUPS: LookupItem[] = [
-  { id: "sec-1", type: "SECTOR", code: "SEC_AGRI", label: "Agriculture & Livestock", isActive: true },
-  { id: "sec-2", type: "SECTOR", code: "SEC_HORT", label: "Horticulture & Seed Development", isActive: true },
-  { id: "sec-3", type: "SECTOR", code: "SEC_NAT", label: "Natural Resources & Irrigation", isActive: true },
-  { id: "fs-1", type: "FUNDING_SOURCE", code: "FS_WB", label: "World Bank (IDA)", isActive: true },
-  { id: "fs-2", type: "FUNDING_SOURCE", code: "FS_AFDB", label: "African Development Bank (AfDB)", isActive: true },
-  { id: "fs-3", type: "FUNDING_SOURCE", code: "FS_GOV", label: "Government of Ethiopia (Treasury)", isActive: true },
-  { id: "pm-1", type: "PROCUREMENT_METHOD", code: "PM_RFQ", label: "Request for Quotations (RFQ)", isActive: true },
-  { id: "pm-2", type: "PROCUREMENT_METHOD", code: "PM_QCBS", label: "Quality and Cost-Based Selection (QCBS)", isActive: true },
-  { id: "pm-3", type: "PROCUREMENT_METHOD", code: "PM_NCB", label: "National Competitive Bidding (NCB)", isActive: true },
+  {
+    id: "sec-1",
+    type: "SECTOR",
+    code: "SEC_AGRI",
+    label: "Agriculture & Livestock",
+    isActive: true,
+  },
+  {
+    id: "sec-2",
+    type: "SECTOR",
+    code: "SEC_HORT",
+    label: "Horticulture & Seed Development",
+    isActive: true,
+  },
+  {
+    id: "sec-3",
+    type: "SECTOR",
+    code: "SEC_NAT",
+    label: "Natural Resources & Irrigation",
+    isActive: true,
+  },
+  {
+    id: "fs-1",
+    type: "FUNDING_SOURCE",
+    code: "FS_WB",
+    label: "World Bank (IDA)",
+    isActive: true,
+  },
+  {
+    id: "fs-2",
+    type: "FUNDING_SOURCE",
+    code: "FS_AFDB",
+    label: "African Development Bank (AfDB)",
+    isActive: true,
+  },
+  {
+    id: "fs-3",
+    type: "FUNDING_SOURCE",
+    code: "FS_GOV",
+    label: "Government of Ethiopia (Treasury)",
+    isActive: true,
+  },
+  {
+    id: "pm-1",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_RFQ",
+    label: "Request for Quotations (RFQ)",
+    isActive: true,
+  },
+  {
+    id: "pm-2",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_QCBS",
+    label: "Quality and Cost-Based Selection (QCBS)",
+    isActive: true,
+  },
+  {
+    id: "pm-3",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_NCB",
+    label: "National Competitive Bidding (NCB)",
+    isActive: true,
+  },
 ];
 
 const FALLBACK_OFFICERS: OfficerUserItem[] = [
-  { id: "off-1", name: "Abebe Bikila", email: "officer@moa.gov.et", role: "ProcurementOfficer", isActive: true },
-  { id: "off-2", name: "Almaz Ayana", email: "almaz.officer@moa.gov.et", role: "ProcurementOfficer", isActive: true },
+  {
+    id: "off-1",
+    name: "Abebe Bikila",
+    email: "officer@moa.gov.et",
+    role: "ProcurementOfficer",
+    isActive: true,
+  },
+  {
+    id: "off-2",
+    name: "Almaz Ayana",
+    email: "almaz.officer@moa.gov.et",
+    role: "ProcurementOfficer",
+    isActive: true,
+  },
 ];
 
 export async function fetchLookups(type?: string): Promise<LookupItem[]> {

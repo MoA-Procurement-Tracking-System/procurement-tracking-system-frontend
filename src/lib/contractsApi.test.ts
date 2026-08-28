@@ -56,8 +56,12 @@ describe("contractsApi", () => {
     };
 
     vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify(createdContract), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(payment), { status: 200 }));
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(createdContract), { status: 201 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(payment), { status: 200 }),
+      );
 
     const resContract = await createContract({
       contractNo: "CON-2026-002",

@@ -32,13 +32,8 @@ import {
   type ProcurementPlanSummary,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
-import {
-  createPlan,
-  submitPlanForReview,
-} from "@/lib/plansApi";
-import {
-  createActivity,
-} from "@/lib/activitiesApi";
+import { createPlan, submitPlanForReview } from "@/lib/plansApi";
+import { createActivity } from "@/lib/activitiesApi";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -139,10 +134,13 @@ export function OfficerProjectsView({
 
       // Async backend creation
       try {
-        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" = "GOODS";
+        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+          "GOODS";
         if (input.category === "Works") catEnum = "WORKS";
-        else if (input.category === "Consultancy Services") catEnum = "CONSULTANCY";
-        else if (input.category === "Non-Consulting Services") catEnum = "NON_CONSULTING";
+        else if (input.category === "Consultancy Services")
+          catEnum = "CONSULTANCY";
+        else if (input.category === "Non-Consulting Services")
+          catEnum = "NON_CONSULTING";
 
         await createPlan({
           projectId: selectedProject.code,

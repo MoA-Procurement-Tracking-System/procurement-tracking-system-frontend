@@ -4,7 +4,8 @@ export interface BackendPayment {
   amount: number;
   paymentDate?: string | null;
   referenceNo: string;
-  paymentType?: "ADVANCE" | "INTERIM_1" | "INTERIM_2" | "FINAL" | "RETENTION" | string;
+  paymentType?:
+    "ADVANCE" | "INTERIM_1" | "INTERIM_2" | "FINAL" | "RETENTION" | string;
   status: "PAID" | "PENDING" | "FAILED";
   createdAt?: string;
 }
@@ -36,7 +37,8 @@ export interface BackendContract {
   region?: string | null;
   sector?: string | null;
   subcomponent?: string | null;
-  status: "ACTIVE" | "COMPLETED" | "CANCELLED" | "PENDING" | "DRAFT" | "TERMINATED";
+  status:
+    "ACTIVE" | "COMPLETED" | "CANCELLED" | "PENDING" | "DRAFT" | "TERMINATED";
   awardDate?: string | null;
   signatureDate?: string | null;
   startDate?: string | null;

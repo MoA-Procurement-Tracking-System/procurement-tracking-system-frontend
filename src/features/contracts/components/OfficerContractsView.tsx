@@ -31,10 +31,7 @@ import {
   parseSavedPayments,
   type OfficerContractPayment,
 } from "../data/officerPayments";
-import {
-  createContract,
-  recordContractPayment,
-} from "@/lib/contractsApi";
+import { createContract, recordContractPayment } from "@/lib/contractsApi";
 import {
   contractFiscalYear,
   filterOfficerContracts,

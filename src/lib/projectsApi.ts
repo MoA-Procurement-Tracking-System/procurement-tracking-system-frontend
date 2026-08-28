@@ -184,7 +184,8 @@ export function mapBackendProjectToOfficerProject(
     components: bp.components || [],
     subcomponents: bp.subcomponents || [],
     activePlans: bp.plans ? bp.plans.length : 0,
-    assignedOfficers: assignedOfficers.length > 0 ? assignedOfficers : ["Assigned Officer"],
+    assignedOfficers:
+      assignedOfficers.length > 0 ? assignedOfficers : ["Assigned Officer"],
     assignmentStart: {
       ethiopian: "01 Meskerem 2016",
       gregorian: bp.projectStartDate

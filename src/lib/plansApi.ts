@@ -23,11 +23,7 @@ export interface BackendPlan {
   title: string;
   budgetYear?: string | null;
   procurementCategory?:
-    | "GOODS"
-    | "WORKS"
-    | "CONSULTANCY"
-    | "NON_CONSULTING"
-    | null;
+    "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" | null;
   periodStart: string;
   periodEnd: string;
   organization?: string | null;
@@ -90,9 +86,7 @@ export async function fetchPlanById(id: string): Promise<BackendPlan> {
   return res.data || res;
 }
 
-export async function createPlan(
-  data: CreatePlanInput,
-): Promise<BackendPlan> {
+export async function createPlan(data: CreatePlanInput): Promise<BackendPlan> {
   const res = await apiClient.post<any>("/plans", data);
   return res.data || res;
 }

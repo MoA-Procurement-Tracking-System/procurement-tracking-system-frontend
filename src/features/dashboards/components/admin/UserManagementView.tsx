@@ -261,7 +261,9 @@ export function UserManagementView({
       .catch((err) => {
         if (active) {
           setLoadError(
-            err instanceof Error ? err.message : "Failed to load users from database.",
+            err instanceof Error
+              ? err.message
+              : "Failed to load users from database.",
           );
         }
       })

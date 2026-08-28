@@ -165,12 +165,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const rawPlans = await fetchPlans();
       const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
       const officerPlans = getOfficerReviewPlans();
-      
+
       const planMap = new Map<string, ProcurementPlan>();
       INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
       officerPlans.forEach((p) => planMap.set(p.id, p));
       mapped.forEach((p) => planMap.set(p.id, p));
-      
+
       setPlans(Array.from(planMap.values()));
     } catch (err) {
       console.error(err);
@@ -358,7 +358,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
   // Director Decision 2: Send Back to Officer for Revision
   const handleReturnPlan = async (plan: ProcurementPlan) => {
-    const reasonText = returnRemarks.trim() || "Returned by Director for revisions.";
+    const reasonText =
+      returnRemarks.trim() || "Returned by Director for revisions.";
     try {
       if (!plan.id.startsWith("officer-")) {
         await rejectPlan(plan.id, reasonText);

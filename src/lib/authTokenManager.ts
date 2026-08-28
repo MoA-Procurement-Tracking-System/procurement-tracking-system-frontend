@@ -1,10 +1,10 @@
 /**
  * In-Memory Authentication Token Manager
- * 
+ *
  * SECURITY DESIGN (XSS Protection):
- * Storing access tokens in localStorage or sessionStorage exposes them to 
+ * Storing access tokens in localStorage or sessionStorage exposes them to
  * Cross-Site Scripting (XSS) extraction via `localStorage.getItem()`.
- * 
+ *
  * This module keeps the active JWT access token purely in an in-memory closure.
  * It is never written to disk or browser web storage. When a page is reloaded,
  * the session is restored via cookie or re-authentication.

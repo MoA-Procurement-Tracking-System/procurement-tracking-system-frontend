@@ -55,11 +55,18 @@ export interface BackendActivity {
   description: string;
   estimatedBudget: number;
   currency: string;
-  marketApproach?: "OPEN_INTERNATIONAL" | "OPEN_NATIONAL" | "LIMITED" | "DIRECT" | null;
+  marketApproach?:
+    "OPEN_INTERNATIONAL" | "OPEN_NATIONAL" | "LIMITED" | "DIRECT" | null;
   reviewType?: "PRIOR" | "POST" | null;
   contractType?: "LUMP_SUM" | "TIME_BASED" | null;
   lotRequired?: boolean;
-  status: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status:
+    | "DRAFT"
+    | "PENDING_REVIEW"
+    | "APPROVED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED";
   fundings?: BackendActivityFunding[];
   components?: BackendActivityComponent[];
   stages?: BackendStage[];
@@ -78,7 +85,8 @@ export interface CreateActivityInput {
   description: string;
   estimatedBudget: number;
   currency: string;
-  marketApproach?: "OPEN_INTERNATIONAL" | "OPEN_NATIONAL" | "LIMITED" | "DIRECT";
+  marketApproach?:
+    "OPEN_INTERNATIONAL" | "OPEN_NATIONAL" | "LIMITED" | "DIRECT";
   reviewType?: "PRIOR" | "POST";
   contractType?: "LUMP_SUM" | "TIME_BASED";
   lotRequired?: boolean;

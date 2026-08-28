@@ -34,7 +34,11 @@ describe("auth API", () => {
       ),
     );
 
-    const session = await authenticate(" custom-officer@moa.gov.et ", "secret", true);
+    const session = await authenticate(
+      " custom-officer@moa.gov.et ",
+      "secret",
+      true,
+    );
 
     expect(session.user.role).toBe("OFFICER");
     expect(fetchMock).toHaveBeenCalledWith(
@@ -62,7 +66,9 @@ describe("auth API", () => {
       ),
     );
 
-    await expect(authenticate("unknown@domain.com", "wrong", false)).rejects.toEqual(
+    await expect(
+      authenticate("unknown@domain.com", "wrong", false),
+    ).rejects.toEqual(
       new AuthApiError("Unable to sign in with those credentials."),
     );
   });

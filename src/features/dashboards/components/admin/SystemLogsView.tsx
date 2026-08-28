@@ -71,8 +71,15 @@ const DEFAULT_LOGS_RESPONSE: PaginatedResponse<AuditLogEntry> = {
       entityType: "AUTH",
       entityId: "u-off-1",
       userId: "u-off-1",
-      user: { id: "u-off-1", name: "Abebe Bikila", email: "officer@moa.gov.et" },
-      changes: { status: "Authenticated via web session", ipAddress: "196.189.16.42" },
+      user: {
+        id: "u-off-1",
+        name: "Abebe Bikila",
+        email: "officer@moa.gov.et",
+      },
+      changes: {
+        status: "Authenticated via web session",
+        ipAddress: "196.189.16.42",
+      },
       createdAt: "2026-08-26T09:30:00Z",
     },
     {
@@ -81,8 +88,16 @@ const DEFAULT_LOGS_RESPONSE: PaginatedResponse<AuditLogEntry> = {
       entityType: "PLAN",
       entityId: "plan-3",
       userId: "u-off-1",
-      user: { id: "u-off-1", name: "Abebe Bikila", email: "officer@moa.gov.et" },
-      changes: { plan: "BREFONS - Consultancy Services Plan", status: "Submitted to Director", ipAddress: "196.189.16.42" },
+      user: {
+        id: "u-off-1",
+        name: "Abebe Bikila",
+        email: "officer@moa.gov.et",
+      },
+      changes: {
+        plan: "BREFONS - Consultancy Services Plan",
+        status: "Submitted to Director",
+        ipAddress: "196.189.16.42",
+      },
       createdAt: "2026-08-26T10:00:00Z",
     },
     {
@@ -91,8 +106,15 @@ const DEFAULT_LOGS_RESPONSE: PaginatedResponse<AuditLogEntry> = {
       entityType: "PLAN",
       entityId: "plan-3",
       userId: "u-dir-1",
-      user: { id: "u-dir-1", name: "Dr. Aster Kebede", email: "director@moa.gov.et" },
-      changes: { decision: "Approved and sent to Endorsement Committee", ipAddress: "196.189.16.10" },
+      user: {
+        id: "u-dir-1",
+        name: "Dr. Aster Kebede",
+        email: "director@moa.gov.et",
+      },
+      changes: {
+        decision: "Approved and sent to Endorsement Committee",
+        ipAddress: "196.189.16.10",
+      },
       createdAt: "2026-08-26T10:30:00Z",
     },
     {
@@ -101,8 +123,16 @@ const DEFAULT_LOGS_RESPONSE: PaginatedResponse<AuditLogEntry> = {
       entityType: "USER",
       entityId: "u-com-1",
       userId: "u-adm-1",
-      user: { id: "u-adm-1", name: "Tewodros Kassahun", email: "admin@moa.gov.et" },
-      changes: { role: "ManagementTeam (Endorsement Committee)", email: "genet@moa.gov.et", ipAddress: "196.189.16.2" },
+      user: {
+        id: "u-adm-1",
+        name: "Tewodros Kassahun",
+        email: "admin@moa.gov.et",
+      },
+      changes: {
+        role: "ManagementTeam (Endorsement Committee)",
+        email: "genet@moa.gov.et",
+        ipAddress: "196.189.16.2",
+      },
       createdAt: "2026-08-26T11:00:00Z",
     },
   ],
@@ -161,7 +191,9 @@ export function SystemLogsView() {
       .catch((err) => {
         if (active) {
           setLoadError(
-            err instanceof Error ? err.message : "Failed to load audit logs from database.",
+            err instanceof Error
+              ? err.message
+              : "Failed to load audit logs from database.",
           );
         }
       })

@@ -59,7 +59,11 @@ export const getServerSession = cache(async (): Promise<AuthSession | null> => {
 
     // 3. Inspect all cookies in store for a valid session payload
     for (const c of cookieStore.getAll()) {
-      if (c.name.includes("session") || c.name.includes("moa") || c.name.includes("auth")) {
+      if (
+        c.name.includes("session") ||
+        c.name.includes("moa") ||
+        c.name.includes("auth")
+      ) {
         const parsed = parseSessionPayload(c.value);
         if (parsed) return parsed;
       }

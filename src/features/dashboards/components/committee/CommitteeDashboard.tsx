@@ -43,12 +43,12 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
           mapBackendPlanToFrontend(p, user.id),
         );
         const officerPlans = getOfficerReviewPlans();
-        
+
         const planMap = new Map<string, ProcurementPlan>();
         INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
         officerPlans.forEach((p) => planMap.set(p.id, p));
         mapped.forEach((p) => planMap.set(p.id, p));
-        
+
         setPlans(Array.from(planMap.values()));
       } catch (err) {
         console.error("Dashboard failed to load plans:", err);
