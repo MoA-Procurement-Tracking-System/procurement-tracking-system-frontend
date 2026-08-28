@@ -868,13 +868,12 @@ export function ActivitiesListView({
                           </td>
                           <td className="py-2 px-3 text-center">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold ${
-                                stage.stageStatus === "Completed"
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold ${stage.stageStatus === "Completed"
                                   ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
                                   : stage.stageStatus === "In Progress"
                                     ? "bg-blue-100 text-blue-900 border border-blue-300"
                                     : "bg-slate-100 text-slate-500"
-                              }`}
+                                }`}
                             >
                               {stage.stageStatus}
                             </span>
@@ -1127,11 +1126,10 @@ export function ActivitiesListView({
 
                           <td className="py-2 px-3">
                             <span
-                              className={`text-xs font-extrabold ${
-                                act.reviewType === "Prior"
+                              className={`text-xs font-extrabold ${act.reviewType === "Prior"
                                   ? "text-amber-800"
                                   : "text-slate-700"
-                              }`}
+                                }`}
                             >
                               {act.reviewType}
                             </span>

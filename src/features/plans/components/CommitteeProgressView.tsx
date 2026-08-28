@@ -16,6 +16,8 @@ import {
   RotateCcw,
   Send,
   MessageSquare,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,7 +41,10 @@ export interface CommitteeProgressItem {
   totalBudget: number;
   currency: string;
   description: string;
-  overallStatus: "Approved" | "Pending_Management_Approval" | "Rejected";
+  overallStatus:
+    | "Approved"
+    | "Pending_Management_Approval"
+    | "Rejected";
   memberVotes: CommitteeMemberVote[];
 }
 
@@ -375,7 +380,7 @@ export function CommitteeProgressView() {
     setItems((prevItems) =>
       prevItems.map((item) =>
         item.id === selectedPlan.id
-          ? { ...item, overallStatus: "Rejected" }
+          ? { ...item, overallStatus: "Rejected" as any }
           : item,
       ),
     );
@@ -392,8 +397,7 @@ export function CommitteeProgressView() {
 
   // Filter items (excluding Submitted_To_Director plans from Committee Progress)
   const filteredItems = items.filter((item) => {
-    if ((item.overallStatus as string) === "Submitted_To_Director")
-      return false;
+    if ((item.overallStatus as string) === "Submitted_To_Director") return false;
     const matchesSearch =
       item.planNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.planTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -598,8 +602,7 @@ export function CommitteeProgressView() {
                     Return Plan to Officer for Revision
                   </h3>
                   <p className="text-xs text-amber-800/80">
-                    Provide feedback or instructions detailing adjustments
-                    required by the officer before resubmitting the plan.
+                    Provide feedback or instructions detailing adjustments required by the officer before resubmitting the plan.
                   </p>
                 </div>
               </div>

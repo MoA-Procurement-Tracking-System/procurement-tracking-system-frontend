@@ -103,7 +103,7 @@ export function ProjectsManagementView() {
         );
         setPlans(mappedPlans);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {

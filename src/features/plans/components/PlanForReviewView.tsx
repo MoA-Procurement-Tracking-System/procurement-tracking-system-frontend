@@ -36,7 +36,6 @@ import {
   INITIAL_PROJECTS,
   type ProjectItem,
 } from "../../dashboards/components/director/projects/projectsData";
-import { type ProcurementActivity } from "../../activities/activitiesData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import {
@@ -57,6 +56,10 @@ import {
   type ProcurementActivitySummary,
 } from "../../projects/data/officerActivityDrafts";
 import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
+import {
+  INITIAL_ACTIVITIES,
+  type ProcurementActivity,
+} from "../../activities/activitiesData";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
@@ -246,7 +249,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       budgetYearFilter === "ALL" || p.budgetYear.includes(budgetYearFilter);
     const matchesRegion =
       regionFilter === "ALL" || p.organizationRegion === regionFilter;
-    const matchesStatus = statusFilter === "ALL" || p.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "ALL" || p.status === statusFilter;
 
     return (
       isAwaitingReview &&
@@ -297,10 +301,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       prev.map((p) =>
         p.id === plan.id
           ? {
-              ...p,
-              status: "Committee Review",
-              approvalDate: new Date().toISOString().split("T")[0],
-            }
+            ...p,
+            status: "Committee Review",
+            approvalDate: new Date().toISOString().split("T")[0],
+          }
           : p,
       ),
     );
@@ -337,7 +341,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           OFFICER_PLAN_DRAFTS_STORAGE_KEY,
           JSON.stringify(nextRecords),
         );
-      } catch {}
+      } catch { }
     }
 
     setSelectedPlanForReview(null);
@@ -366,10 +370,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       prev.map((p) =>
         p.id === plan.id
           ? {
-              ...p,
-              status: "Returned",
-              description: updatedDescription,
-            }
+            ...p,
+            status: "Returned",
+            description: returnRemarks.trim()
+              ? `[Returned Note: ${returnRemarks}] ${p.description || ""}`
+              : p.description,
+          }
           : p,
       ),
     );
@@ -410,7 +416,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           OFFICER_PLAN_DRAFTS_STORAGE_KEY,
           JSON.stringify(nextRecords),
         );
-      } catch {}
+      } catch { }
     }
 
     setSelectedPlanForReview(null);
@@ -657,8 +663,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                   )}
                 </div>
                 <p className="text-xs text-slate-500">
-                  Direct inline editing for activity description,
-                  clarifications, or technical notes.
+                  Direct inline editing for activity description, clarifications, or technical notes.
                 </p>
               </div>
 
@@ -958,9 +963,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     value={editingActivity.additionalRemarks || ""}
                     onChange={(e) =>
                       setEditingActivity((prev) =>
-                        prev
-                          ? { ...prev, additionalRemarks: e.target.value }
-                          : null,
+                        prev ? { ...prev, additionalRemarks: e.target.value } : null,
                       )
                     }
                     placeholder="Add technical notes..."
@@ -1090,6 +1093,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           </div>
 
           {/* Status Filter */}
+
         </div>
       </div>
 
@@ -1191,18 +1195,32 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
-                        className={`text-xs font-extrabold ${
-                          plan.status === "Submitted to Director"
-                            ? "text-amber-800"
-                            : plan.status === "Committee Review"
-                              ? "text-blue-800"
-                              : plan.status === "Returned"
-                                ? "text-rose-800"
-                                : "text-slate-700"
-                        }`}
+                        className={`text-xs font-extrabold ${plan.status === "Submitted to Director"
+                          ? "text-amber-800"
+                          : plan.status === "Committee Review"
+                            ? "text-blue-800"
+                            : plan.status === "Returned"
+                              ? "text-rose-800"
+                              : "text-slate-700"
+                          }`}
                       >
                         {plan.status}
                       </span>
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      {/* View Read-Only Plan Details Modal Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReadOnlyPlan(plan);
+                        }}
+                        title="View Plan Details (Read-only View)"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-[#0A3C2F] border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer shadow-2xs mx-auto"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))

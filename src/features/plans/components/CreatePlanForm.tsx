@@ -12,6 +12,7 @@ import {
   Send,
   RotateCcw,
   MessageSquare,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
@@ -71,7 +72,7 @@ export function CreatePlanForm({
   );
   const [planName, setPlanName] = useState(
     initialData?.planName ||
-      `${project.code} - Goods Procurement Plan - 2018 EFY`,
+    `${project.code} - Goods Procurement Plan - 2018 EFY`,
   );
   const [planPeriodFrom, setPlanPeriodFrom] = useState(
     initialData?.planPeriodFrom || "2025-07-08",
@@ -129,7 +130,10 @@ export function CreatePlanForm({
     const finalStatus = targetStatus || status;
     let finalDescription = description.trim();
 
-    if (targetStatus === "Submitted to Director" && revisionComment.trim()) {
+    if (
+      targetStatus === "Submitted to Director" &&
+      revisionComment.trim()
+    ) {
       const timeStamp = new Date().toLocaleDateString();
       finalDescription = finalDescription
         ? `${finalDescription}\n[Officer Revision (${timeStamp})]: ${revisionComment.trim()}`
@@ -295,7 +299,7 @@ export function CreatePlanForm({
                 readOnly || isDirector
                   ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                   : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-              }`}
+                }`}
               required
             >
               {PLAN_CATEGORY_CHOICES.map((c) => (
@@ -348,7 +352,7 @@ export function CreatePlanForm({
                   readOnly || isDirector
                     ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+                  }`}
                 required
               >
                 {BUDGET_YEAR_OPTIONS.map((year) => (
@@ -452,7 +456,7 @@ export function CreatePlanForm({
                   readOnly || isDirector
                     ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+                  }`}
               />
             </div>
 
@@ -468,7 +472,7 @@ export function CreatePlanForm({
                   readOnly || isDirector
                     ? "bg-slate-100 text-slate-800 font-bold border-slate-200 cursor-not-allowed"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+                  }`}
               >
                 <option value="Draft">Draft</option>
                 <option value="Submitted to Director">

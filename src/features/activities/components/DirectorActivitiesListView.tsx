@@ -12,6 +12,7 @@ import {
   Filter,
   CheckCircle2,
   Lock,
+  Sparkles,
   ShieldCheck,
   RotateCcw,
   Send,
@@ -151,7 +152,8 @@ export function DirectorActivitiesListView({
       !q ||
       act.activityRefNo.toLowerCase().includes(q) ||
       act.description.toLowerCase().includes(q);
-    const matchesMethod = methodFilter === "ALL" || act.method === methodFilter;
+    const matchesMethod =
+      methodFilter === "ALL" || act.method === methodFilter;
     const matchesReview =
       reviewFilter === "ALL" || act.reviewType === reviewFilter;
     const matchesStatus =
@@ -212,8 +214,7 @@ export function DirectorActivitiesListView({
                     onClick={() => setSelectedActivity(null)}
                     className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
                   >
-                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
-                    Table
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities Table
                   </button>
                   <span className="text-slate-300">•</span>
                   <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
@@ -364,8 +365,7 @@ export function DirectorActivitiesListView({
                     Procurement Method
                   </span>
                   <span className="font-extrabold text-[#0B5C43]">
-                    {selectedActivity.method} (National Competitive Bidding
-                    (NCB))
+                    {selectedActivity.method} (National Competitive Bidding (NCB))
                   </span>
                 </div>
 
@@ -404,7 +404,9 @@ export function DirectorActivitiesListView({
                   <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
                     Domestic / Regional Preference
                   </span>
-                  <span className="font-bold text-slate-900">No</span>
+                  <span className="font-bold text-slate-900">
+                    No
+                  </span>
                 </div>
 
                 {/* Row 7: Procurement Process */}
@@ -423,8 +425,7 @@ export function DirectorActivitiesListView({
                     Procurement Document Type
                   </span>
                   <span className="font-bold text-slate-900">
-                    Request for Bids SPD ({selectedActivity.category}) - 1
-                    envelope
+                    Request for Bids SPD ({selectedActivity.category}) - 1 envelope
                   </span>
                 </div>
 
@@ -578,7 +579,9 @@ export function DirectorActivitiesListView({
                   <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
                     Primary Funding Source
                   </span>
-                  <span className="font-bold text-slate-900">World Bank</span>
+                  <span className="font-bold text-slate-900">
+                    World Bank
+                  </span>
                 </div>
 
                 {/* Pricing Basis */}
@@ -606,7 +609,9 @@ export function DirectorActivitiesListView({
                   <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
                     Lot Required
                   </span>
-                  <span className="font-bold text-slate-900">No</span>
+                  <span className="font-bold text-slate-900">
+                    No
+                  </span>
                 </div>
 
                 {/* Activity Description (Editable Input with Neutral Attention Border) */}
@@ -663,8 +668,7 @@ export function DirectorActivitiesListView({
                     />
                   ) : (
                     <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-800 leading-relaxed">
-                      {selectedActivity.remarks ||
-                        "Approved procurement activity baseline."}
+                      {selectedActivity.remarks || "Approved procurement activity baseline."}
                     </div>
                   )}
                 </div>
@@ -818,9 +822,7 @@ export function DirectorActivitiesListView({
                             />
                           ) : (
                             <span className="font-semibold text-slate-800">
-                              {stage.revisedTargetDate ||
-                                stage.originalPlannedDate ||
-                                "—"}
+                              {stage.revisedTargetDate || stage.originalPlannedDate || "—"}
                             </span>
                           )}
                         </td>
@@ -1006,6 +1008,10 @@ export function DirectorActivitiesListView({
                     </tr>
                   ) : (
                     filteredActivities.map((act, index) => {
+                      const completedStages = act.roadmap.filter(
+                        (s) => s.stageStatus === "Completed",
+                      ).length;
+                      const totalStages = act.roadmap.length;
                       const computedStatus = getActivityStatus(act);
 
                       const statusColorStyle =

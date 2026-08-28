@@ -305,11 +305,10 @@ export function ReportsView() {
               <button
                 key={item.id}
                 onClick={() => setActiveReport(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
-                  isActive
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${isActive
                     ? "border-l-4 border-l-[#0A3C2F] bg-slate-50 text-[#0A3C2F] font-bold"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium"
-                }`}
+                  }`}
               >
                 <span>{item.label}</span>
                 {isActive && (
@@ -978,43 +977,43 @@ export function ReportsView() {
                 activeReport === "monthly-summary" ||
                 activeReport === "detailed-procurement" ||
                 activeReport === "project-officer") && (
-                <table className="w-full text-left border-collapse text-xs min-w-[700px]">
-                  <thead>
-                    <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase">
-                      <th className="py-3 px-3">Item Ref / Code</th>
-                      <th className="py-3 px-3">Description / Scope</th>
-                      <th className="py-3 px-3">Category</th>
-                      <th className="py-3 px-3">Method</th>
-                      <th className="py-3 px-3 font-mono">Amount (ETB)</th>
-                      <th className="py-3 px-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_ANNUAL_PLAN_REPORT.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
-                          {row.refNo}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">
-                          {row.description}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold">
-                          {row.category}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">
-                          {row.method}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                          {row.currency} {row.estimatedAmount.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-extrabold text-emerald-700">
-                          {row.status}
-                        </td>
+                  <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+                    <thead>
+                      <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase">
+                        <th className="py-3 px-3">Item Ref / Code</th>
+                        <th className="py-3 px-3">Description / Scope</th>
+                        <th className="py-3 px-3">Category</th>
+                        <th className="py-3 px-3">Method</th>
+                        <th className="py-3 px-3 font-mono">Amount (ETB)</th>
+                        <th className="py-3 px-3">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {MOCK_ANNUAL_PLAN_REPORT.map((row) => (
+                        <tr key={row.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
+                            {row.refNo}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">
+                            {row.description}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold">
+                            {row.category}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">
+                            {row.method}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                            {row.currency} {row.estimatedAmount.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-extrabold text-emerald-700">
+                            {row.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
             </div>
           </div>
         </main>
