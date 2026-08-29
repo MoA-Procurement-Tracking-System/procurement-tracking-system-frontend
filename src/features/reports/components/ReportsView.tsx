@@ -185,16 +185,17 @@ export function ReportsView() {
             const target = s.currentTargetStartDate
               ? new Date(s.currentTargetStartDate).toISOString().slice(0, 10)
               : "2026-08-01";
-            const delayDays = s.currentTargetStartDate && currentTime !== null
-              ? Math.max(
-                  1,
-                  Math.floor(
-                    (currentTime -
-                      new Date(s.currentTargetStartDate).getTime()) /
-                      (1000 * 60 * 60 * 24),
-                  ),
-                )
-              : 14;
+            const delayDays =
+              s.currentTargetStartDate && currentTime !== null
+                ? Math.max(
+                    1,
+                    Math.floor(
+                      (currentTime -
+                        new Date(s.currentTargetStartDate).getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )
+                : 14;
             const latestRev = (s.revisions || [])[
               (s.revisions || []).length - 1
             ];
