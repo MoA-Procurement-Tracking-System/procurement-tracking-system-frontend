@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -12,46 +12,526 @@ import {
   Filter,
   CheckCircle2,
   Lock,
-  Sparkles,
   ShieldCheck,
   RotateCcw,
   Send,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProcurementPlan } from "../../plans/plansData";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
 import {
   INITIAL_ACTIVITIES,
+  generateRoadmapForMethod,
   type ProcurementActivity,
+  type ProcurementMethod,
+  type MarketApproach,
+  type ReviewType,
+  type StageStatus,
+  type ActivityStage,
 } from "../activitiesData";
+import { fetchActivities, type BackendActivity } from "@/lib/activitiesApi";
+import {
+  parseSavedActivityRecords,
+  OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+} from "@/features/projects/data/officerActivityDrafts";
+import { getPlanActivities } from "@/features/projects/data/fixtureActivityLifecycle";
+import type { ProcurementPlanSummary } from "@/features/projects/data/officerProjects";
+
+function mapBackendActivityToProcurementActivity(
+  bAct: BackendActivity | any,
+  plan: ProcurementPlan,
+): ProcurementActivity {
+  const methodLabel =
+    bAct.procurementMethod?.label || bAct.method || "RFB - National";
+  const mappedMethod: ProcurementMethod = (
+    methodLabel.includes("RFB - International")
+      ? "RFB - International"
+      : methodLabel.includes("RFB - National") || methodLabel.includes("NCB")
+        ? "RFB - National"
+        : methodLabel.includes("RFQ") || methodLabel.includes("Shopping")
+          ? "RFQ / Shopping"
+          : methodLabel.includes("Direct")
+            ? "Direct Procurement"
+            : methodLabel.includes("QCBS")
+              ? "QCBS"
+              : methodLabel.includes("FBS")
+                ? "FBS"
+                : methodLabel.includes("LCS")
+                  ? "LCS"
+                  : methodLabel.includes("CQS")
+                    ? "CQS"
+                    : methodLabel.includes("INDV")
+                      ? "INDV"
+                      : "RFB - National"
+  ) as ProcurementMethod;
+
+  const defaultRoadmap = generateRoadmapForMethod(
+    plan.category,
+    mappedMethod,
+    bAct.fundings?.[0]?.fundingSource || "African Development Bank (AfDB)",
+  );
+
+  const roadmap: ActivityStage[] =
+    bAct.details?.roadmap && bAct.details.roadmap.length > 0
+      ? bAct.details.roadmap.map((st: any, idx: number) => {
+          const isNA = Boolean(
+            st.notApplicable ||
+            st.isNA ||
+            st.gregorianDate === "Not applicable" ||
+            st.originalPlannedDate === "Not applicable" ||
+            st.status === "Not Applicable",
+          );
+          return {
+            id: `stage-${idx + 1}`,
+            stageName: st.name || st.stageName,
+            originalPlannedDate: isNA
+              ? "Not applicable"
+              : st.gregorianDate || st.originalPlannedDate || "",
+            revisedTargetDate: isNA
+              ? "Not applicable"
+              : st.gregorianDate ||
+                st.revisedTargetDate ||
+                st.originalPlannedDate ||
+                "",
+            actualDate: st.actualDate || "",
+            stageStatus: (isNA
+              ? "Not Applicable"
+              : st.status === "Completed" || st.stageStatus === "Completed"
+                ? "Completed"
+                : st.status === "In Progress" ||
+                    st.stageStatus === "In Progress"
+                  ? "In Progress"
+                  : "Not Started") as StageStatus,
+            remarks: st.remarks,
+            notApplicable: isNA,
+          };
+        })
+      : bAct.stages && bAct.stages.length > 0
+        ? bAct.stages.map((st: any, idx: number) => {
+            const fallback = defaultRoadmap[idx] || defaultRoadmap[0];
+            const isNA = Boolean(
+              st.notApplicable ||
+              st.isNotApplicable ||
+              st.status === "NOT_APPLICABLE" ||
+              st.status === "Not Applicable" ||
+              fallback?.notApplicable,
+            );
+            return {
+              id: st.id || `stage-${idx + 1}`,
+              stageName:
+                st.stageType?.label ||
+                st.name ||
+                fallback?.stageName ||
+                `Stage ${st.sequence || idx + 1}`,
+              originalPlannedDate: isNA
+                ? "Not applicable"
+                : st.plannedStartDate ||
+                  st.originalPlannedDate ||
+                  fallback?.originalPlannedDate,
+              revisedTargetDate: isNA
+                ? "Not applicable"
+                : st.currentTargetStartDate ||
+                  st.plannedStartDate ||
+                  st.revisedTargetDate ||
+                  fallback?.revisedTargetDate,
+              actualDate: st.actualStartDate || st.actualDate,
+              stageStatus: (isNA
+                ? "Not Applicable"
+                : st.status === "COMPLETED" || st.stageStatus === "Completed"
+                  ? "Completed"
+                  : st.status === "IN_PROGRESS" ||
+                      st.stageStatus === "In Progress"
+                    ? "In Progress"
+                    : "Not Started") as StageStatus,
+              remarks: st.remarks,
+              notApplicable: isNA,
+            };
+          })
+        : bAct.roadmap && bAct.roadmap.length > 0
+          ? bAct.roadmap.map((st: any, idx: number) => {
+              const isNA = Boolean(
+                st.notApplicable ||
+                st.isNA ||
+                st.gregorianDate === "Not applicable" ||
+                st.originalPlannedDate === "Not applicable" ||
+                st.status === "Not Applicable" ||
+                st.stageStatus === "Not Applicable",
+              );
+              return {
+                id: st.id || `stage-${idx + 1}`,
+                stageName: st.name || st.stageName,
+                originalPlannedDate: isNA
+                  ? "Not applicable"
+                  : st.gregorianDate || st.originalPlannedDate || "",
+                revisedTargetDate: isNA
+                  ? "Not applicable"
+                  : st.gregorianDate ||
+                    st.revisedTargetDate ||
+                    st.originalPlannedDate ||
+                    "",
+                actualDate: st.actualDate || "",
+                stageStatus: (isNA
+                  ? "Not Applicable"
+                  : st.status === "Completed" || st.stageStatus === "Completed"
+                    ? "Completed"
+                    : st.status === "In Progress" ||
+                        st.stageStatus === "In Progress"
+                      ? "In Progress"
+                      : "Not Started") as StageStatus,
+                remarks: st.remarks,
+                notApplicable: isNA,
+              };
+            })
+          : defaultRoadmap;
+
+  return {
+    id:
+      bAct.id || `act-${bAct.reference || bAct.activityRefNo || Math.random()}`,
+    planId: plan.id,
+    planName: plan.planName,
+    projectCode: plan.projectCode,
+    category: plan.category,
+    method: mappedMethod,
+    specificMethod: bAct.procurementMethod?.label || bAct.specificMethod,
+    marketApproach: (bAct.marketApproach === "OPEN_INTERNATIONAL"
+      ? "Open - International"
+      : bAct.marketApproach === "OPEN_NATIONAL"
+        ? "Open - National"
+        : bAct.marketApproach === "LIMITED"
+          ? "Limited"
+          : bAct.marketApproach === "DIRECT"
+            ? "Direct"
+            : "Open - National") as MarketApproach,
+    qualificationApproach: "Post-qualification",
+    domesticPreference: Boolean(bAct.domesticPreference),
+    reviewType: (bAct.reviewType === "POST" ? "Post" : "Prior") as ReviewType,
+    requiresUnAgency: Boolean(bAct.requiresUnAgency),
+    isInProcess:
+      bAct.status === "IN_PROGRESS" || bAct.status === "IN_EXECUTION",
+    activityRefNo: bAct.reference || bAct.activityRefNo || "ET-MoA-REF",
+    description: bAct.description || "Procurement activity package",
+    estimatedAmount: bAct.estimatedBudget || bAct.estimatedAmount || 0,
+    currency: (bAct.currency as any) || "ETB",
+    fundingSource:
+      bAct.fundings?.[0]?.fundingSource ||
+      bAct.fundingSource ||
+      bAct.details?.form?.fundingSource ||
+      "African Development Bank (AfDB)",
+    loanGrantNo:
+      bAct.fundings?.[0]?.loanGrantNumber ||
+      bAct.loanGrantNo ||
+      bAct.details?.form?.loanGrantNumber,
+    fundingAllocationPercent:
+      bAct.fundings?.[0]?.allocationPct || bAct.fundingAllocationPercent || 100,
+    component:
+      bAct.components?.[0]?.component ||
+      bAct.component ||
+      bAct.details?.componentAllocations?.[0]?.id ||
+      "Component 1",
+    subcomponent: bAct.subcomponent || "1.1 Subcomponent",
+    componentAllocationPercent: bAct.components?.[0]?.allocationPct || 100,
+    isLotRequired: Boolean(bAct.lotRequired || bAct.isLotRequired),
+    lots: bAct.lots,
+    classificationCode:
+      bAct.classificationCode ||
+      bAct.details?.form?.classificationCode ||
+      "42100000",
+    classificationDescription:
+      bAct.classificationDescription || "Procurement Package",
+    locationRegion: bAct.locationRegion || plan.organizationRegion,
+    roadmap,
+    status: (bAct.status === "APPROVED" || bAct.status === "Approved"
+      ? "Approved"
+      : bAct.status === "IN_PROGRESS" || bAct.status === "In Execution"
+        ? "In Execution"
+        : "Submitted to Director") as any,
+    createdAt: bAct.createdAt || new Date().toISOString(),
+  };
+}
 
 interface DirectorActivitiesListViewProps {
   plan: ProcurementPlan;
   project: ProjectItem;
   parentSection?: "projects" | "plan-for-review";
+  userRole?: string;
   onBackClick: () => void;
   onApprovePlan?: (plan: ProcurementPlan) => void;
   onReturnPlan?: (plan: ProcurementPlan, remarks: string) => void;
+  onCommitteeVote?: (
+    plan: ProcurementPlan,
+    decision: "APPROVE" | "REJECT",
+    remarks?: string,
+  ) => void;
 }
 
 export function DirectorActivitiesListView({
   plan,
   project,
   parentSection = "plan-for-review",
+  userRole,
   onBackClick,
   onApprovePlan,
   onReturnPlan,
+  onCommitteeVote,
 }: DirectorActivitiesListViewProps) {
-  const isEditable = parentSection === "plan-for-review";
+  const isCommittee = userRole === "ENDORSING_COMMITTEE";
+  const isEditable = parentSection === "plan-for-review" && !isCommittee;
 
-  const [activities, setActivities] = useState<ProcurementActivity[]>(
-    INITIAL_ACTIVITIES.filter(
+  const [activities, setActivities] = useState<ProcurementActivity[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const rawLocal = window.localStorage.getItem(
+          OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+        );
+        if (rawLocal) {
+          const records = parseSavedActivityRecords(rawLocal);
+          const cleanPlanId = plan.id.startsWith("officer-")
+            ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+            : plan.id;
+
+          const matchingLocal = records.filter((r) => {
+            const projCode = (r.projectCode || "").toLowerCase();
+            const planProjCode = (plan.projectCode || "").toLowerCase();
+            const pRef = (r.planReference || "").toLowerCase();
+            const cPlanId = cleanPlanId.toLowerCase();
+            const pName = (plan.planName || "").toLowerCase();
+            const pId = plan.id.toLowerCase();
+
+            const projMatches =
+              !projCode ||
+              !planProjCode ||
+              projCode === planProjCode ||
+              pName.includes(projCode) ||
+              planProjCode.includes(projCode);
+
+            const planMatches =
+              !pRef ||
+              pRef === cPlanId ||
+              pRef === pId ||
+              pRef === pName ||
+              pName.includes(pRef) ||
+              cPlanId.includes(pRef) ||
+              records.length <= 10;
+
+            return projMatches && planMatches;
+          });
+
+          if (matchingLocal.length > 0) {
+            return matchingLocal.map((r) =>
+              mapBackendActivityToProcurementActivity(r.activity, plan),
+            );
+          }
+        }
+      } catch {}
+    }
+
+    if (plan.activities && plan.activities.length > 0) {
+      return plan.activities.map((a) =>
+        mapBackendActivityToProcurementActivity(a, plan),
+      );
+    }
+    return INITIAL_ACTIVITIES.filter(
       (a) =>
         a.planId === plan.id ||
         a.planName === plan.planName ||
         a.projectCode === plan.projectCode,
-    ),
-  );
+    );
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const loadActivitiesData = useCallback(async () => {
+    setLoading(true);
+    try {
+      let loadedActs: ProcurementActivity[] = [];
+
+      // 1. Primary Source: Check local storage drafts created by the officer
+      if (typeof window !== "undefined") {
+        try {
+          const rawLocal = window.localStorage.getItem(
+            OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+          );
+          if (rawLocal) {
+            const records = parseSavedActivityRecords(rawLocal);
+            const cleanPlanId = plan.id.startsWith("officer-")
+              ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+              : plan.id;
+
+            const matchingLocal = records.filter((r) => {
+              const projCode = (r.projectCode || "").toLowerCase();
+              const planProjCode = (plan.projectCode || "").toLowerCase();
+              const pRef = (r.planReference || "").toLowerCase();
+              const cPlanId = cleanPlanId.toLowerCase();
+              const pName = (plan.planName || "").toLowerCase();
+              const pId = plan.id.toLowerCase();
+
+              const projMatches =
+                !projCode ||
+                !planProjCode ||
+                projCode === planProjCode ||
+                pName.includes(projCode) ||
+                planProjCode.includes(projCode);
+
+              const planMatches =
+                !pRef ||
+                pRef === cPlanId ||
+                pRef === pId ||
+                pRef === pName ||
+                pName.includes(pRef) ||
+                cPlanId.includes(pRef) ||
+                records.length <= 10;
+
+              return projMatches && planMatches;
+            });
+
+            for (const rec of matchingLocal) {
+              const actSummary = rec.activity;
+              const mapped = mapBackendActivityToProcurementActivity(
+                actSummary,
+                plan,
+              );
+              if (
+                !loadedActs.some(
+                  (existing) =>
+                    existing.activityRefNo === mapped.activityRefNo ||
+                    existing.description === mapped.description,
+                )
+              ) {
+                loadedActs.push(mapped);
+              }
+            }
+          }
+        } catch (localErr) {
+          console.warn("localStorage draft load note:", localErr);
+        }
+      }
+
+      // 2. Fetch from live backend API by planId if no local drafts
+      if (loadedActs.length === 0) {
+        try {
+          const cleanPlanId = plan.id.startsWith("officer-")
+            ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+            : plan.id;
+          const backendActs = await fetchActivities(cleanPlanId);
+
+          if (backendActs && backendActs.length > 0) {
+            for (const ba of backendActs) {
+              const mapped = mapBackendActivityToProcurementActivity(ba, plan);
+              if (
+                !loadedActs.some(
+                  (x) =>
+                    x.id === mapped.id ||
+                    x.activityRefNo === mapped.activityRefNo,
+                )
+              ) {
+                loadedActs.push(mapped);
+              }
+            }
+          }
+        } catch (backendErr) {
+          console.warn("Backend fetchActivities note:", backendErr);
+        }
+      }
+
+      // 3. If plan already has mapped activities passed in its props
+      if (
+        loadedActs.length === 0 &&
+        plan.activities &&
+        plan.activities.length > 0
+      ) {
+        loadedActs = plan.activities.map((a) =>
+          mapBackendActivityToProcurementActivity(a, plan),
+        );
+      }
+
+      // 4. Fallback to getPlanActivities engine
+      if (loadedActs.length === 0) {
+        try {
+          const cleanPlanId = plan.id.startsWith("officer-")
+            ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+            : plan.id;
+
+          const officerProj: import("@/features/projects/data/officerProjects").OfficerProject =
+            {
+              code: project?.code || plan.projectCode || "BREFONS",
+              name: project?.name || plan.projectName || "MoA Project",
+              shortName: project?.code || plan.projectCode || "BREFONS",
+              assignedOfficers: ["Assigned Officer"],
+              assignmentStart: {
+                ethiopian: "01 Meskerem 2016",
+                gregorian: "11 Sep 2023",
+              },
+              countryOrganisation: "Ethiopia",
+              executingAgency: "Ministry of Agriculture",
+              baseCurrency: "ETB",
+              components: project?.components || ["Component 1"],
+              financingNumbers: project?.loanGrantNumbers || ["P-Z1-C00-080"],
+              fundingSource:
+                project?.fundingSource || "African Development Bank (AfDB)",
+              fundingType: "Loan & Grant",
+              organizationRegion:
+                plan.organizationRegion || project?.region || "Federal",
+              status: "Active",
+              activePlans: plan.activitiesCount || 2,
+              plans: [],
+            };
+
+          const officerPlanSummary: ProcurementPlanSummary = {
+            reference: cleanPlanId,
+            name: plan.planName,
+            budgetYear: plan.budgetYear,
+            category: (plan.category as any) || "Goods",
+            status: (plan.status as any) || "Submitted to Director",
+            activities: plan.activitiesCount || 2,
+            completedActivities: 0,
+            inProgressActivities: plan.activitiesCount || 2,
+            delayedActivities: 0,
+            currency: "ETB",
+            estimatedValue: 200000,
+            organizationRegion: plan.organizationRegion || "Federal",
+          };
+
+          const resolvedActs = getPlanActivities(
+            officerProj,
+            officerPlanSummary,
+            [],
+          );
+
+          if (resolvedActs && resolvedActs.length > 0) {
+            for (const act of resolvedActs) {
+              const mapped = mapBackendActivityToProcurementActivity(act, plan);
+              if (
+                !loadedActs.some(
+                  (x) =>
+                    x.activityRefNo === mapped.activityRefNo ||
+                    x.description === mapped.description,
+                )
+              ) {
+                loadedActs.push(mapped);
+              }
+            }
+          }
+        } catch (planActErr) {
+          console.warn("getPlanActivities fallback note:", planActErr);
+        }
+      }
+
+      setActivities(loadedActs);
+    } catch (err) {
+      console.warn("loadActivitiesData error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [plan, project]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadActivitiesData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadActivitiesData]);
 
   const [currentPlanName, setCurrentPlanName] = useState(plan.planName);
   const [searchTerm, setSearchTerm] = useState("");
@@ -152,8 +632,7 @@ export function DirectorActivitiesListView({
       !q ||
       act.activityRefNo.toLowerCase().includes(q) ||
       act.description.toLowerCase().includes(q);
-    const matchesMethod =
-      methodFilter === "ALL" || act.method === methodFilter;
+    const matchesMethod = methodFilter === "ALL" || act.method === methodFilter;
     const matchesReview =
       reviewFilter === "ALL" || act.reviewType === reviewFilter;
     const matchesStatus =
@@ -214,7 +693,8 @@ export function DirectorActivitiesListView({
                     onClick={() => setSelectedActivity(null)}
                     className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
                   >
-                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities Table
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Activities
+                    Table
                   </button>
                   <span className="text-slate-300">•</span>
                   <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
@@ -365,7 +845,8 @@ export function DirectorActivitiesListView({
                     Procurement Method
                   </span>
                   <span className="font-extrabold text-[#0B5C43]">
-                    {selectedActivity.method} (National Competitive Bidding (NCB))
+                    {selectedActivity.method} (National Competitive Bidding
+                    (NCB))
                   </span>
                 </div>
 
@@ -404,9 +885,7 @@ export function DirectorActivitiesListView({
                   <span className="w-full sm:w-72 font-bold text-slate-500 shrink-0">
                     Domestic / Regional Preference
                   </span>
-                  <span className="font-bold text-slate-900">
-                    No
-                  </span>
+                  <span className="font-bold text-slate-900">No</span>
                 </div>
 
                 {/* Row 7: Procurement Process */}
@@ -425,7 +904,8 @@ export function DirectorActivitiesListView({
                     Procurement Document Type
                   </span>
                   <span className="font-bold text-slate-900">
-                    Request for Bids SPD ({selectedActivity.category}) - 1 envelope
+                    Request for Bids SPD ({selectedActivity.category}) - 1
+                    envelope
                   </span>
                 </div>
 
@@ -507,9 +987,10 @@ export function DirectorActivitiesListView({
                       PLAN REFERENCE
                     </span>
                     <span className="font-bold text-slate-800">
-                      {plan?.projectCode
-                        ? `PP-${plan.projectCode}`
-                        : "PP-DRIVE-2018-01"}
+                      {plan?.id ||
+                        (plan?.projectCode
+                          ? `PP-${plan.projectCode}`
+                          : "PP-PLAN")}
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
@@ -517,7 +998,7 @@ export function DirectorActivitiesListView({
                       FISCAL YEAR
                     </span>
                     <span className="font-bold text-slate-800">
-                      {plan?.budgetYear || "2018 EFY (2025/2026)"}
+                      {plan?.budgetYear || "2018 EFY"}
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 gap-1">
@@ -525,7 +1006,10 @@ export function DirectorActivitiesListView({
                       RESPONSIBLE OFFICER
                     </span>
                     <span className="font-bold text-slate-800">
-                      Yeabsira Fikre
+                      {typeof project?.assignedOfficers?.[0] === "string"
+                        ? project.assignedOfficers[0]
+                        : (project?.assignedOfficers?.[0] as any)?.name ||
+                          "Assigned Officer"}
                     </span>
                   </div>
                 </div>
@@ -580,7 +1064,9 @@ export function DirectorActivitiesListView({
                     Primary Funding Source
                   </span>
                   <span className="font-bold text-slate-900">
-                    World Bank
+                    {selectedActivity.fundingSource ||
+                      project?.fundingSource ||
+                      "African Development Bank (AfDB)"}
                   </span>
                 </div>
 
@@ -590,7 +1076,9 @@ export function DirectorActivitiesListView({
                     Pricing Basis
                   </span>
                   <span className="font-bold text-slate-900">
-                    Not Applicable
+                    {selectedActivity.category === "Works"
+                      ? "Bill of Quantities (BOQ)"
+                      : "Lump Sum"}
                   </span>
                 </div>
 
@@ -600,7 +1088,9 @@ export function DirectorActivitiesListView({
                     Subcomponent
                   </span>
                   <span className="font-bold text-slate-900">
-                    Livestock Value Chains and Trade Facilitation
+                    {selectedActivity.subcomponent ||
+                      selectedActivity.component ||
+                      "Not Specified"}
                   </span>
                 </div>
 
@@ -610,7 +1100,7 @@ export function DirectorActivitiesListView({
                     Lot Required
                   </span>
                   <span className="font-bold text-slate-900">
-                    No
+                    {selectedActivity.isLotRequired ? "Yes" : "No"}
                   </span>
                 </div>
 
@@ -668,7 +1158,8 @@ export function DirectorActivitiesListView({
                     />
                   ) : (
                     <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-800 leading-relaxed">
-                      {selectedActivity.remarks || "Approved procurement activity baseline."}
+                      {selectedActivity.remarks ||
+                        "Approved procurement activity baseline."}
                     </div>
                   )}
                 </div>
@@ -800,10 +1291,18 @@ export function DirectorActivitiesListView({
                           {stage.stageName}
                         </td>
                         <td className="py-2 px-3 font-mono text-slate-500">
-                          {stage.originalPlannedDate || "—"}
+                          {stage.notApplicable ||
+                          stage.originalPlannedDate === "Not applicable"
+                            ? "Not applicable"
+                            : stage.originalPlannedDate || "—"}
                         </td>
                         <td className="py-2 px-3 font-mono">
-                          {isEditable ? (
+                          {stage.notApplicable ||
+                          stage.revisedTargetDate === "Not applicable" ? (
+                            <span className="text-slate-400 font-medium italic">
+                              Not applicable
+                            </span>
+                          ) : isEditable ? (
                             <input
                               type="date"
                               value={
@@ -822,7 +1321,9 @@ export function DirectorActivitiesListView({
                             />
                           ) : (
                             <span className="font-semibold text-slate-800">
-                              {stage.revisedTargetDate || stage.originalPlannedDate || "—"}
+                              {stage.revisedTargetDate ||
+                                stage.originalPlannedDate ||
+                                "—"}
                             </span>
                           )}
                         </td>
@@ -832,14 +1333,20 @@ export function DirectorActivitiesListView({
                         <td className="py-2 px-3 text-center">
                           <span
                             className={`inline-block px-2 py-0.5 text-[10px] font-extrabold rounded ${
-                              stage.stageStatus === "Completed"
-                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                : stage.stageStatus === "In Progress"
-                                  ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                  : "bg-slate-100 text-slate-600"
+                              stage.notApplicable ||
+                              stage.stageStatus === "Not Applicable"
+                                ? "bg-slate-100 text-slate-500 border border-slate-200"
+                                : stage.stageStatus === "Completed"
+                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                  : stage.stageStatus === "In Progress"
+                                    ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                    : "bg-slate-100 text-slate-600"
                             }`}
                           >
-                            {stage.stageStatus || "Not Started"}
+                            {stage.notApplicable ||
+                            stage.stageStatus === "Not Applicable"
+                              ? "Not Applicable"
+                              : stage.stageStatus || "Not Started"}
                           </span>
                         </td>
                       </tr>
@@ -994,7 +1501,19 @@ export function DirectorActivitiesListView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {filteredActivities.length === 0 ? (
+                  {loading && activities.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="py-8 text-center text-slate-500"
+                      >
+                        <Loader2 className="mx-auto h-6 w-6 text-[#0A3C2F] animate-spin mb-1" />
+                        <p className="font-semibold text-slate-700 text-xs">
+                          Loading procurement activities...
+                        </p>
+                      </td>
+                    </tr>
+                  ) : filteredActivities.length === 0 ? (
                     <tr>
                       <td
                         colSpan={8}
@@ -1099,8 +1618,54 @@ export function DirectorActivitiesListView({
             </div>
           </div>
 
-          {/* Director Decision & Workflow Actions Card */}
-          {onApprovePlan && onReturnPlan && (
+          {/* Decision & Workflow Actions Card */}
+          {isCommittee && onCommitteeVote ? (
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5 mt-6">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Endorsement Committee Decision & Voting
+                </h3>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Committee Feedback / Deliberation Notes (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={directorReturnRemarks}
+                  onChange={(e) => setDirectorReturnRemarks(e.target.value)}
+                  placeholder="Enter committee voting remarks or feedback..."
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onCommitteeVote(plan, "APPROVE", directorReturnRemarks)
+                  }
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
+                  <span>Vote: Endorse & Approve Plan</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onCommitteeVote(plan, "REJECT", directorReturnRemarks)
+                  }
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4 text-rose-600" />
+                  <span>Vote: Reject / Return Plan</span>
+                </button>
+              </div>
+            </section>
+          ) : onApprovePlan && onReturnPlan ? (
             <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5 mt-6">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
@@ -1142,7 +1707,7 @@ export function DirectorActivitiesListView({
                 </button>
               </div>
             </section>
-          )}
+          ) : null}
         </div>
       )}
     </div>

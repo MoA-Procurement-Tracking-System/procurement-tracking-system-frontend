@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { DashboardRenderer } from "../../../../features/dashboards/components/DashboardRenderer";
-import { roleFromSlug } from "../../../../lib/authTypes";
+import { normalizeUserRole, roleFromSlug } from "../../../../lib/authTypes";
 import { requireAuthenticatedSession } from "../../../../lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +8,16 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   params,
 }: {
-  params: Promise<{ role: string }>;
+  params: Promise<{ role: string }> | { role: string };
 }) {
   const session = await requireAuthenticatedSession();
-  const { role: roleSlug } = await params;
-  const requestedRole = roleFromSlug(roleSlug);
+  const resolvedParams = await Promise.resolve(params);
+  const roleSlug = resolvedParams?.role;
+  const requestedRole = roleSlug ? roleFromSlug(roleSlug) : undefined;
   if (!requestedRole) notFound();
-  if (requestedRole !== session.user.role) redirect("/access-denied");
 
-  return <DashboardRenderer user={session.user} />;
+  const userRole = normalizeUserRole(session.user.role);
+  if (requestedRole !== userRole) redirect("/access-denied");
+
+  return <DashboardRenderer user={{ ...session.user, role: userRole }} />;
 }

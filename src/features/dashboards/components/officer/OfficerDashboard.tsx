@@ -1,3 +1,5 @@
+"use client";
+
 import { StatusText } from "../../../../components/dashboard/StatusText";
 import {
   Bell,
@@ -8,7 +10,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "@/lib/authTypes";
+import { fetchProjects, type BackendProject } from "@/lib/projectsApi";
+import { fetchPlans, type BackendPlan } from "@/lib/plansApi";
 
 type SummaryTone = "default" | "success" | "attention";
 type AlertTone = "returned" | "delayed" | "upcoming" | "approved";
@@ -46,43 +51,35 @@ interface OfficerAlert {
   tone: AlertTone;
 }
 
-// UI-only fixtures. Replace these with the role-scoped GET /dashboard and
-// GET /alerts responses when API integration is brought into scope.
-const summaryCards: readonly SummaryCard[] = [
-  { label: "Assigned projects", value: 12, tone: "default" },
-  { label: "Draft plans", value: 5, tone: "default" },
+const defaultSummaryCards: readonly SummaryCard[] = [
+  { label: "Assigned projects", value: 1, tone: "default" },
+  { label: "Draft plans", value: 0, tone: "default" },
   {
     label: "Returned plans",
-    value: 2,
+    value: 0,
     tone: "attention",
-    hasUnreadIndicator: true,
+    hasUnreadIndicator: false,
   },
-  { label: "Submitted plans", value: 8, tone: "default" },
-  { label: "Finally approved", value: 45, tone: "success" },
+  { label: "Submitted plans", value: 0, tone: "default" },
+  { label: "Finally approved", value: 0, tone: "success" },
   {
     label: "Delayed activities",
-    value: 3,
+    value: 0,
     tone: "attention",
-    hasUnreadIndicator: true,
+    hasUnreadIndicator: false,
   },
 ];
 
-const activeProjects: readonly ActiveProject[] = [
+const fallbackActiveProjects: readonly ActiveProject[] = [
   {
-    code: "PRJ-24-001",
-    name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
-    fundingSource: "World Bank",
-    activePlans: 3,
-  },
-  {
-    code: "PRJ-24-042",
-    name: "BREFONS - Building Resilience for Food and Nutrition Security",
-    fundingSource: "AfDB Grant",
-    activePlans: 5,
+    code: "DRIVE",
+    name: "Drive project",
+    fundingSource: "World Bank (IDA)",
+    activePlans: 1,
   },
 ];
 
-const actionItems: readonly ActionItem[] = [
+const fallbackActionItems: readonly ActionItem[] = [
   {
     title: "2018 EFY Annual Plan",
     project: "DRIVE",
@@ -101,7 +98,7 @@ const actionItems: readonly ActionItem[] = [
   },
 ];
 
-const alerts: readonly OfficerAlert[] = [
+const fallbackAlerts: readonly OfficerAlert[] = [
   {
     title: "Returned",
     message:
@@ -192,6 +189,225 @@ const actionLinkClasses =
   "font-semibold text-[#1261a8] underline-offset-4 hover:text-[#07523f] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07523f]";
 
 export function OfficerDashboard({ user }: { user: AuthUser }) {
+  const [backendProjects, setBackendProjects] = useState<BackendProject[]>([]);
+  const [backendPlans, setBackendPlans] = useState<BackendPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCurrentTime(Date.now()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [projects, plans] = await Promise.all([
+          fetchProjects(),
+          fetchPlans(),
+        ]);
+        if (isMounted) {
+          setBackendProjects(projects || []);
+          setBackendPlans(plans || []);
+        }
+      } catch (err) {
+        console.warn("OfficerDashboard loadData note:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const officerProjectsList = useMemo(() => {
+    if (backendProjects.length === 0) return fallbackActiveProjects;
+
+    // Filter projects where this officer is a member
+    const assigned = backendProjects.filter((p) =>
+      (p.members || []).some(
+        (m) =>
+          m.userId === user.id ||
+          (m.user?.email &&
+            m.user.email.toLowerCase() === user.email.toLowerCase()) ||
+          (m.user?.name &&
+            m.user.name.toLowerCase() ===
+              (user.displayName || "").toLowerCase()),
+      ),
+    );
+
+    // If there are explicitly assigned projects, display them; otherwise fallback to all active backend projects
+    const listToDisplay = assigned.length > 0 ? assigned : backendProjects;
+
+    return listToDisplay.map((p) => ({
+      code: p.code,
+      name: p.name,
+      fundingSource: p.fundingSource?.label || "World Bank (IDA)",
+      activePlans: p.plans ? p.plans.length : 0,
+    }));
+  }, [backendProjects, user]);
+
+  // Compute live delayed activities
+  const liveDelayedActivities: { act: any; plan: BackendPlan }[] =
+    useMemo(() => {
+      const list: { act: any; plan: BackendPlan }[] = [];
+      for (const p of backendPlans) {
+        for (const a of p.activities || []) {
+          const hasDelayedStage = (a.stages || []).some(
+            (st: any) =>
+              st.status === "DELAYED" ||
+              (st.currentTargetStartDate &&
+                currentTime !== null &&
+                new Date(st.currentTargetStartDate).getTime() < currentTime &&
+                st.status !== "COMPLETED" &&
+                !st.isNotApplicable),
+          );
+          if (a.status === "DELAYED" || hasDelayedStage) {
+            list.push({ act: a, plan: p });
+          }
+        }
+      }
+      return list;
+    }, [backendPlans, currentTime]);
+
+  const cards = useMemo(() => {
+    const draftCount = backendPlans.filter(
+      (p) => p.status === "DRAFT" || (p as any).status === "Draft",
+    ).length;
+    const returnedCount = backendPlans.filter(
+      (p) => p.status === "REJECTED" || (p as any).status === "Returned",
+    ).length;
+    const submittedCount = backendPlans.filter(
+      (p) =>
+        p.status === "SUBMITTED" ||
+        (p as any).status === "Submitted to Director",
+    ).length;
+    const approvedCount = backendPlans.filter(
+      (p) =>
+        p.status === "APPROVED" || (p as any).status === "Finally Approved",
+    ).length;
+
+    return [
+      {
+        label: "Assigned projects",
+        value: officerProjectsList.length,
+        tone: "default" as const,
+      },
+      { label: "Draft plans", value: draftCount, tone: "default" as const },
+      {
+        label: "Returned plans",
+        value: returnedCount,
+        tone: "attention" as const,
+        hasUnreadIndicator: returnedCount > 0,
+      },
+      {
+        label: "Submitted plans",
+        value: submittedCount,
+        tone: "default" as const,
+      },
+      {
+        label: "Finally approved",
+        value: approvedCount,
+        tone: "success" as const,
+      },
+      {
+        label: "Delayed activities",
+        value: liveDelayedActivities.length,
+        tone: "attention" as const,
+        hasUnreadIndicator: liveDelayedActivities.length > 0,
+      },
+    ];
+  }, [officerProjectsList.length, backendPlans, liveDelayedActivities.length]);
+
+  const dynamicActionItems: readonly ActionItem[] = useMemo(() => {
+    const items: ActionItem[] = [];
+
+    // Add returned plans
+    for (const p of backendPlans.filter(
+      (pl) => pl.status === "REJECTED" || (pl as any).status === "Returned",
+    )) {
+      items.push({
+        title: p.title || "Annual Procurement Plan",
+        project: p.project?.code || "MOA",
+        dueDate: p.periodEnd
+          ? new Date(p.periodEnd).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "Immediate",
+        status: "Returned",
+        reason: "Returned for revision by Director",
+        href: `/workspace/projects?project=${encodeURIComponent(p.project?.code || "")}&plan=${encodeURIComponent(p.id)}`,
+      });
+    }
+
+    // Add delayed activities
+    for (const { act, plan } of liveDelayedActivities) {
+      items.push({
+        title: act.description || "Delayed activity package",
+        project: plan.project?.code || "MOA",
+        dueDate: "Action Required",
+        status: "Delayed",
+        reason: `Overdue at stage: ${act.currentStage || "Bid Evaluation"}`,
+        href: `/workspace/activity-tracker?activity=${encodeURIComponent(act.reference || act.id)}`,
+      });
+    }
+
+    return items.length > 0 ? items : fallbackActionItems;
+  }, [backendPlans, liveDelayedActivities]);
+
+  const dynamicAlerts: readonly OfficerAlert[] = useMemo(() => {
+    const list: OfficerAlert[] = [];
+
+    // Returned plan alerts
+    const returned = backendPlans.find((p) => p.status === "REJECTED");
+    if (returned) {
+      list.push({
+        title: "Returned",
+        message: `Plan '${returned.title}' was returned by the Director for revision.`,
+        time: "Recent",
+        dateTime: returned.updatedAt || new Date().toISOString(),
+        action: "Review comments",
+        href: "/workspace/projects",
+        tone: "returned",
+      });
+    }
+
+    // Delayed activity alerts
+    if (liveDelayedActivities.length > 0) {
+      const first = liveDelayedActivities[0];
+      list.push({
+        title: "Delayed",
+        message: `Activity '${first.act.description || "Activity"}' requires progress update.`,
+        time: "Today",
+        dateTime: new Date().toISOString(),
+        action: "Update progress",
+        href: "/workspace/activity-tracker",
+        tone: "delayed",
+      });
+    }
+
+    // Approved plan alerts
+    const approved = backendPlans.find((p) => p.status === "APPROVED");
+    if (approved) {
+      list.push({
+        title: "Approved",
+        message: `Plan '${approved.title}' was finally approved.`,
+        time: "Approved",
+        dateTime: approved.updatedAt || new Date().toISOString(),
+        action: "View plan",
+        href: "/workspace/projects",
+        tone: "approved",
+      });
+    }
+
+    return list.length > 0 ? list : fallbackAlerts;
+  }, [backendPlans, liveDelayedActivities]);
+
   return (
     <div className="space-y-5 pb-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -215,7 +431,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
           gridTemplateColumns: "repeat(6, minmax(8.5rem, 1fr))",
         }}
       >
-        {summaryCards.map((card) => {
+        {cards.map((card) => {
           const tone = summaryToneClasses[card.tone];
 
           return (
@@ -272,7 +488,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {activeProjects.map((project) => (
+                  {officerProjectsList.map((project) => (
                     <tr key={project.code} className="hover:bg-[#f7fbf9]">
                       <td className="px-5 py-4">
                         <p className="font-semibold leading-6 text-slate-900">
@@ -331,7 +547,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {actionItems.map((item) => {
+                  {dynamicActionItems.map((item) => {
                     const isDelayed = item.status === "Delayed";
 
                     return (
@@ -383,7 +599,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
             </h2>
           </div>
           <div className="space-y-4 p-4">
-            {alerts.map((alert) => {
+            {dynamicAlerts.map((alert) => {
               const tone = alertToneClasses[alert.tone];
               const AlertIcon = tone.icon;
 

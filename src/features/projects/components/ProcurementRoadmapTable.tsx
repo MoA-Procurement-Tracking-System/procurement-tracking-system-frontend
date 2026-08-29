@@ -247,11 +247,15 @@ function RoadmapSection({
                       checked={stage.notApplicable}
                       className="h-3.5 w-3.5 accent-[#176c55] disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={!stage.allowNotApplicable}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const checked = event.target.checked;
                         onUpdate(index, {
-                          notApplicable: event.target.checked,
-                        })
-                      }
+                          notApplicable: checked,
+                          ...(checked
+                            ? { ethiopianDate: "", gregorianDate: "" }
+                            : {}),
+                        });
+                      }}
                       type="checkbox"
                     />
                   </td>

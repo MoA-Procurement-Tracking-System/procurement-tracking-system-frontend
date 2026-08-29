@@ -212,31 +212,25 @@ export function getPlanActivities(
   plan: ProcurementPlanSummary,
   savedActivities: readonly ProcurementActivitySummary[] = [],
 ) {
-  const generated = createFixturePlanActivities(project, plan);
   const normalizedSaved = savedActivities
     .filter((savedActivity) => !savedActivity.reference.startsWith("MOA/"))
     .map((savedActivity) => ({
       ...savedActivity,
       category: plan.category,
     }));
-  const savedByReference = new Map(
-    normalizedSaved.map((savedActivity) => [
-      savedActivity.reference,
-      savedActivity,
-    ]),
-  );
-  const generatedReferences = new Set(
-    generated.map((activity) => activity.reference),
-  );
 
-  return [
-    ...generated.map(
-      (activity) => savedByReference.get(activity.reference) ?? activity,
-    ),
-    ...Array.from(savedByReference.values()).filter(
-      (savedActivity) => !generatedReferences.has(savedActivity.reference),
-    ),
-  ];
+  if (normalizedSaved.length > 0) {
+    return normalizedSaved;
+  }
+
+  if (plan.planActivities && plan.planActivities.length > 0) {
+    return plan.planActivities.map((savedActivity) => ({
+      ...savedActivity,
+      category: plan.category,
+    }));
+  }
+
+  return createFixturePlanActivities(project, plan);
 }
 
 export function createFixturePlanActivities(
@@ -394,16 +388,17 @@ function fixtureRoadmap(
           : "2026-08-03";
 
   return roadmapForMethod(method).map((stage, stageIndex) => {
-    const gregorianDate = addDays(startDate, stageIndex * 14);
-    const ethiopian = gregorianToEthiopian(gregorianDate);
+    const isNA = Boolean(stage.allowNotApplicable);
+    const gregorianDate = isNA ? "" : addDays(startDate, stageIndex * 14);
+    const ethiopian = isNA ? null : gregorianToEthiopian(gregorianDate);
 
     return {
       allowNotApplicable: Boolean(stage.allowNotApplicable),
-      days: String(stageIndex * 14),
+      days: isNA ? "0" : String(stageIndex * 14),
       ethiopianDate: ethiopian ? formatEthiopianDate(ethiopian) : "",
       gregorianDate,
       name: stage.name,
-      notApplicable: Boolean(stage.allowNotApplicable),
+      notApplicable: isNA,
       remarks: "",
     };
   });

@@ -47,6 +47,11 @@ import {
   type OfficerProject,
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
+import {
+  fetchProjects,
+  mapBackendProjectToOfficerProject,
+} from "@/lib/projectsApi";
+import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
 
 export interface DirectorTrackedActivityItem {
   activity: ProcurementActivitySummary;
@@ -73,6 +78,7 @@ const DUE_SOON_DAYS = 7;
 const PAGE_SIZE = 10;
 
 export function DirectorActivityTrackerView() {
+  const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
   const [savedPlanRecords, setSavedPlanRecords] = useState<
     SavedOfficerPlanRecord[]
   >([]);
@@ -85,6 +91,39 @@ export function DirectorActivityTrackerView() {
 
   const [selectedActivity, setSelectedActivity] =
     useState<DirectorTrackedActivityItem | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [rawProjects, rawPlans] = await Promise.all([
+          fetchProjects(),
+          fetchPlans(),
+        ]);
+        if (isMounted && rawProjects && rawProjects.length > 0) {
+          const mapped = rawProjects.map((p) => {
+            const officerProj = mapBackendProjectToOfficerProject(p);
+            const projPlans = (rawPlans || [])
+              .filter(
+                (pl) => pl.projectId === p.id || pl.project?.code === p.code,
+              )
+              .map(mapBackendPlanToOfficerPlanSummary);
+            return {
+              ...officerProj,
+              plans: projPlans.length > 0 ? projPlans : officerProj.plans,
+            };
+          });
+          setBackendProjects(mapped);
+        }
+      } catch (err) {
+        console.warn("DirectorActivityTrackerView loadData note:", err);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadRecords = window.setTimeout(() => {
@@ -108,9 +147,15 @@ export function DirectorActivityTrackerView() {
     return () => window.clearTimeout(loadRecords);
   }, []);
 
+  const allProjects = useMemo(() => {
+    const existingCodes = new Set(backendProjects.map((p) => p.code));
+    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
+    return [...backendProjects, ...baseline];
+  }, [backendProjects]);
+
   const projects = useMemo(
-    () => mergeSavedPlans(officerProjects, savedPlanRecords),
-    [savedPlanRecords],
+    () => mergeSavedPlans(allProjects, savedPlanRecords),
+    [allProjects, savedPlanRecords],
   );
 
   const items = useMemo(
@@ -145,17 +190,17 @@ function collectTrackableActivities(
   savedActivityRecords: readonly SavedOfficerActivityRecord[],
   trackingRecords: readonly OfficerActivityTrackingRecord[],
 ): DirectorTrackedActivityItem[] {
-  const items: DirectorTrackedActivityItem[] = [];
+  const itemsByIdentity = new Map<string, DirectorTrackedActivityItem>();
 
   for (const project of projects) {
     for (const plan of project.plans) {
-      if (plan.status !== "Approved") continue;
-
       const savedActivities = savedActivityRecords
         .filter(
           (record) =>
-            record.projectCode === project.code &&
-            record.planReference === plan.reference,
+            record.projectCode?.toLowerCase() === project.code?.toLowerCase() &&
+            (record.planReference?.toLowerCase() ===
+              plan.reference?.toLowerCase() ||
+              record.planReference?.toLowerCase() === plan.name?.toLowerCase()),
         )
         .map((record) => record.activity);
 
@@ -177,12 +222,24 @@ function collectTrackableActivities(
             activity,
           );
 
-        items.push({ activity, plan, project, tracking });
+        const item = { activity, plan, project, tracking };
+        // The API and browser fallback can briefly contain the same activity.
+        // Keep one canonical row so the tracker neither repeats it nor gives
+        // React two elements with the same identity.
+        itemsByIdentity.set(trackedActivityIdentity(item), item);
       }
     }
   }
 
-  return items;
+  return Array.from(itemsByIdentity.values());
+}
+
+function trackedActivityIdentity(item: DirectorTrackedActivityItem) {
+  return [
+    item.project.code,
+    item.plan.reference,
+    item.activity.id ?? item.activity.activityId ?? item.activity.reference,
+  ].join("::");
 }
 
 function trackerCurrentStage(
@@ -234,8 +291,8 @@ function trackerCurrentStage(
 
   const tracking = resolvedStageTracking(item, selectedStage);
   const originalDate = {
-    ethiopian: selectedStage.ethiopianDate,
-    gregorian: selectedStage.gregorianDate,
+    ethiopian: selectedStage.ethiopianDate || "",
+    gregorian: selectedStage.gregorianDate || "",
   };
 
   return {
@@ -340,7 +397,7 @@ function resolvedStageTracking(
     item.tracking.stages.find(
       (tracking) => tracking.stageName === stage.name,
     ) ?? {
-      remarks: stage.remarks,
+      remarks: stage.remarks || "",
       revisions: [],
       stageName: stage.name,
       status: stage.notApplicable
@@ -367,7 +424,10 @@ function trackerMaximumActiveDelay(
       }
       return (
         calculateDelayDays(
-          { ethiopian: stage.ethiopianDate, gregorian: stage.gregorianDate },
+          {
+            ethiopian: stage.ethiopianDate || "",
+            gregorian: stage.gregorianDate || "",
+          },
           tracking,
           todayIso,
         ) ?? 0
@@ -943,7 +1003,7 @@ function DirectorActivityTrackerList({
 
                   return (
                     <tr
-                      key={`${item.project.code}-${item.activity.reference}`}
+                      key={trackedActivityIdentity(item)}
                       onClick={() => onViewActivity(item)}
                       className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                     >
@@ -1440,6 +1500,7 @@ function DirectorActivityDetailView({
                   <th className="py-3.5 px-4 min-w-[140px]">
                     Effective Target
                   </th>
+                  <th className="py-3.5 px-4 min-w-[130px]">Actual Date</th>
                   <th className="py-3.5 px-4 min-w-[120px]">Status</th>
                   <th className="py-3.5 px-4 text-center min-w-[100px]">
                     Delay
@@ -1454,8 +1515,8 @@ function DirectorActivityDetailView({
                   const isComp = tracking.status === "Completed";
                   const delay = calculateDelayDays(
                     {
-                      ethiopian: stg.ethiopianDate,
-                      gregorian: stg.gregorianDate,
+                      ethiopian: stg.ethiopianDate || "",
+                      gregorian: stg.gregorianDate || "",
                     },
                     tracking,
                     todayIso,
@@ -1475,25 +1536,47 @@ function DirectorActivityDetailView({
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-800">
-                          {stg.gregorianDate || "—"}
-                        </p>
-                        {stg.ethiopianDate && (
-                          <p className="text-[10px] text-slate-500">
-                            {stg.ethiopianDate}
-                          </p>
+                        {isNotApp ? (
+                          <span className="text-slate-400 font-medium">
+                            N/A
+                          </span>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-slate-800">
+                              {stg.gregorianDate || "—"}
+                            </p>
+                            {stg.ethiopianDate && (
+                              <p className="text-[10px] text-slate-500">
+                                {stg.ethiopianDate}
+                              </p>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-900">
-                          {effectiveTargetDate(
-                            {
-                              ethiopian: stg.ethiopianDate,
-                              gregorian: stg.gregorianDate,
-                            },
-                            tracking,
-                          ).gregorian || "—"}
-                        </p>
+                        {isNotApp ? (
+                          <span className="text-slate-400 font-medium">
+                            N/A
+                          </span>
+                        ) : (
+                          <p className="font-bold text-slate-900">
+                            {effectiveTargetDate(
+                              {
+                                ethiopian: stg.ethiopianDate || "",
+                                gregorian: stg.gregorianDate || "",
+                              },
+                              tracking,
+                            ).gregorian || "—"}
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                        {isNotApp
+                          ? "—"
+                          : tracking.actualDate?.gregorian ||
+                            tracking.actualDate?.ethiopian ||
+                            stg.actualDate ||
+                            "—"}
                       </td>
                       <td className="py-3.5 px-4">
                         <StatusText

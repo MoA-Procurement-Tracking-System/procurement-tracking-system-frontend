@@ -33,6 +33,11 @@ import {
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
 import {
+  fetchProjects,
+  mapBackendProjectToOfficerProject,
+} from "@/lib/projectsApi";
+import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
+import {
   ArrowUpDown,
   CalendarDays,
   ChevronDown,
@@ -88,6 +93,40 @@ export function OfficerActivityTrackerView({
   const [trackingRecords, setTrackingRecords] = useState<
     OfficerActivityTrackingRecord[]
   >([]);
+  const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [rawProjects, rawPlans] = await Promise.all([
+          fetchProjects(),
+          fetchPlans(),
+        ]);
+        if (isMounted && rawProjects && rawProjects.length > 0) {
+          const mapped = rawProjects.map((p) => {
+            const officerProj = mapBackendProjectToOfficerProject(p);
+            const projPlans = (rawPlans || [])
+              .filter(
+                (pl) => pl.projectId === p.id || pl.project?.code === p.code,
+              )
+              .map(mapBackendPlanToOfficerPlanSummary);
+            return {
+              ...officerProj,
+              plans: projPlans.length > 0 ? projPlans : officerProj.plans,
+            };
+          });
+          setBackendProjects(mapped);
+        }
+      } catch (err) {
+        console.warn("fetchProjects tracker note:", err);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadRecords = window.setTimeout(() => {
@@ -111,9 +150,15 @@ export function OfficerActivityTrackerView({
     return () => window.clearTimeout(loadRecords);
   }, []);
 
+  const allProjects = useMemo(() => {
+    const existingCodes = new Set(backendProjects.map((p) => p.code));
+    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
+    return [...backendProjects, ...baseline];
+  }, [backendProjects]);
+
   const projects = useMemo(
-    () => mergeSavedPlans(officerProjects, savedPlanRecords),
-    [savedPlanRecords],
+    () => mergeSavedPlans(allProjects, savedPlanRecords),
+    [allProjects, savedPlanRecords],
   );
   const items = useMemo(
     () =>
@@ -158,13 +203,17 @@ export function collectTrackableActivities(
 
   for (const project of projects) {
     for (const plan of project.plans) {
-      if (plan.status !== "Approved") continue;
+      if (plan.status !== "Approved" && plan.status !== "Finally Approved") {
+        continue;
+      }
 
       const savedActivities = savedActivityRecords
         .filter(
           (record) =>
-            record.projectCode === project.code &&
-            record.planReference === plan.reference,
+            record.projectCode?.toLowerCase() === project.code?.toLowerCase() &&
+            (record.planReference?.toLowerCase() ===
+              plan.reference?.toLowerCase() ||
+              record.planReference?.toLowerCase() === plan.name?.toLowerCase()),
         )
         .map((record) => record.activity);
 
@@ -231,9 +280,9 @@ export function trackerCurrentStage(
   );
   const usableDeclaredStage =
     declaredStage &&
-      !["Completed", "Not Applicable"].includes(
-        resolvedStageTracking(item, declaredStage).status,
-      )
+    !["Completed", "Not Applicable"].includes(
+      resolvedStageTracking(item, declaredStage).status,
+    )
       ? declaredStage
       : undefined;
   const firstIncompleteStage = roadmap.find(
@@ -353,7 +402,7 @@ function resolvedStageTracking(
     item.tracking.stages.find(
       (tracking) => tracking.stageName === stage.name,
     ) ?? {
-      remarks: stage.remarks,
+      remarks: stage.remarks || "",
       revisions: [],
       stageName: stage.name,
       status: stage.notApplicable
@@ -361,7 +410,7 @@ function resolvedStageTracking(
         : item.activity.status === "Completed"
           ? "Completed"
           : stage.name === item.activity.currentStage &&
-            item.activity.status !== "Not Started"
+              item.activity.status !== "Not Started"
             ? "In Progress"
             : "Not Started",
     }
@@ -400,8 +449,8 @@ function dateFromStage(
   stage: NonNullable<ProcurementActivitySummary["details"]>["roadmap"][number],
 ): TrackingDateValue {
   return {
-    ethiopian: stage.ethiopianDate,
-    gregorian: stage.gregorianDate,
+    ethiopian: stage.ethiopianDate || "",
+    gregorian: stage.gregorianDate || "",
   };
 }
 
@@ -822,10 +871,11 @@ function ActivityTrackerList({
           <button
             type="button"
             onClick={() => setShowMoreFilters((prev) => !prev)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${showMoreFilters || additionalFilterCount > 0
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              showMoreFilters || additionalFilterCount > 0
                 ? "bg-emerald-50 text-[#0A3C2F] border-emerald-300 shadow-2xs"
                 : "bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200 text-[#0A3C2F]"
-              }`}
+            }`}
           >
             <Filter className="h-4 w-4 text-[#0A3C2F]" />
             <span>More Filters</span>
@@ -1067,9 +1117,9 @@ function ActivityTrackerList({
             {orderedItems.length === 0
               ? "Showing 0 activities"
               : `Showing ${firstVisibleIndex + 1} to ${Math.min(
-                firstVisibleIndex + PAGE_SIZE,
-                orderedItems.length,
-              )} of ${orderedItems.length} matching activities`}
+                  firstVisibleIndex + PAGE_SIZE,
+                  orderedItems.length,
+                )} of ${orderedItems.length} matching activities`}
           </span>
           <div className="flex items-center gap-3">
             <span>
@@ -1211,10 +1261,11 @@ function QuickFilterButton({
   return (
     <button
       aria-pressed={active}
-      className={`shrink-0 border-b-2 px-0.5 pt-1 pb-3 text-xs font-bold transition ${active
-        ? "border-[#176c55] text-[#07523f]"
-        : "border-transparent text-slate-500 hover:text-slate-800"
-        }`}
+      className={`shrink-0 border-b-2 px-0.5 pt-1 pb-3 text-xs font-bold transition ${
+        active
+          ? "border-[#176c55] text-[#07523f]"
+          : "border-transparent text-slate-500 hover:text-slate-800"
+      }`}
       onClick={onClick}
       type="button"
     >

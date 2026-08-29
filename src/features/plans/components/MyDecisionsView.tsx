@@ -48,7 +48,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
         setLoading(true);
         const rawPlans = await fetchPlans();
         const mapped = rawPlans.map((p) =>
-          mapBackendPlanToFrontend(p, user.id),
+          mapBackendPlanToFrontend(p, user.id, user.email),
         );
         const officerPlans = getOfficerReviewPlans();
 

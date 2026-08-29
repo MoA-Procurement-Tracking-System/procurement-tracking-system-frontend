@@ -95,6 +95,8 @@ export interface CreateActivityInput {
     loanGrantNumber?: string;
     allocationPct: number;
   }[];
+  stages?: any[];
+  roadmap?: any[];
 }
 
 export interface UpdateStageDatesInput {

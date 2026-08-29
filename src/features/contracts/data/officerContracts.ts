@@ -96,8 +96,8 @@ export const officerContracts: readonly OfficerContract[] =
             : (activity.reference.split("-")[2] ?? activity.reference);
           const contractSuffix = `${plan.reference.split("-").at(-1)}-${activitySequence}`;
           const dateValue = (stage: (typeof roadmap)[number]) => ({
-            ethiopian: stage.ethiopianDate,
-            gregorian: stage.gregorianDate,
+            ethiopian: stage.ethiopianDate || "",
+            gregorian: stage.gregorianDate || "",
           });
           const awardStage = roadmap.find((stage) =>
             stage.name.toLowerCase().includes("notification"),

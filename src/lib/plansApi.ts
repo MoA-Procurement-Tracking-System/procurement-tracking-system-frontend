@@ -3,6 +3,7 @@ import type {
   PlanCategory,
   PlanStatus,
 } from "@/features/plans/plansData";
+import { roadmapForMethod } from "@/features/projects/data/procurementActivityConfig";
 
 export interface BackendCommitteeVote {
   id: string;
@@ -12,12 +13,71 @@ export interface BackendCommitteeVote {
   decision: "APPROVE" | "REJECT";
   comment: string | null;
   createdAt: string;
+  memberName?: string;
+  memberRole?: string;
+  memberEmail?: string;
+}
+
+export interface BackendPlanActivity {
+  id: string;
+  reference?: string;
+  description?: string;
+  estimatedBudget: number;
+  currency?: string;
+  category?: string;
+  procurementMethodId?: string;
+  procurementMethod?: {
+    id: string;
+    type?: string;
+    code: string;
+    label: string;
+  };
+  fundings?: {
+    id?: string;
+    fundingSource: string;
+    loanGrantNumber?: string | null;
+    allocationPct: number;
+  }[];
+  components?: {
+    id?: string;
+    component: string;
+    allocationPct: number;
+  }[];
+  stages?: {
+    id: string;
+    activityId?: string;
+    stageTypeId?: string;
+    stageType?: {
+      id: string;
+      code: string;
+      label: string;
+    };
+    sequence?: number;
+    status: string;
+    plannedStartDate?: string | null;
+    plannedEndDate?: string | null;
+    currentTargetStartDate?: string | null;
+    currentTargetEndDate?: string | null;
+    actualStartDate?: string | null;
+    actualEndDate?: string | null;
+    isNotApplicable?: boolean;
+    remarks?: string | null;
+    revisions?: {
+      revisionNo: number;
+      revisedStartDate: string;
+      revisedEndDate?: string;
+      reason: string;
+      createdAt?: string;
+    }[];
+  }[];
+  status?: string;
 }
 
 export interface BackendPlan {
   id: string;
   projectId: string;
-  status: "DRAFT" | "SUBMITTED" | "WITH_COMMITTEE" | "APPROVED" | "REJECTED";
+  status:
+    "DRAFT" | "SUBMITTED" | "WITH_COMMITTEE" | "APPROVED" | "REJECTED" | string;
   committeeRound?: number;
   committeeVoteDeadline?: string | null;
   title: string;
@@ -31,18 +91,20 @@ export interface BackendPlan {
   gpnDate?: string | null;
   approvalDate?: string | null;
   createdBy?: string;
+  creator?: { id: string; name: string; displayName?: string; email?: string };
   createdAt: string;
   updatedAt?: string;
-  activities?: {
-    id: string;
-    reference?: string;
-    description?: string;
-    estimatedBudget: number;
-    currency?: string;
-    status?: string;
-  }[];
+  activities?: BackendPlanActivity[];
   project?: { id: string; code: string; name: string };
   committeeVotes?: BackendCommitteeVote[];
+  committeeMembers?: {
+    id: string;
+    name: string;
+    displayName?: string;
+    email?: string;
+    role?: string;
+    authRole?: string;
+  }[];
 }
 
 export interface CreatePlanInput {
@@ -135,16 +197,21 @@ export async function submitVote(
   planId: string,
   decision: "APPROVE" | "REJECT",
   comment?: string,
+  voterUserId?: string,
+  voterEmail?: string,
 ): Promise<void> {
   await apiClient.post(`/plans/${encodeURIComponent(planId)}/vote`, {
     decision,
     comment,
+    voterUserId,
+    voterEmail,
   });
 }
 
 export function mapBackendPlanToFrontend(
   backendPlan: BackendPlan,
   currentMemberId?: string,
+  currentMemberEmail?: string,
 ): ProcurementPlan {
   // Map category
   let category: PlanCategory = "Goods";
@@ -187,8 +254,18 @@ export function mapBackendPlanToFrontend(
   let decisionRecordedDate: string | undefined = undefined;
   let rejectionReason: string | undefined = undefined;
 
-  if (currentMemberId) {
-    const myVote = votes.find((v) => v.memberId === currentMemberId);
+  if (currentMemberId || currentMemberEmail) {
+    const cleanId = (currentMemberId || "").toLowerCase();
+    const cleanEmail = (currentMemberEmail || "").toLowerCase();
+    const myVote = votes.find(
+      (v) =>
+        (cleanId &&
+          (v.memberId?.toLowerCase() === cleanId ||
+            (v.memberEmail && v.memberEmail.toLowerCase() === cleanId))) ||
+        (cleanEmail &&
+          ((v.memberEmail && v.memberEmail.toLowerCase() === cleanEmail) ||
+            v.memberId?.toLowerCase() === cleanEmail)),
+    );
     if (myVote) {
       committeeDecision =
         myVote.decision === "APPROVE" ? "Approved" : "Rejected";
@@ -221,7 +298,17 @@ export function mapBackendPlanToFrontend(
     organizationRegion: backendPlan.organization || "Federal",
     description: backendPlan.description || undefined,
     status,
-    createdBy: backendPlan.createdBy || "Assigned Officer",
+    createdBy:
+      (backendPlan as any).creator?.name ||
+      backendPlan.createdBy ||
+      "Assigned Officer",
+    assignedOfficer:
+      (backendPlan.project as any)?.members
+        ?.map((m: any) => m.user?.name)
+        .filter(Boolean)
+        .join(", ") ||
+      (backendPlan as any).creator?.name ||
+      "Assigned Officer",
     createdAt: backendPlan.createdAt,
     activitiesCount: backendPlan.activities ? backendPlan.activities.length : 0,
     estimatedTotal,
@@ -246,5 +333,317 @@ export function mapBackendPlanToFrontend(
     decisionRecordedDate,
     committeeDecision,
     rejectionReason,
+    activities: backendPlan.activities || [],
+  };
+}
+
+export function mapBackendPlanToOfficerPlanSummary(
+  backendPlan: BackendPlan,
+): import("@/features/projects/data/officerProjects").ProcurementPlanSummary {
+  let category: import("@/features/projects/data/officerProjects").ProcurementCategory =
+    "Goods";
+  const rawCat = backendPlan.procurementCategory || "";
+  if (rawCat === "WORKS") category = "Works";
+  else if (rawCat === "CONSULTANCY") category = "Consultancy Services";
+  else if (rawCat === "NON_CONSULTING") category = "Non-Consulting Services";
+
+  let status: import("@/features/projects/data/officerProjects").ProcurementPlanStatus =
+    "Draft";
+  if (backendPlan.status === "WITH_COMMITTEE") status = "Committee Review";
+  else if (backendPlan.status === "APPROVED") status = "Finally Approved";
+  else if (backendPlan.status === "REJECTED") status = "Returned";
+  else if (backendPlan.status === "SUBMITTED") status = "Submitted to Director";
+  else if (backendPlan.status === "DRAFT") status = "Draft";
+
+  const activities = backendPlan.activities || [];
+  const estimatedValue = activities.reduce(
+    (sum, a) => sum + (a.estimatedBudget || 0),
+    0,
+  );
+
+  const planActivities: import("@/features/projects/data/officerActivityDrafts").ProcurementActivitySummary[] =
+    activities.map((a: any) => {
+      const methodCodeStr = (
+        a.procurementMethod?.code ||
+        a.procurementMethod?.label ||
+        ""
+      ).toLowerCase();
+      const methodKey = methodCodeStr.includes("rfb_int")
+        ? "rfb-international"
+        : methodCodeStr.includes("rfb")
+          ? "rfb-national"
+          : methodCodeStr.includes("rfq")
+            ? "rfq"
+            : methodCodeStr.includes("dir")
+              ? "direct-goods"
+              : methodCodeStr.includes("qcbs")
+                ? "qcbs"
+                : methodCodeStr.includes("fbs")
+                  ? "fbs"
+                  : methodCodeStr.includes("lcs")
+                    ? "lcs"
+                    : methodCodeStr.includes("cqs")
+                      ? "cqs"
+                      : methodCodeStr.includes("indv")
+                        ? "individual-consultant"
+                        : "rfb-national";
+
+      const templateRoadmap = roadmapForMethod(methodKey);
+      const hasExplicitDates = (a.stages || []).some((st: any) =>
+        Boolean(
+          st.plannedStartDate ||
+          st.currentTargetStartDate ||
+          st.actualStartDate,
+        ),
+      );
+
+      const baseDate = new Date("2026-09-05");
+      let activeOffset = 0;
+
+      const roadmap =
+        a.stages && a.stages.length > 0
+          ? a.stages.map((st: any, idx: number) => {
+              const template =
+                templateRoadmap[idx] ||
+                templateRoadmap.find(
+                  (t) =>
+                    t.name.toLowerCase() ===
+                    (st.stageType?.label || st.name || "").toLowerCase(),
+                );
+              const isTemplateOptional = template
+                ? Boolean(template.allowNotApplicable)
+                : false;
+
+              const isNA = Boolean(
+                st.isNotApplicable ||
+                st.notApplicable ||
+                st.status === "NOT_APPLICABLE" ||
+                st.status === "Not Applicable" ||
+                (!hasExplicitDates && isTemplateOptional),
+              );
+
+              let rawPlannedDate = st.plannedStartDate
+                ? new Date(st.plannedStartDate).toISOString().slice(0, 10)
+                : "";
+              let rawTargetDate = st.currentTargetStartDate
+                ? new Date(st.currentTargetStartDate).toISOString().slice(0, 10)
+                : rawPlannedDate;
+
+              if (!isNA && !rawPlannedDate) {
+                const d = new Date(baseDate);
+                d.setDate(baseDate.getDate() + activeOffset * 24);
+                rawPlannedDate = d.toISOString().slice(0, 10);
+                rawTargetDate = rawPlannedDate;
+                activeOffset++;
+              }
+
+              const rawActualDate =
+                st.actualEndDate || st.actualStartDate
+                  ? new Date(st.actualEndDate || st.actualStartDate)
+                      .toISOString()
+                      .slice(0, 10)
+                  : "";
+              const isCompleted =
+                st.status === "COMPLETED" || Boolean(st.actualEndDate);
+              const isInProgress =
+                st.status === "IN_PROGRESS" ||
+                (Boolean(st.actualStartDate) && !isCompleted);
+
+              return {
+                id: st.id,
+                stageTypeId: st.stageTypeId,
+                sequence: st.sequence,
+                name:
+                  st.stageType?.label ||
+                  st.name ||
+                  template?.name ||
+                  `Stage ${st.sequence || idx + 1}`,
+                allowNotApplicable: true,
+                days: String(st.plannedDays || 14),
+                ethiopianDate: isNA ? "" : rawTargetDate,
+                gregorianDate: isNA ? "" : rawTargetDate || rawPlannedDate,
+                plannedStartDate: isNA ? "" : rawPlannedDate,
+                plannedEndDate: isNA
+                  ? ""
+                  : st.plannedEndDate
+                    ? new Date(st.plannedEndDate).toISOString().slice(0, 10)
+                    : "",
+                currentTargetStartDate: isNA ? "" : rawTargetDate,
+                currentTargetEndDate: isNA
+                  ? ""
+                  : st.currentTargetEndDate
+                    ? new Date(st.currentTargetEndDate)
+                        .toISOString()
+                        .slice(0, 10)
+                    : "",
+                actualStartDate: isNA
+                  ? ""
+                  : st.actualStartDate
+                    ? new Date(st.actualStartDate).toISOString().slice(0, 10)
+                    : "",
+                actualEndDate: isNA
+                  ? ""
+                  : st.actualEndDate
+                    ? new Date(st.actualEndDate).toISOString().slice(0, 10)
+                    : "",
+                actualDate: isNA ? "" : rawActualDate,
+                status: isNA
+                  ? "Not Applicable"
+                  : isCompleted
+                    ? "Completed"
+                    : isInProgress
+                      ? "In Progress"
+                      : st.status === "DELAYED"
+                        ? "Delayed"
+                        : "Not Started",
+                notApplicable: isNA,
+                remarks: st.remarks || "",
+                revisions: (st.revisions || []).map((r: any) => ({
+                  revisionNo: r.revisionNo,
+                  revisedStartDate: r.revisedStartDate
+                    ? new Date(r.revisedStartDate).toISOString().slice(0, 10)
+                    : "",
+                  revisedEndDate: r.revisedEndDate
+                    ? new Date(r.revisedEndDate).toISOString().slice(0, 10)
+                    : "",
+                  reason: r.reason,
+                  createdAt: r.createdAt
+                    ? new Date(r.createdAt).toISOString()
+                    : "",
+                })),
+              };
+            })
+          : templateRoadmap.map((tpl, idx) => {
+              const isNA = Boolean(tpl.allowNotApplicable);
+              let dateStr = "";
+              if (!isNA) {
+                const d = new Date(baseDate);
+                d.setDate(baseDate.getDate() + activeOffset * 24);
+                dateStr = d.toISOString().slice(0, 10);
+                activeOffset++;
+              }
+              return {
+                id: `tpl-stage-${idx + 1}`,
+                sequence: idx + 1,
+                name: tpl.name,
+                allowNotApplicable: true,
+                days: "14",
+                ethiopianDate: isNA ? "" : dateStr,
+                gregorianDate: isNA ? "" : dateStr,
+                plannedStartDate: isNA ? "" : dateStr,
+                plannedEndDate: isNA ? "" : dateStr,
+                currentTargetStartDate: isNA ? "" : dateStr,
+                currentTargetEndDate: isNA ? "" : dateStr,
+                actualStartDate: "",
+                actualEndDate: "",
+                actualDate: "",
+                status: isNA ? "Not Applicable" : "Not Started",
+                notApplicable: isNA,
+                remarks: "",
+                revisions: [],
+              };
+            });
+
+      const currentStageObj =
+        roadmap.find(
+          (st: any) => st.status === "In Progress" || st.status === "Delayed",
+        ) ||
+        roadmap.find((st: any) => st.status === "Not Started") ||
+        roadmap[0];
+
+      return {
+        id: a.id,
+        activityId: a.id,
+        planId: backendPlan.id,
+        projectId: backendPlan.projectId || backendPlan.project?.id,
+        reference: a.reference || a.id,
+        description: a.description || "Procurement activity package",
+        category,
+        method:
+          a.procurementMethod?.label ||
+          a.procurementMethod?.code ||
+          "RFB - National",
+        estimatedAmount: Number(a.estimatedBudget || 0),
+        currentStage: currentStageObj?.name || "Not Started",
+        status:
+          a.status === "COMPLETED"
+            ? "Completed"
+            : a.status === "IN_PROGRESS" || a.status === "IN_EXECUTION"
+              ? "In Progress"
+              : a.status === "DELAYED"
+                ? "Delayed"
+                : "Not Started",
+        details: {
+          lots: a.lots || [],
+          componentAllocations: (a.components || []).map((c: any) => ({
+            id: c.component || "Component 1",
+            label: c.component || "Component 1",
+            percentage: c.allocationPct || 100,
+          })),
+          financingAllocations: (a.fundings || []).map((f: any) => ({
+            id: f.loanGrantNumber || "Financing 1",
+            label: f.fundingSource || "Financing 1",
+            percentage: f.allocationPct || 100,
+          })),
+          form: {
+            category,
+            method:
+              a.procurementMethod?.label ||
+              a.procurementMethod?.code ||
+              "RFB - National",
+            activityDescription: a.description || "",
+            estimatedAmount: String(a.estimatedBudget || 0),
+            currency: a.currency || "ETB",
+            fundingSource:
+              a.fundings?.[0]?.fundingSource ||
+              "African Development Bank (AfDB)",
+            loanGrantNumber: a.fundings?.[0]?.loanGrantNumber || "",
+            fundingAllocationPercent: a.fundings?.[0]?.allocationPct || 100,
+            component: a.components?.[0]?.component || "",
+            classificationCode: a.classificationCode || "42100000",
+            classificationDescription: a.classificationDescription || "",
+            locationRegion: a.locationRegion || "",
+            inProcess: a.status === "IN_PROGRESS",
+          },
+          roadmap,
+        } as any,
+      };
+    });
+
+  return {
+    reference: backendPlan.id,
+    name: backendPlan.title || "Untitled Plan",
+    budgetYear: backendPlan.budgetYear || "2018 EFY",
+    category,
+    status,
+    activities: activities.length,
+    completedActivities: activities.filter((a) => a.status === "COMPLETED")
+      .length,
+    inProgressActivities: activities.filter((a) => a.status === "IN_PROGRESS")
+      .length,
+    delayedActivities: activities.filter((a) => a.status === "DELAYED").length,
+    currency: "ETB",
+    estimatedValue,
+    organizationRegion: backendPlan.organization || "Federal",
+    description: backendPlan.description || undefined,
+    planActivities,
+    planPeriod: backendPlan.periodStart
+      ? {
+          from: {
+            ethiopian: "01 Meskerem 2018",
+            gregorian: new Date(backendPlan.periodStart).toLocaleDateString(
+              "en-GB",
+              { day: "numeric", month: "short", year: "numeric" },
+            ),
+          },
+          to: {
+            ethiopian: "30 Sene 2018",
+            gregorian: new Date(backendPlan.periodEnd).toLocaleDateString(
+              "en-GB",
+              { day: "numeric", month: "short", year: "numeric" },
+            ),
+          },
+        }
+      : undefined,
   };
 }

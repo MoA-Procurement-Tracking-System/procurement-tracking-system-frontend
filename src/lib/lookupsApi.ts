@@ -22,6 +22,7 @@ export interface OfficerUserItem {
   email: string;
   role: string;
   isActive: boolean;
+  status?: string;
 }
 
 import { apiClient } from "./apiClient";
@@ -147,20 +148,33 @@ export async function fetchSuppliers(): Promise<SupplierItem[]> {
 export async function fetchOfficers(): Promise<OfficerUserItem[]> {
   try {
     const payload = await apiClient.get<any>("/users", {
-      params: { role: "ProcurementOfficer", pageSize: 100 },
+      params: { role: "ProcurementOfficer", isActive: true, pageSize: 100 },
     });
     const list = Array.isArray(payload) ? payload : payload?.data || [];
     if (list.length > 0) {
-      return list.map((u: any) => ({
-        id: u.id,
-        name: u.name || u.displayName || u.email,
-        email: u.email,
-        role: u.role || u.authRole,
-        isActive: u.isActive ?? true,
-      }));
+      return list
+        .filter((u: any) => {
+          const activeFlag = u.isActive !== false;
+          const activeStatus = !u.status || u.status === "ACTIVE";
+          const isOfficerRole =
+            !u.role ||
+            u.role === "ProcurementOfficer" ||
+            u.role === "OFFICER" ||
+            u.authRole === "OFFICER" ||
+            u.authRole === "ProcurementOfficer";
+          return activeFlag && activeStatus && isOfficerRole;
+        })
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name || u.displayName || u.email,
+          email: u.email,
+          role: u.role || u.authRole || "ProcurementOfficer",
+          isActive: true,
+          status: u.status || "ACTIVE",
+        }));
     }
   } catch {
     // Graceful fallback
   }
-  return FALLBACK_OFFICERS;
+  return FALLBACK_OFFICERS.filter((o) => o.isActive);
 }

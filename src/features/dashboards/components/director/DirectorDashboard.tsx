@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   BarChart3,
@@ -12,6 +12,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
+import { fetchProjects, type BackendProject } from "@/lib/projectsApi";
+import { fetchPlans, type BackendPlan } from "@/lib/plansApi";
 import {
   INITIAL_DIRECTOR_PLANS,
   INITIAL_CRITICAL_DELAYS,
@@ -20,13 +22,122 @@ import {
 } from "./directorData";
 
 export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
-  // State for director data
-  const [plans] = useState<DirectorPlan[]>(INITIAL_DIRECTOR_PLANS);
-  const [delays] = useState<CriticalDelay[]>(INITIAL_CRITICAL_DELAYS);
+  const [projects, setProjects] = useState<BackendProject[]>([]);
+  const [plans, setPlans] = useState<BackendPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
 
-  // Active counts calculation
-  const pendingPlans = plans.filter((p) => p.status === "Awaiting Review");
-  const activeDelaysList = delays.filter((d) => d.status === "Delayed");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCurrentTime(Date.now()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [projRes, planRes] = await Promise.all([
+          fetchProjects(),
+          fetchPlans(),
+        ]);
+        if (isMounted) {
+          setProjects(projRes || []);
+          setPlans(planRes || []);
+        }
+      } catch (err) {
+        console.warn("DirectorDashboard load error:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute live pending plans awaiting Director review
+  const pendingPlans =
+    plans.length > 0
+      ? plans
+          .filter(
+            (p) =>
+              p.status === "SUBMITTED" ||
+              p.status === "PENDING_REVIEW" ||
+              (p as any).status === "Submitted to Director",
+          )
+          .map((p) => ({
+            id: p.id,
+            title: p.title || "Procurement Plan",
+            directorate:
+              p.project?.name || p.organization || "Agriculture Directorate",
+            submittedBy:
+              p.creator?.displayName || p.creator?.name || "Assigned Officer",
+            submissionDate: p.createdAt
+              ? new Date(p.createdAt).toISOString().slice(0, 10)
+              : "",
+            status: "Awaiting Review" as const,
+            totalActivitiesCount: p.activities?.length || 0,
+            estimatedBudgetETB: (p.activities || []).reduce(
+              (sum, a) => sum + (a.estimatedBudget || 0),
+              0,
+            ),
+            description: p.description || "",
+            activities: [],
+          }))
+      : INITIAL_DIRECTOR_PLANS.filter((p) => p.status === "Awaiting Review");
+
+  // Compute committee review plans
+  const committeePlansCount = plans.filter(
+    (p) =>
+      p.status === "UNDER_COMMITTEE_REVIEW" ||
+      (p as any).status === "Committee Review",
+  ).length;
+
+  // Compute live critical delays from activities and stages
+  const liveDelays: CriticalDelay[] = [];
+  for (const plan of plans) {
+    for (const act of plan.activities || []) {
+      const delayedStage = (act.stages || []).find(
+        (s: any) =>
+          s.status === "DELAYED" ||
+          (s.currentTargetStartDate &&
+            currentTime !== null &&
+            new Date(s.currentTargetStartDate).getTime() < currentTime &&
+            s.status !== "COMPLETED" &&
+            !s.isNotApplicable),
+      );
+
+      if (act.status === "DELAYED" || delayedStage) {
+        const stageName =
+          delayedStage?.stageType?.label ||
+          (delayedStage as any)?.name ||
+          "Bid Evaluation";
+        liveDelays.push({
+          id: act.id,
+          activityTitle: act.description || "Procurement Activity",
+          fullTitle: act.description || "Procurement Activity",
+          directorate:
+            plan.project?.name || plan.title || "Directorate Project",
+          delayDetail: `Stage '${stageName}' overdue vs target timeline`,
+          stageName,
+          daysOverdue: 14,
+          status: "Delayed",
+          assignedOfficer: plan.creator?.displayName || "Assigned Officer",
+          plannedCompletionDate: delayedStage?.plannedEndDate
+            ? new Date(delayedStage.plannedEndDate).toISOString().slice(0, 10)
+            : "",
+          currentBottleneck: delayedStage?.remarks || "Pending clearance",
+        });
+      }
+    }
+  }
+
+  const activeDelaysList =
+    plans.length > 0
+      ? liveDelays
+      : INITIAL_CRITICAL_DELAYS.filter((d) => d.status === "Delayed");
+  const totalProjectsCount = projects.length > 0 ? projects.length : 5;
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-200">
@@ -47,7 +158,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           </div>
           <div className="my-1">
             <p className="text-[24px] sm:text-[28px] font-extrabold tracking-tight text-slate-900 leading-none">
-              5
+              {totalProjectsCount}
             </p>
           </div>
           <div className="pt-2.5 sm:pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] sm:text-[12px]">
@@ -110,7 +221,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           </div>
           <div className="my-1">
             <p className="text-[24px] sm:text-[28px] font-extrabold tracking-tight text-slate-900 leading-none">
-              1
+              {committeePlansCount}
             </p>
           </div>
           <div className="pt-2.5 sm:pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px] sm:text-[12px]">

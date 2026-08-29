@@ -40,12 +40,49 @@ export const ROLE_SLUGS: Record<UserRole, string> = {
   ADMIN: "admin",
 };
 
-export function dashboardPath(role: UserRole): string {
-  return `/dashboard/${ROLE_SLUGS[role]}`;
+export function normalizeUserRole(role: string): UserRole {
+  const r = (role || "").toUpperCase().trim();
+  if (r === "OFFICER" || r === "PROCUREMENTOFFICER") return "OFFICER";
+  if (
+    r === "DIRECTOR" ||
+    r === "PROCUREMENTDIRECTOR" ||
+    r === "PROJECTMANAGER"
+  ) {
+    return "DIRECTOR";
+  }
+  if (
+    r === "ENDORSING_COMMITTEE" ||
+    r === "ENDORSING-COMMITTEE" ||
+    r === "MANAGEMENTTEAM" ||
+    r === "COMMITTEE"
+  ) {
+    return "ENDORSING_COMMITTEE";
+  }
+  if (r === "ADMIN" || r === "ADMINISTRATOR") return "ADMIN";
+  return "OFFICER";
+}
+
+export function dashboardPath(role: string): string {
+  const norm = normalizeUserRole(role);
+  return `/dashboard/${ROLE_SLUGS[norm] || "officer"}`;
 }
 
 export function roleFromSlug(slug: string): UserRole | undefined {
+  if (!slug) return undefined;
+  const clean = slug.toLowerCase().replace(/_/g, "-").trim();
+  if (
+    clean === "endorsing-committee" ||
+    clean === "committee" ||
+    clean === "managementteam"
+  ) {
+    return "ENDORSING_COMMITTEE";
+  }
+  if (clean === "director" || clean === "procurementdirector")
+    return "DIRECTOR";
+  if (clean === "officer" || clean === "procurementofficer") return "OFFICER";
+  if (clean === "admin" || clean === "administrator") return "ADMIN";
+
   return (Object.entries(ROLE_SLUGS) as [UserRole, string][]).find(
-    ([, roleSlug]) => roleSlug === slug,
+    ([, roleSlug]) => roleSlug.toLowerCase() === clean,
   )?.[0];
 }

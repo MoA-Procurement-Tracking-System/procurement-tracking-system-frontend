@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { fetchPlans, type BackendPlan } from "../../../lib/plansApi";
 import {
   Search,
   Filter,
@@ -17,13 +18,42 @@ import {
   Send,
   MessageSquare,
   AlertCircle,
-  X,
 } from "lucide-react";
 import Link from "next/link";
+
+// Real fallback list of Endorsement Committee members from the database
+export const FALLBACK_DB_COMMITTEE_MEMBERS = [
+  {
+    id: "dcb48490-bf61-4982-89b0-3556da376ea3",
+    name: "Workneh Tsionawit",
+    email: "tsionawit.ugr-4989-16@aau.edu.et",
+  },
+  {
+    id: "46258fbe-9684-41cf-b814-77788d30bca1",
+    name: "Edna Asmamaw",
+    email: "edna@gmail.com",
+  },
+  {
+    id: "265f711e-adf1-406a-b965-185a96496bce",
+    name: "Alula Girma",
+    email: "alula@gmail.com",
+  },
+  {
+    id: "d129e293-d9d6-4759-9705-1077c5a288ad",
+    name: "Worku Bekele",
+    email: "worku@gmail.com",
+  },
+  {
+    id: "0e02469a-39df-4af4-9400-c08c383dd903",
+    name: "Dawit Haile",
+    email: "dawit@gmail.com",
+  },
+];
 
 export interface CommitteeMemberVote {
   id: string;
   name: string;
+  email?: string;
   roleTitle: string;
   voteStatus: "Approved" | "Rejected" | "Pending";
   feedback?: string;
@@ -41,330 +71,140 @@ export interface CommitteeProgressItem {
   totalBudget: number;
   currency: string;
   description: string;
-  overallStatus:
-    | "Approved"
-    | "Pending_Management_Approval"
-    | "Rejected";
+  overallStatus: "Approved" | "Rejected" | "Pending Approval";
+  approvedCount: number;
+  rejectedCount: number;
   memberVotes: CommitteeMemberVote[];
 }
 
-export const INITIAL_COMMITTEE_PROGRESS_DATA: CommitteeProgressItem[] = [
-  {
-    id: "cp-01",
-    planNumber: "MoA/BREFONS/2018/APP-01",
-    planTitle: "2018 EFY BREFONS Annual Procurement Plan",
-    projectCode: "BREFONS",
-    projectName:
-      "BREFONS (Program to Build Resilience for Food and Nutrition Security)",
-    sector: "Livestock & Pastoral Development",
-    budgetYear: "2018 EFY",
-    totalBudget: 48000000,
-    currency: "ETB",
-    description:
-      "Procurement plan for agro-meteorological stations, solar water supply systems, irrigation infrastructure, and milking machinery.",
-    overallStatus: "Approved",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Approved",
-        feedback: "Drought resilience priority.",
-        votedAt: "1/28/2026, 2:00:00 PM",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Approved",
-        feedback: "Technical scope verified.",
-        votedAt: "1/28/2026, 2:15:00 PM",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Approved",
-        feedback: "Budget verified against AfDB grant.",
-        votedAt: "1/28/2026, 2:30:00 PM",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
-    id: "cp-02",
-    planNumber: "MoA/DRIVE/2018/APP-02",
-    planTitle: "2018 EFY DRIVE Pastoral Economies Procurement Plan",
-    projectCode: "DRIVE",
-    projectName:
-      "DRIVE (De-Risking, Inclusion and Value Enhancement of Pastoral Economies)",
-    sector: "Livestock & Pastoral Development",
-    budgetYear: "2018 EFY",
-    totalBudget: 35000000,
-    currency: "ETB",
-    description:
-      "Supply of livestock insurance technology, veterinary cold chain equipment, and market access infrastructure.",
-    overallStatus: "Approved",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Approved",
-        feedback: "Pastoral inclusion guidelines met.",
-        votedAt: "1/27/2026, 11:30:00 AM",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Approved",
-        feedback: "Cold chain specifications cleared.",
-        votedAt: "1/27/2026, 1:00:00 PM",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Approved",
-        feedback: "World Bank legal clearance complete.",
-        votedAt: "1/27/2026, 3:20:00 PM",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
-    id: "cp-03",
-    planNumber: "MoA/FSRP/2018/APP-03",
-    planTitle: "2018 EFY Food Systems Resilience Program Procurement Plan",
-    projectCode: "FSRP",
-    projectName: "FSRP (Food Systems Resilience Program)",
-    sector: "Agribusiness & Rural Finance",
-    budgetYear: "2018 EFY",
-    totalBudget: 62000000,
-    currency: "ETB",
-    description:
-      "Procurement of climate-smart seed production equipment, grain storage silos, and rural digital advisory platforms.",
-    overallStatus: "Pending_Management_Approval",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Approved",
-        feedback: "Resilience criteria verified.",
-        votedAt: "1/29/2026, 9:15:00 AM",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Approved",
-        feedback: "Silo capacity models endorsed.",
-        votedAt: "1/29/2026, 10:45:00 AM",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
-    id: "cp-04",
-    planNumber: "MoA/REG/2018/APP-04",
-    planTitle: "2018 EFY Ministry Government Treasury Regular Plan",
-    projectCode: "REGULAR",
-    projectName: "MoA Regular Program (Government Treasury)",
-    sector: "Crops & Horticulture Directorate",
-    budgetYear: "2018 EFY",
-    totalBudget: 28000000,
-    currency: "ETB",
-    description:
-      "Annual treasury allocation for crop protection, pest control chemicals, and regional field extension vehicles.",
-    overallStatus: "Approved",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Approved",
-        feedback: "Treasury ceiling compliance verified.",
-        votedAt: "1/25/2026, 4:00:00 PM",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Approved",
-        feedback: "Ministry budget allocation approved.",
-        votedAt: "1/25/2026, 4:30:00 PM",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Approved",
-        feedback: "Extension target KPIs cleared.",
-        votedAt: "1/25/2026, 5:00:00 PM",
-      },
-    ],
-  },
-  {
-    id: "cp-07",
-    planNumber: "MoA/ELRP/2018/APP-07",
-    planTitle: "2018 EFY Emergency Desert Locust Surveillance Plan",
-    projectCode: "ELRP",
-    projectName: "MoA Regular Program (Government Treasury)",
-    sector: "Crops & Horticulture Directorate",
-    budgetYear: "2018 EFY",
-    totalBudget: 15000000,
-    currency: "ETB",
-    description:
-      "Locust control sprayers, protective gear, and airborne survey surveillance equipment.",
-    overallStatus: "Pending_Management_Approval",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-  {
-    id: "cp-08",
-    planNumber: "MoA/MECH/2018/APP-08",
-    planTitle: "2018 EFY Agricultural Mechanization Service Center Plan",
-    projectCode: "FSRP",
-    projectName: "FSRP (Food Systems Resilience Program)",
-    sector: "Agricultural Mechanization & Infrastructure",
-    budgetYear: "2018 EFY",
-    totalBudget: 55000000,
-    currency: "ETB",
-    description:
-      "Tractors, combine harvesters, and maintenance equipment for regional mechanization hubs.",
-    overallStatus: "Rejected",
-    memberVotes: [
-      {
-        id: "m-1",
-        name: "Ato Solomon Tadesse",
-        roleTitle: "Management Committee Chair",
-        voteStatus: "Rejected",
-        feedback:
-          "Unit price estimates exceed World Bank approved ceiling threshold by 35%.",
-        votedAt: "7/18/2026, 5:00:00 PM",
-      },
-      {
-        id: "m-2",
-        name: "Dr. Berhanu Hailu",
-        roleTitle: "Director General (Technical)",
-        voteStatus: "Rejected",
-        feedback: "Inadequate maintenance training plan provided by vendor.",
-        votedAt: "7/18/2026, 5:30:00 PM",
-      },
-      {
-        id: "m-3",
-        name: "W/ro Gennet Zewde",
-        roleTitle: "Finance & Procurement Lead",
-        voteStatus: "Rejected",
-        feedback: "Environmental impact clearance certificate missing.",
-        votedAt: "7/18/2026, 6:00:00 PM",
-      },
-      {
-        id: "m-4",
-        name: "Ato Yared Worku",
-        roleTitle: "Legal & Compliance Officer",
-        voteStatus: "Pending",
-      },
-      {
-        id: "m-5",
-        name: "Ato Dawit Alemu",
-        roleTitle: "Monitoring & Evaluation Specialist",
-        voteStatus: "Pending",
-      },
-    ],
-  },
-];
-
 export function CommitteeProgressView() {
-  const [items, setItems] = useState<CommitteeProgressItem[]>(
-    INITIAL_COMMITTEE_PROGRESS_DATA,
-  );
+  const [items, setItems] = useState<CommitteeProgressItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sectorFilter, setSectorFilter] = useState<string>("ALL");
+
+  const loadData = useCallback(async () => {
+    try {
+      const rawPlans = await fetchPlans();
+      const mappedItems: CommitteeProgressItem[] = rawPlans
+        .filter(
+          (bp) =>
+            bp.status === "WITH_COMMITTEE" ||
+            bp.status === "APPROVED" ||
+            bp.status === "REJECTED" ||
+            (bp.committeeVotes && bp.committeeVotes.length > 0),
+        )
+        .map((bp) => {
+          const rawVotes = bp.committeeVotes || [];
+          const committeeUsers =
+            bp.committeeMembers && bp.committeeMembers.length > 0
+              ? bp.committeeMembers
+              : FALLBACK_DB_COMMITTEE_MEMBERS;
+
+          // Map the exact 5 real committee members from the database
+          const memberVotes: CommitteeMemberVote[] = committeeUsers.map(
+            (userMember) => {
+              // EXACT MATCH: Match vote strictly by memberId or exact email
+              const matchingVote = rawVotes.find(
+                (v) =>
+                  v.memberId === userMember.id ||
+                  (v.memberEmail &&
+                    userMember.email &&
+                    v.memberEmail.toLowerCase() ===
+                      userMember.email.toLowerCase()),
+              );
+
+              const memberDisplayName =
+                (userMember as any).displayName ||
+                userMember.name ||
+                "Committee Member";
+              const memberEmail = userMember.email || undefined;
+
+              if (matchingVote) {
+                return {
+                  id: userMember.id,
+                  name: memberDisplayName,
+                  email: memberEmail,
+                  roleTitle: "Endorsement Committee",
+                  voteStatus:
+                    matchingVote.decision === "APPROVE"
+                      ? "Approved"
+                      : "Rejected",
+                  feedback: matchingVote.comment || undefined,
+                  votedAt: new Date(matchingVote.createdAt).toLocaleString(),
+                };
+              }
+
+              return {
+                id: userMember.id,
+                name: memberDisplayName,
+                email: memberEmail,
+                roleTitle: "Endorsement Committee",
+                voteStatus: "Pending",
+              };
+            },
+          );
+
+          const approvedCount = memberVotes.filter(
+            (v) => v.voteStatus === "Approved",
+          ).length;
+          const rejectedCount = memberVotes.filter(
+            (v) => v.voteStatus === "Rejected",
+          ).length;
+
+          let overallStatus: "Approved" | "Rejected" | "Pending Approval" =
+            "Pending Approval";
+
+          // Business Rule:
+          // 1. Approved: At least 3 committee members vote Approve (approvedCount >= 3)
+          // 2. Rejected: At least 3 committee members vote Reject (rejectedCount >= 3, majority reject)
+          // 3. Pending Approval: In progress awaiting remaining votes (0-2 approves, 0-2 rejects)
+          if (rejectedCount >= 3) {
+            overallStatus = "Rejected";
+          } else if (approvedCount >= 3) {
+            overallStatus = "Approved";
+          } else {
+            overallStatus = "Pending Approval";
+          }
+
+          const totalBudget = (bp.activities || []).reduce(
+            (sum, a) => sum + (a.estimatedBudget || 0),
+            0,
+          );
+
+          return {
+            id: bp.id,
+            planNumber: `MoA/${bp.project?.code || "PLAN"}/${bp.budgetYear || "2018"}/${(bp.title || "APP").substring(0, 10)}`,
+            planTitle: bp.title,
+            projectCode: bp.project?.code || "PROJECT",
+            projectName: bp.project?.name || "MoA Project",
+            sector: "Agriculture & Livestock",
+            budgetYear: bp.budgetYear || "2018 EFY",
+            totalBudget: totalBudget > 0 ? totalBudget : 25000000,
+            currency: "ETB",
+            description:
+              bp.description ||
+              "Procurement plan submitted for committee review.",
+            overallStatus,
+            approvedCount,
+            rejectedCount,
+            memberVotes,
+          };
+        });
+
+      setItems(mappedItems);
+    } catch (err) {
+      console.warn("fetchPlans CommitteeProgressView note:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadData]);
 
   // Selected item for Detailed Decision Inspector
   const [selectedPlan, setSelectedPlan] =
@@ -380,7 +220,7 @@ export function CommitteeProgressView() {
     setItems((prevItems) =>
       prevItems.map((item) =>
         item.id === selectedPlan.id
-          ? { ...item, overallStatus: "Rejected" as any }
+          ? { ...item, overallStatus: "Rejected" }
           : item,
       ),
     );
@@ -395,9 +235,8 @@ export function CommitteeProgressView() {
     setTimeout(() => setToastMessage(null), 5000);
   };
 
-  // Filter items (excluding Submitted_To_Director plans from Committee Progress)
+  // Filter items
   const filteredItems = items.filter((item) => {
-    if ((item.overallStatus as string) === "Submitted_To_Director") return false;
     const matchesSearch =
       item.planNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.planTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -491,18 +330,28 @@ export function CommitteeProgressView() {
                 </div>
               </div>
 
-              <span
-                className={`text-xs font-extrabold ${
-                  selectedPlan.overallStatus === "Approved"
-                    ? "text-emerald-700"
-                    : selectedPlan.overallStatus ===
-                        "Pending_Management_Approval"
-                      ? "text-blue-700"
-                      : "text-rose-700"
-                }`}
-              >
-                {selectedPlan.overallStatus}
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${
+                    selectedPlan.overallStatus === "Approved"
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : selectedPlan.overallStatus === "Rejected"
+                        ? "bg-rose-50 text-rose-800 border-rose-200"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
+                  }`}
+                >
+                  {selectedPlan.overallStatus === "Approved" && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  )}
+                  {selectedPlan.overallStatus === "Rejected" && (
+                    <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                  )}
+                  {selectedPlan.overallStatus === "Pending Approval" && (
+                    <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  )}
+                  <span>{selectedPlan.overallStatus}</span>
+                </span>
+              </div>
             </div>
 
             {selectedPlan.description && (
@@ -512,25 +361,27 @@ export function CommitteeProgressView() {
             )}
           </section>
 
-          {/* Feedback & Decisions from 5 Executive Committee Members Container */}
+          {/* Endorsement Committee Votes from Database */}
           <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Users className="h-5 w-5 text-[#0A3C2F]" />
-              <h3 className="text-sm font-bold text-slate-900">
-                Feedback & Decisions from 5 Executive Committee Members
-              </h3>
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#0A3C2F]" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Endorsement Committee Votes & Member Remarks
+                </h3>
+              </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {selectedPlan.memberVotes.map((member) => (
                 <div
                   key={member.id}
-                  className={`border-l-4 pl-4 py-3 space-y-1.5 border-t-0 border-r-0 border-b-0 border-slate-100 transition-all ${
+                  className={`p-4 rounded-xl border transition-all ${
                     member.voteStatus === "Approved"
-                      ? "border-l-emerald-600"
+                      ? "border-emerald-200 bg-emerald-50/20"
                       : member.voteStatus === "Rejected"
-                        ? "border-l-rose-600"
-                        : "border-l-amber-400"
+                        ? "border-rose-200 bg-rose-50/20"
+                        : "border-slate-200 bg-slate-50/40"
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -538,18 +389,20 @@ export function CommitteeProgressView() {
                       <h4 className="text-sm font-bold text-slate-950">
                         {member.name}
                       </h4>
-                      <p className="text-xs text-slate-500 font-medium">
-                        {member.roleTitle}
-                      </p>
+                      {member.email && (
+                        <p className="text-xs text-slate-500 font-mono">
+                          {member.email}
+                        </p>
+                      )}
                     </div>
 
                     <span
-                      className={`inline-flex items-center gap-1.5 text-xs font-bold ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
                         member.voteStatus === "Approved"
-                          ? "text-emerald-700"
+                          ? "bg-emerald-100 text-emerald-800"
                           : member.voteStatus === "Rejected"
-                            ? "text-rose-700"
-                            : "text-amber-700"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-slate-100 text-slate-700"
                       }`}
                     >
                       {member.voteStatus === "Approved" && (
@@ -559,7 +412,7 @@ export function CommitteeProgressView() {
                         <XCircle className="h-3.5 w-3.5 text-rose-600" />
                       )}
                       {member.voteStatus === "Pending" && (
-                        <Clock className="h-3.5 w-3.5 text-amber-600" />
+                        <Clock className="h-3.5 w-3.5 text-slate-500" />
                       )}
                       <span>
                         {member.voteStatus === "Pending"
@@ -570,11 +423,31 @@ export function CommitteeProgressView() {
                   </div>
 
                   {member.feedback && (
-                    <div className="pt-2 border-t border-slate-200/60 text-xs">
-                      <span className="text-slate-500 font-bold block mb-0.5">
-                        Comments / Feedback:
-                      </span>
-                      <p className="text-slate-800 font-semibold italic">
+                    <div
+                      className={`mt-2.5 p-3 rounded-xl border text-xs ${
+                        member.voteStatus === "Rejected"
+                          ? "bg-rose-50 border-rose-200 text-rose-950"
+                          : "bg-emerald-50 border-emerald-200 text-emerald-950"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold mb-1">
+                        {member.voteStatus === "Rejected" ? (
+                          <>
+                            <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                            <span className="text-rose-900">
+                              Rejection Reason:
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            <span className="text-emerald-900">
+                              Deliberation Remarks:
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <p className="font-medium italic leading-relaxed pl-5">
                         &quot;{member.feedback}&quot;
                       </p>
                     </div>
@@ -602,7 +475,8 @@ export function CommitteeProgressView() {
                     Return Plan to Officer for Revision
                   </h3>
                   <p className="text-xs text-amber-800/80">
-                    Provide feedback or instructions detailing adjustments required by the officer before resubmitting the plan.
+                    Provide feedback or instructions detailing adjustments
+                    required by the officer before resubmitting the plan.
                   </p>
                 </div>
               </div>
@@ -689,10 +563,8 @@ export function CommitteeProgressView() {
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="Approved">Approved</option>
-                  <option value="Pending_Management_Approval">
-                    Pending_Management_Approval
-                  </option>
                   <option value="Rejected">Rejected</option>
+                  <option value="Pending Approval">Pending Approval</option>
                 </select>
               </div>
             </div>
@@ -709,11 +581,11 @@ export function CommitteeProgressView() {
                       Plan Title & Project
                     </th>
                     <th className="py-3.5 px-4 min-w-[180px]">Sector</th>
-                    <th className="py-3.5 px-4 text-center min-w-[220px]">
-                      Committee Members Voting (5 Boxes)
+                    <th className="py-3.5 px-4 text-center min-w-[180px]">
+                      Committee Voting
                     </th>
-                    <th className="py-3.5 px-4 text-center min-w-[150px]">
-                      Overall Status
+                    <th className="py-3.5 px-4 text-center min-w-[140px]">
+                      Status
                     </th>
                     <th className="py-3.5 px-4 text-center min-w-[80px]">
                       Action
@@ -734,115 +606,98 @@ export function CommitteeProgressView() {
                       </td>
                     </tr>
                   ) : (
-                    filteredItems.map((item) => {
-                      const approvedVotes = item.memberVotes.filter(
-                        (v) => v.voteStatus === "Approved",
-                      ).length;
-                      const rejectedVotes = item.memberVotes.filter(
-                        (v) => v.voteStatus === "Rejected",
-                      ).length;
+                    filteredItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/70 transition-colors"
+                      >
+                        {/* Plan Number */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-xs whitespace-nowrap">
+                          {item.planNumber}
+                        </td>
 
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-slate-50/70 transition-colors"
-                        >
-                          {/* Plan Number */}
-                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-xs whitespace-nowrap">
-                            {item.planNumber}
-                          </td>
+                        {/* Plan Title & Project */}
+                        <td className="py-3.5 px-4 max-w-xs">
+                          <p className="font-bold text-slate-950 text-xs leading-snug">
+                            {item.planTitle}
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                            {item.projectName}
+                          </p>
+                        </td>
 
-                          {/* Plan Title & Project */}
-                          <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-bold text-slate-950 text-xs leading-snug">
-                              {item.planTitle}
-                            </p>
-                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                              {item.projectName}
-                            </p>
-                          </td>
+                        {/* Sector */}
+                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                          {item.sector}
+                        </td>
 
-                          {/* Sector */}
-                          <td className="py-3.5 px-4 font-semibold text-slate-800">
-                            {item.sector}
-                          </td>
+                        {/* Clean Committee Members Voting Boxes (No extra text/padding) */}
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {item.memberVotes.map((member, idx) => {
+                              const boxNum = idx + 1;
+                              if (member.voteStatus === "Approved") {
+                                return (
+                                  <div
+                                    key={member.id}
+                                    title={`${member.name}: Approved`}
+                                    className="h-6 w-6 rounded bg-[#0A3C2F] text-white flex items-center justify-center text-[11px] font-bold"
+                                  >
+                                    ✓
+                                  </div>
+                                );
+                              }
+                              if (member.voteStatus === "Rejected") {
+                                return (
+                                  <div
+                                    key={member.id}
+                                    title={`${member.name}: Rejected`}
+                                    className="h-6 w-6 rounded bg-rose-700 text-white flex items-center justify-center text-[11px] font-bold"
+                                  >
+                                    ✕
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div
+                                  key={member.id}
+                                  title={`${member.name}: Pending Vote`}
+                                  className="h-6 w-6 rounded bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-semibold"
+                                >
+                                  {boxNum}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
 
-                          {/* Committee Members Voting (5 Boxes) */}
-                          <td className="py-3.5 px-4 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {item.memberVotes.map((member, idx) => {
-                                  const boxNum = idx + 1;
-                                  if (member.voteStatus === "Approved") {
-                                    return (
-                                      <div
-                                        key={member.id}
-                                        title={`${member.name}: Approved`}
-                                        className="h-7 w-7 rounded-lg bg-[#0A3C2F] text-white flex items-center justify-center text-xs font-bold shadow-2xs"
-                                      >
-                                        ✓
-                                      </div>
-                                    );
-                                  }
-                                  if (member.voteStatus === "Rejected") {
-                                    return (
-                                      <div
-                                        key={member.id}
-                                        title={`${member.name}: Rejected`}
-                                        className="h-7 w-7 rounded-lg bg-rose-700 text-white flex items-center justify-center text-xs font-bold shadow-2xs"
-                                      >
-                                        ✕
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <div
-                                      key={member.id}
-                                      title={`${member.name}: Pending Vote`}
-                                      className="h-7 w-7 rounded-lg bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center text-xs font-bold"
-                                    >
-                                      {boxNum}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                        {/* Status (Approved, Rejected, Pending Approval) */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${
+                              item.overallStatus === "Approved"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : item.overallStatus === "Rejected"
+                                  ? "bg-rose-50 text-rose-800 border-rose-200"
+                                  : "bg-amber-50 text-amber-800 border-amber-200"
+                            }`}
+                          >
+                            {item.overallStatus}
+                          </span>
+                        </td>
 
-                              <span className="text-[11px] font-medium text-slate-500">
-                                {approvedVotes} Approved / {rejectedVotes}{" "}
-                                Rejected
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Overall Status */}
-                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                            <span
-                              className={`text-xs font-extrabold ${
-                                item.overallStatus === "Approved"
-                                  ? "text-emerald-700"
-                                  : item.overallStatus ===
-                                      "Pending_Management_Approval"
-                                    ? "text-blue-700"
-                                    : "text-rose-700"
-                              }`}
-                            >
-                              {item.overallStatus}
-                            </span>
-                          </td>
-
-                          {/* Action (Eye Icon) */}
-                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                            <button
-                              onClick={() => setSelectedPlan(item)}
-                              title="View Committee Feedback & Decisions"
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-[#0A3C2F] border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer mx-auto shadow-2xs"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                        {/* Action (Eye Icon) */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedPlan(item)}
+                            title="View Committee Feedback & Decisions"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-[#0A3C2F] border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer mx-auto shadow-2xs"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

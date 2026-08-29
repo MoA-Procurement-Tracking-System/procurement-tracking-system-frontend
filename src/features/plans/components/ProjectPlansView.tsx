@@ -9,9 +9,9 @@ import {
   FileText,
   Home,
   Info,
-Lock,
-ListChecks,
-Save,
+  Lock,
+  ListChecks,
+  Save,
   Search,
   X,
 } from "lucide-react";
@@ -72,7 +72,9 @@ export function ProjectPlansView({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
-  const [readOnlyPlan, setReadOnlyPlan] = useState<ProcurementPlan | null>(null);
+  const [readOnlyPlan, setReadOnlyPlan] = useState<ProcurementPlan | null>(
+    null,
+  );
 
   // Editable Form States for Director Plan Review & Edits page
   const [editablePlanName, setEditablePlanName] = useState("");

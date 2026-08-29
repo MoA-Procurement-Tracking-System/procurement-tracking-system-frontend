@@ -77,15 +77,15 @@ export function OfficerProcurementActivityDetailView({
     { label: "Procurement Process", value: form?.procurementProcess ?? "" },
     ...(form
       ? [
-        {
-          label: "Requires UN Agency Contracting",
-          value: form.requiresUnAgency ? "Yes" : "No",
-        },
-        {
-          label: "Activity Is In-Process",
-          value: form.inProcess ? "Yes" : "No",
-        },
-      ]
+          {
+            label: "Requires UN Agency Contracting",
+            value: form.requiresUnAgency ? "Yes" : "No",
+          },
+          {
+            label: "Activity Is In-Process",
+            value: form.inProcess ? "Yes" : "No",
+          },
+        ]
       : []),
   ]);
 
@@ -614,13 +614,13 @@ function formatAmount(value: number) {
 function formatRoadmapDate(stage: ProcurementActivityRoadmapStage) {
   const gregorian = stage.gregorianDate
     ? new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "short",
-      timeZone: "UTC",
-      year: "numeric",
-    })
-      .format(new Date(`${stage.gregorianDate}T00:00:00Z`))
-      .replaceAll(" ", "-")
+        day: "2-digit",
+        month: "short",
+        timeZone: "UTC",
+        year: "numeric",
+      })
+        .format(new Date(`${stage.gregorianDate}T00:00:00Z`))
+        .replaceAll(" ", "-")
     : "Date not recorded";
   return stage.ethiopianDate
     ? `${gregorian} (${stage.ethiopianDate})`
