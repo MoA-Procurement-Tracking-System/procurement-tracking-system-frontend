@@ -19,6 +19,11 @@ import {
 import { DualCalendarField } from "../../projects/components/CreateProcurementPlanView";
 import type { ProcurementActivityRoadmapStage } from "../../projects/data/officerActivityDrafts";
 import {
+  recordActualStageDates,
+  replanStage,
+  updateStageDates,
+} from "@/lib/activitiesApi";
+import {
   Activity,
   AlertCircle,
   ArrowLeft,
@@ -708,6 +713,8 @@ function RoadmapTrackingSection({
                 const target = effectiveTargetDate(original, tracking);
                 const delay = calculateDelayDays(original, tracking);
                 const selected = stage.name === selectedStage?.name;
+                const isNotApplicable =
+                  stage.notApplicable || tracking.status === "Not Applicable";
                 return (
                   <tr
                     className={
@@ -721,23 +728,39 @@ function RoadmapTrackingSection({
                       <p className="font-bold leading-5 text-[#10243f]">
                         {stage.name}
                       </p>
-                      {tracking.revisions.length > 0 ? (
+                      {tracking.revisions.length > 0 && !isNotApplicable ? (
                         <span className="mt-1 inline-flex rounded bg-[#eef2ff] px-1.5 py-0.5 text-[9px] font-bold text-[#475569]">
                           R{tracking.revisions.length}
                         </span>
                       ) : null}
                     </td>
                     <td className="px-4 py-3">
-                      <LockedDateValue date={original} />
+                      {isNotApplicable ? (
+                        <span className="text-slate-400 font-medium text-xs">
+                          N/A
+                        </span>
+                      ) : (
+                        <LockedDateValue date={original} />
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <DateValue
-                        date={target}
-                        revised={tracking.revisions.length > 0}
-                      />
+                      {isNotApplicable ? (
+                        <span className="text-slate-400 font-medium text-xs">
+                          N/A
+                        </span>
+                      ) : (
+                        <DateValue
+                          date={target}
+                          revised={tracking.revisions.length > 0}
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <DateValue date={tracking.actualDate ?? emptyDate()} />
+                      {isNotApplicable ? (
+                        <span className="text-slate-400 text-xs">—</span>
+                      ) : (
+                        <DateValue date={tracking.actualDate ?? emptyDate()} />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusText
@@ -746,7 +769,7 @@ function RoadmapTrackingSection({
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {delay === null ? (
+                      {isNotApplicable || delay === null ? (
                         <span className="text-slate-400">—</span>
                       ) : delay > 0 ? (
                         <span className="font-extrabold text-[#b42318]">
@@ -776,6 +799,7 @@ function RoadmapTrackingSection({
           {selectedStage && selectedTracking ? (
             <StageEditor
               key={selectedStage.name}
+              item={item}
               onSave={onSave}
               onUpdate={updateStage}
               record={record}
@@ -933,7 +957,7 @@ function trackingForStage(
 ): ActivityStageTracking {
   return (
     record.stages.find((tracking) => tracking.stageName === stage.name) ?? {
-      remarks: stage.remarks,
+      remarks: stage.remarks || "",
       revisions: [],
       stageName: stage.name,
       status: stage.notApplicable
@@ -975,6 +999,7 @@ function emptyDate(): TrackingDateValue {
 }
 
 function StageEditor({
+  item,
   onSave,
   onUpdate,
   record,
@@ -982,6 +1007,7 @@ function StageEditor({
   stage,
   tracking,
 }: {
+  item: OfficerTrackedActivityItem;
   onSave: (record: OfficerActivityTrackingRecord, message: string) => void;
   onUpdate: (changes: Partial<ActivityStageTracking>) => void;
   record: OfficerActivityTrackingRecord;
@@ -1014,6 +1040,24 @@ function StageEditor({
       return;
     }
     setStageError("");
+
+    // Persist to backend database if stage id exists
+    const actId = item.activity.id || item.activity.reference;
+    if (stage.id && actId) {
+      if (tracking.status === "Completed" && tracking.actualDate?.gregorian) {
+        recordActualStageDates(actId, stage.id, {
+          actualStartDate: tracking.actualDate.gregorian,
+          actualEndDate: tracking.actualDate.gregorian,
+        }).catch((err) =>
+          console.warn("Backend recordActualStageDates note:", err),
+        );
+      } else {
+        updateStageDates(actId, stage.id, {
+          plannedStartDate: tracking.actualDate?.gregorian || undefined,
+        }).catch((err) => console.warn("Backend updateStageDates note:", err));
+      }
+    }
+
     onSave(withStageTracking(record, tracking), `${stage.name} updated.`);
   }
 
@@ -1054,6 +1098,16 @@ function StageEditor({
     setRevisionError("");
     setRevisionReason("");
     setRevisedDate(emptyDate());
+
+    // Persist replanning revision to backend database
+    const actId = item.activity.id || item.activity.reference;
+    if (stage.id && actId) {
+      replanStage(actId, stage.id, {
+        revisedStartDate: revisedDate.gregorian,
+        reason: revisionReason.trim(),
+      }).catch((err) => console.warn("Backend replanStage note:", err));
+    }
+
     onSave(
       withStageTracking(record, nextTracking),
       `Revision R${nextTracking.revisions.length} saved.`,

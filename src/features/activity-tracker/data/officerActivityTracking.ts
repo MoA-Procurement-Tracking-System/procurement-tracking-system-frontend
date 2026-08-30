@@ -69,30 +69,66 @@ export function createInitialActivityTrackingRecord(
     roadmap.findIndex((stage) => stage.name === activity.currentStage),
   );
   const stages = roadmap.map((stage, index): ActivityStageTracking => {
-    if (stage.notApplicable) {
+    const isNA = Boolean(
+      stage.notApplicable || stage.status === "Not Applicable",
+    );
+    const revisions: ActivityStageRevision[] = (stage.revisions || []).map(
+      (r: any) => ({
+        revisionNumber: r.revisionNo ?? 1,
+        createdAt: r.createdAt || "",
+        reason: r.reason || "",
+        targetDate: {
+          ethiopian: r.revisedStartDate || "",
+          gregorian: r.revisedStartDate || "",
+        },
+      }),
+    );
+
+    if (isNA) {
       return {
-        remarks: stage.remarks,
-        revisions: [],
+        remarks: stage.remarks || "",
+        revisions,
         stageName: stage.name,
         status: "Not Applicable",
       };
     }
 
+    const explicitCompleted =
+      stage.status === "Completed" ||
+      Boolean(
+        stage.actualEndDate ||
+        (stage.actualDate && stage.status !== "In Progress"),
+      );
+    const explicitInProgress =
+      stage.status === "In Progress" ||
+      (Boolean(stage.actualStartDate) && !explicitCompleted);
+
     const completed =
-      activity.status === "Completed" || index < currentStageIndex;
-    const inProgress = !completed && index === currentStageIndex;
+      explicitCompleted ||
+      activity.status === "Completed" ||
+      (index < currentStageIndex && stage.status !== "Not Started");
+    const inProgress =
+      explicitInProgress ||
+      (!completed &&
+        (stage.status === "In Progress" || index === currentStageIndex));
+
+    const actualDateVal =
+      stage.actualEndDate ||
+      stage.actualDate ||
+      stage.actualStartDate ||
+      (completed ? stage.gregorianDate || stage.ethiopianDate : undefined);
 
     return {
-      ...(completed
+      ...(actualDateVal
         ? {
             actualDate: {
-              ethiopian: stage.ethiopianDate,
-              gregorian: stage.gregorianDate,
+              ethiopian: stage.ethiopianDate || actualDateVal,
+              gregorian: actualDateVal,
             },
           }
         : {}),
-      remarks: stage.remarks,
-      revisions: [],
+      remarks: stage.remarks || "",
+      revisions,
       stageName: stage.name,
       status: completed
         ? "Completed"

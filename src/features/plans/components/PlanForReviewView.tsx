@@ -14,9 +14,9 @@ import {
   ShieldCheck,
   Filter,
   Edit,
+  Eye,
   X,
   Calendar,
-  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -29,6 +29,7 @@ import {
   fetchPlans,
   sendPlanToCommittee,
   rejectPlan,
+  submitVote,
   mapBackendPlanToFrontend,
 } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
@@ -36,7 +37,6 @@ import {
   INITIAL_PROJECTS,
   type ProjectItem,
 } from "../../dashboards/components/director/projects/projectsData";
-import { type ProcurementActivity } from "../../activities/activitiesData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import {
@@ -57,6 +57,10 @@ import {
   type ProcurementActivitySummary,
 } from "../../projects/data/officerActivityDrafts";
 import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
+import {
+  INITIAL_ACTIVITIES,
+  type ProcurementActivity,
+} from "../../activities/activitiesData";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
@@ -91,6 +95,7 @@ function mapOfficerPlanToDirectorPlan(
     createdBy: project.assignedOfficers?.[0] ?? "Assigned Officer",
     createdAt: "2026-08-26",
     activitiesCount: activities.length,
+    activities,
   };
 }
 
@@ -122,11 +127,27 @@ export function getOfficerReviewPlans(): ProcurementPlan[] {
           plan.status === "Committee Review"
         ) {
           const planActivities = savedActivityRecords
-            .filter(
-              (r) =>
-                r.projectCode === project.code &&
-                r.planReference === plan.reference,
-            )
+            .filter((r) => {
+              const projCode = (r.projectCode || "").toLowerCase();
+              const pCode = (project.code || "").toLowerCase();
+              const pRef = (r.planReference || "").toLowerCase();
+              const planRef = (plan.reference || "").toLowerCase();
+              const planName = (plan.name || "").toLowerCase();
+
+              const projMatches =
+                !projCode ||
+                !pCode ||
+                projCode === pCode ||
+                planName.includes(projCode);
+              const planMatches =
+                !pRef ||
+                pRef === planRef ||
+                pRef === planName ||
+                planName.includes(pRef) ||
+                savedActivityRecords.length <= 10;
+
+              return projMatches && planMatches;
+            })
             .map((r) => r.activity);
 
           officerReviewPlans.push(
@@ -157,7 +178,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     try {
       setLoading(true);
       const rawPlans = await fetchPlans();
-      const mapped = rawPlans.map((p) => mapBackendPlanToFrontend(p, user.id));
+      const mapped = rawPlans.map((p) =>
+        mapBackendPlanToFrontend(p, user.id, user.email),
+      );
       const officerPlans = getOfficerReviewPlans();
 
       const planMap = new Map<string, ProcurementPlan>();
@@ -203,9 +226,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   );
   const [editingActivity, setEditingActivity] =
     useState<ProcurementActivity | null>(null);
-  const [readOnlyPlan, setReadOnlyPlan] = useState<ProcurementPlan | null>(
-    null,
-  );
 
   // Auto-save feedback state
   const [isSaving, setIsSaving] = useState(false);
@@ -232,7 +252,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     let isAwaitingReview = false;
     if (user?.role === "ENDORSING_COMMITTEE") {
       const alreadyVoted = p.committeeDecision !== undefined;
-      isAwaitingReview = p.status === "Committee Review" && !alreadyVoted;
+      isAwaitingReview =
+        (p.status === "Committee Review" ||
+          (p as any).status === "WITH_COMMITTEE") &&
+        !alreadyVoted;
     } else {
       isAwaitingReview =
         p.status === "Submitted to Director" || p.status === "Returned";
@@ -286,60 +309,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   // Director Decision 1: Approve & Send to Endorsement Committee
   const handleApprovePlan = async (plan: ProcurementPlan) => {
     try {
-      if (!plan.id.startsWith("officer-")) {
-        await sendPlanToCommittee(plan.id);
-      }
+      await sendPlanToCommittee(plan.id);
     } catch (err) {
       console.warn("Backend sendPlanToCommittee note:", err);
     }
 
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === plan.id
-          ? {
-              ...p,
-              status: "Committee Review",
-              approvalDate: new Date().toISOString().split("T")[0],
-            }
-          : p,
-      ),
-    );
-
-    if (plan.id.startsWith("officer-")) {
-      try {
-        const records = parseSavedPlanRecords(
-          window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY),
-        );
-        const matchingProject = officerProjects.find(
-          (p) => p.code === plan.projectCode,
-        );
-        const matchingPlan = matchingProject?.plans.find((p) =>
-          plan.id.endsWith(p.reference),
-        ) ?? {
-          activities: plan.activitiesCount,
-          budgetYear: plan.budgetYear,
-          category: plan.category as ProcurementCategory,
-          completedActivities: 0,
-          currency: "ETB" as const,
-          delayedActivities: 0,
-          description: plan.description,
-          estimatedValue: 0,
-          inProgressActivities: 0,
-          name: plan.planName,
-          reference: plan.id.replace(`officer-${plan.projectCode}-`, ""),
-          status: "Committee Review" as const,
-        };
-        const nextRecords = upsertSavedPlanRecord(records, {
-          plan: { ...matchingPlan, status: "Committee Review" },
-          projectCode: plan.projectCode,
-        });
-        window.localStorage.setItem(
-          OFFICER_PLAN_DRAFTS_STORAGE_KEY,
-          JSON.stringify(nextRecords),
-        );
-      } catch {}
-    }
-
+    await loadPlans();
     setSelectedPlanForReview(null);
     showToast(
       `Plan "${plan.planName}" approved and forwarded to Endorsement Committee!`,
@@ -351,72 +326,38 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     const reasonText =
       returnRemarks.trim() || "Returned by Director for revisions.";
     try {
-      if (!plan.id.startsWith("officer-")) {
-        await rejectPlan(plan.id, reasonText);
-      }
+      await rejectPlan(plan.id, reasonText);
     } catch (err) {
       console.warn("Backend rejectPlan note:", err);
     }
 
-    const updatedDescription = returnRemarks.trim()
-      ? `[Returned Note: ${returnRemarks}] ${plan.description || ""}`
-      : plan.description;
-
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === plan.id
-          ? {
-              ...p,
-              status: "Returned",
-              description: updatedDescription,
-            }
-          : p,
-      ),
-    );
-
-    if (plan.id.startsWith("officer-")) {
-      try {
-        const records = parseSavedPlanRecords(
-          window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY),
-        );
-        const matchingProject = officerProjects.find(
-          (p) => p.code === plan.projectCode,
-        );
-        const matchingPlan = matchingProject?.plans.find((p) =>
-          plan.id.endsWith(p.reference),
-        ) ?? {
-          activities: plan.activitiesCount,
-          budgetYear: plan.budgetYear,
-          category: plan.category as ProcurementCategory,
-          completedActivities: 0,
-          currency: "ETB" as const,
-          delayedActivities: 0,
-          description: updatedDescription,
-          estimatedValue: 0,
-          inProgressActivities: 0,
-          name: plan.planName,
-          reference: plan.id.replace(`officer-${plan.projectCode}-`, ""),
-          status: "Returned" as const,
-        };
-        const nextRecords = upsertSavedPlanRecord(records, {
-          plan: {
-            ...matchingPlan,
-            description: updatedDescription,
-            status: "Returned",
-          },
-          projectCode: plan.projectCode,
-        });
-        window.localStorage.setItem(
-          OFFICER_PLAN_DRAFTS_STORAGE_KEY,
-          JSON.stringify(nextRecords),
-        );
-      } catch {}
-    }
-
+    await loadPlans();
     setSelectedPlanForReview(null);
     setReturnRemarks("");
     showToast(
       `Plan "${plan.planName}" returned to Procurement Officer for revision.`,
+    );
+  };
+
+  // Committee Decision: Vote Approve or Reject
+  const handleCommitteeVote = async (
+    plan: ProcurementPlan,
+    decision: "APPROVE" | "REJECT",
+  ) => {
+    const commentText = returnRemarks.trim() || undefined;
+    try {
+      await submitVote(plan.id, decision, commentText, user.id, user.email);
+    } catch (err) {
+      console.warn("Backend submitVote note:", err);
+    }
+
+    await loadPlans();
+    setSelectedPlanForReview(null);
+    setReturnRemarks("");
+    showToast(
+      decision === "APPROVE"
+        ? `Vote "Approved" recorded for plan "${plan.planName}".`
+        : `Vote "Rejected" recorded for plan "${plan.planName}".`,
     );
   };
 
@@ -436,16 +377,34 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         plan={activitiesPlan}
         project={proj}
         parentSection="plan-for-review"
+        userRole={user.role}
         onBackClick={() => setActivitiesPlan(null)}
-        onApprovePlan={(p) => {
-          handleApprovePlan(p);
-          setActivitiesPlan(null);
-        }}
-        onReturnPlan={(p, remarks) => {
-          setReturnRemarks(remarks);
-          handleReturnPlan(p);
-          setActivitiesPlan(null);
-        }}
+        onApprovePlan={
+          user.role === "DIRECTOR"
+            ? (p) => {
+                handleApprovePlan(p);
+                setActivitiesPlan(null);
+              }
+            : undefined
+        }
+        onReturnPlan={
+          user.role === "DIRECTOR"
+            ? (p, remarks) => {
+                setReturnRemarks(remarks);
+                handleReturnPlan(p);
+                setActivitiesPlan(null);
+              }
+            : undefined
+        }
+        onCommitteeVote={
+          user.role === "ENDORSING_COMMITTEE"
+            ? (p, decision, remarks) => {
+                if (remarks) setReturnRemarks(remarks);
+                handleCommitteeVote(p, decision);
+                setActivitiesPlan(null);
+              }
+            : undefined
+        }
       />
     );
   }
@@ -544,29 +503,35 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 </span>
               </div>
 
-              {/* Editable Plan Name */}
+              {/* Plan Name */}
               <div className="space-y-1">
                 <label className="block text-[11px] font-extrabold text-[#0A3C2F] uppercase tracking-wider">
                   Plan Title
                 </label>
-                <input
-                  type="text"
-                  value={selectedPlanForReview.planName}
-                  onChange={(e) => {
-                    const newName = e.target.value;
-                    setSelectedPlanForReview((prev) =>
-                      prev ? { ...prev, planName: newName } : null,
-                    );
-                    setPlans((prev) =>
-                      prev.map((p) =>
-                        p.id === selectedPlanForReview.id
-                          ? { ...p, planName: newName }
-                          : p,
-                      ),
-                    );
-                  }}
-                  className="w-full text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight rounded-xl border border-emerald-300 bg-white px-3.5 py-1.5 focus:border-[#0A3C2F] outline-none"
-                />
+                {user.role === "ENDORSING_COMMITTEE" ? (
+                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight pt-0.5">
+                    {selectedPlanForReview.planName}
+                  </h2>
+                ) : (
+                  <input
+                    type="text"
+                    value={selectedPlanForReview.planName}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setSelectedPlanForReview((prev) =>
+                        prev ? { ...prev, planName: newName } : null,
+                      );
+                      setPlans((prev) =>
+                        prev.map((p) =>
+                          p.id === selectedPlanForReview.id
+                            ? { ...p, planName: newName }
+                            : p,
+                        ),
+                      );
+                    }}
+                    className="w-full text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight rounded-xl border border-emerald-300 bg-white px-3.5 py-1.5 focus:border-[#0A3C2F] outline-none"
+                  />
+                )}
               </div>
 
               {/* Locked Structural Metadata */}
@@ -610,30 +575,37 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
         {/* Full-Width Plan Scope & Package Activities Card */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-6">
-          {/* Editable Plan Description & Scope Overview */}
+          {/* Plan Description & Scope Overview */}
           <div className="space-y-2 pb-2">
             <span className="text-[11px] font-extrabold text-[#0A3C2F] uppercase tracking-wider block">
               Plan Description & Scope Overview
             </span>
-            <textarea
-              rows={3}
-              value={selectedPlanForReview.description || ""}
-              onChange={(e) => {
-                const newDesc = e.target.value;
-                setSelectedPlanForReview((prev) =>
-                  prev ? { ...prev, description: newDesc } : null,
-                );
-                setPlans((prev) =>
-                  prev.map((p) =>
-                    p.id === selectedPlanForReview.id
-                      ? { ...p, description: newDesc }
-                      : p,
-                  ),
-                );
-              }}
-              placeholder="Specify plan scope, corrections or minor description updates..."
-              className="w-full text-xs text-slate-800 leading-relaxed rounded-xl border border-slate-300 bg-white p-3.5 focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10 outline-none transition-all"
-            />
+            {user.role === "ENDORSING_COMMITTEE" ? (
+              <div className="w-full text-xs text-slate-800 leading-relaxed rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                {selectedPlanForReview.description ||
+                  "No description provided."}
+              </div>
+            ) : (
+              <textarea
+                rows={3}
+                value={selectedPlanForReview.description || ""}
+                onChange={(e) => {
+                  const newDesc = e.target.value;
+                  setSelectedPlanForReview((prev) =>
+                    prev ? { ...prev, description: newDesc } : null,
+                  );
+                  setPlans((prev) =>
+                    prev.map((p) =>
+                      p.id === selectedPlanForReview.id
+                        ? { ...p, description: newDesc }
+                        : p,
+                    ),
+                  );
+                }}
+                placeholder="Specify plan scope, corrections or minor description updates..."
+                className="w-full text-xs text-slate-800 leading-relaxed rounded-xl border border-slate-300 bg-white p-3.5 focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10 outline-none transition-all"
+              />
+            )}
           </div>
 
           {/* In-Place Package Activities Directory */}
@@ -772,19 +744,33 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                             </p>
                           </td>
 
-                          {/* Edit Action Button */}
+                          {/* Action Button */}
                           <td className="py-3.5 px-3.5 align-top text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingActivity(act);
-                              }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#0A3C2F] border border-emerald-200 hover:bg-[#0A3C2F] hover:text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                              <span>Edit</span>
-                            </button>
+                            {user.role === "ENDORSING_COMMITTEE" ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingActivity(act);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>View</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingActivity(act);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[#0A3C2F] border border-emerald-200 hover:bg-[#0A3C2F] hover:text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                                <span>Edit</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -805,49 +791,90 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           </div>
         </div>
 
-        {/* Director Decision & Workflow Actions Card (Side-by-Side Action Buttons Below Comment Section) */}
+        {/* Decision & Workflow Actions Card */}
         <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-5">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <ShieldCheck className="h-5 w-5 text-[#0A3C2F]" />
             <h3 className="text-sm font-bold text-slate-900">
-              Director Decision & Workflow Actions
+              {user.role === "ENDORSING_COMMITTEE"
+                ? "Endorsement Committee Decision & Voting"
+                : "Director Decision & Workflow Actions"}
             </h3>
           </div>
 
-          {/* Revision Remarks Textarea */}
+          {/* Remarks Textarea */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-800">
-              Revision Notes (If returning to Officer)
+              {user.role === "ENDORSING_COMMITTEE"
+                ? "Committee Feedback / Deliberation Notes (Optional)"
+                : "Revision Notes (If returning to Officer)"}
             </label>
             <textarea
               rows={3}
               value={returnRemarks}
               onChange={(e) => setReturnRemarks(e.target.value)}
-              placeholder="Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+              placeholder={
+                user.role === "ENDORSING_COMMITTEE"
+                  ? "Enter your voting remarks or rejection reason (visible to Director)..."
+                  : "Specify required corrections, missing documents or revision notes for the Procurement Officer..."
+              }
               className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
             />
+            {user.role === "ENDORSING_COMMITTEE" && (
+              <p className="text-[11px] text-slate-500 font-medium pt-1">
+                Note: A plan requires at least 3 approval votes from the
+                Endorsement Committee to be officially endorsed. Rejection
+                comments will be visible in the Director review panel.
+              </p>
+            )}
           </div>
 
-          {/* Action Buttons Aligned Side-by-Side Below Comment Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => handleApprovePlan(selectedPlanForReview)}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              <Send className="h-4 w-4 text-[#A3E635]" />
-              <span>Approve & Send to Committee</span>
-            </button>
+          {/* Action Buttons */}
+          {user.role === "ENDORSING_COMMITTEE" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() =>
+                  handleCommitteeVote(selectedPlanForReview, "APPROVE")
+                }
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
+                <span>Vote: Endorse & Approve Plan</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleReturnPlan(selectedPlanForReview)}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
-            >
-              <RotateCcw className="h-4 w-4 text-rose-600" />
-              <span>Return to Officer for Revision</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() =>
+                  handleCommitteeVote(selectedPlanForReview, "REJECT")
+                }
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4 text-rose-600" />
+                <span>Vote: Reject / Return Plan</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => handleApprovePlan(selectedPlanForReview)}
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Send className="h-4 w-4 text-[#A3E635]" />
+                <span>Approve & Send to Committee</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleReturnPlan(selectedPlanForReview)}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4 text-rose-600" />
+                <span>Return to Officer for Revision</span>
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Dedicated Edit Package Activity Details Modal */}
@@ -971,30 +998,43 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
               {/* Modal Footer Actions */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setEditingActivity(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (editingActivity) {
-                      handleActivityUpdate(editingActivity.id, {
-                        description: editingActivity.description,
-                        roadmap: editingActivity.roadmap,
-                        remarks: editingActivity.remarks,
-                        additionalRemarks: editingActivity.additionalRemarks,
-                      });
-                      setEditingActivity(null);
-                    }
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  Save Activity Changes
-                </button>
+                {user.role === "ENDORSING_COMMITTEE" ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditingActivity(null)}
+                    className="px-5 py-2.5 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setEditingActivity(null)}
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingActivity) {
+                          handleActivityUpdate(editingActivity.id, {
+                            description: editingActivity.description,
+                            roadmap: editingActivity.roadmap,
+                            remarks: editingActivity.remarks,
+                            additionalRemarks:
+                              editingActivity.additionalRemarks,
+                          });
+                          setEditingActivity(null);
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Save Activity Changes
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1023,8 +1063,28 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           <Home className="h-4 w-4" />
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <span className="font-bold text-[#0A3C2F]">Plan for Review</span>
+        <span className="font-bold text-[#0A3C2F]">
+          {user.role === "ENDORSING_COMMITTEE"
+            ? "Committee Plan for Review"
+            : "Plan for Review"}
+        </span>
       </nav>
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            {user.role === "ENDORSING_COMMITTEE"
+              ? "Endorsement Committee — Plans for Review"
+              : "Director — Plan for Review"}
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            {user.role === "ENDORSING_COMMITTEE"
+              ? "Review procurement plans awaiting committee endorsement and record your approval or rejection vote."
+              : "Review procurement plans submitted by Officers, examine activities, and approve or return for revision."}
+          </p>
+        </div>
+      </div>
 
       {/* Search & Filter Bar (Single Horizontal Row Line) */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -1100,14 +1160,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3 px-3 text-center w-10">#</th>
-                <th className="py-3 px-3 min-w-[130px]">Project Code</th>
+                <th className="py-3 px-3 min-w-[120px]">Project Code</th>
                 <th className="py-3 px-3 min-w-[180px] max-w-[220px]">
                   Plan Name
                 </th>
-                <th className="py-3 px-3 min-w-[130px]">Category</th>
-                <th className="py-3 px-3 min-w-[140px]">Budget Year</th>
-                <th className="py-3 px-3 min-w-[150px]">Coverage Period</th>
+                <th className="py-3 px-3 min-w-[120px]">Category</th>
+                <th className="py-3 px-3 min-w-[110px]">Budget Year</th>
+                <th className="py-3 px-3 min-w-[140px]">Coverage Period</th>
                 <th className="py-3 px-3 min-w-[120px]">Region / Unit</th>
+                <th className="py-3 px-3 min-w-[140px]">Responsible Officer</th>
                 <th className="py-3 px-3 text-center min-w-[110px]">Status</th>
               </tr>
             </thead>
@@ -1115,7 +1176,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="py-12 text-center text-slate-500 font-medium"
                   >
                     Loading plans from server...
@@ -1123,7 +1184,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 </tr>
               ) : filteredPlans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
+                  <td colSpan={9} className="py-12 text-center text-slate-500">
                     <FileText className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                     <p className="font-semibold text-slate-700 text-sm">
                       No procurement plans awaiting review
@@ -1189,6 +1250,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                       {plan.organizationRegion}
                     </td>
 
+                    <td className="py-2.5 px-3 font-semibold text-slate-900 text-xs">
+                      {plan.assignedOfficer ||
+                        plan.createdBy ||
+                        "Assigned Officer"}
+                    </td>
+
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
                         className={`text-xs font-extrabold ${
@@ -1211,131 +1278,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           </table>
         </div>
       </div>
-
-      {/* Read-Only Plan Details Modal */}
-      {readOnlyPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Eye className="h-5 w-5 text-[#0A3C2F]" />
-                <h3 className="text-base font-extrabold text-slate-900">
-                  Plan Overview (Read-Only View)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReadOnlyPlan(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs text-slate-700">
-              <div>
-                <span className="text-[10px] font-extrabold text-[#0A3C2F] uppercase tracking-wider block">
-                  Plan Name
-                </span>
-                <p className="text-base font-extrabold text-slate-950 mt-0.5">
-                  {readOnlyPlan.planName}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Category
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {readOnlyPlan.category}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Budget Year
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {readOnlyPlan.budgetYear}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Region / Unit
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {readOnlyPlan.organizationRegion}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Period From
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {readOnlyPlan.planPeriodFrom}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Period To
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {readOnlyPlan.planPeriodTo}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Status
-                  </span>
-                  <span className="font-extrabold text-[#0A3C2F]">
-                    {readOnlyPlan.status}
-                  </span>
-                </div>
-              </div>
-
-              {readOnlyPlan.description && (
-                <div>
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
-                    Description & Scope Overview
-                  </span>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 leading-relaxed">
-                    {readOnlyPlan.description}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Notice Date
-                  </span>
-                  <span className="font-semibold text-slate-800">
-                    {readOnlyPlan.generalNoticeDate || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-semibold block text-[10px]">
-                    Approval Date
-                  </span>
-                  <span className="font-semibold text-slate-800">
-                    {readOnlyPlan.approvalDate || "Pending"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setReadOnlyPlan(null)}
-                className="px-5 py-2.5 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -233,10 +233,17 @@ export function CreateProjectView({
   const [officerPageIndex, setOfficerPageIndex] = useState(0);
   const OFFICER_PAGE_SIZE = 4;
 
-  const officersList =
+  const rawOfficers =
     availableOfficers && availableOfficers.length > 0
       ? availableOfficers
       : INITIAL_OFFICERS;
+
+  const officersList = rawOfficers.filter(
+    (off) =>
+      off.isActive !== false &&
+      off.status !== "INACTIVE" &&
+      off.status !== "PENDING_INVITATION",
+  );
 
   // Officer Selection & Pagination Handlers
   const filteredOfficers = officersList.filter(
@@ -1066,7 +1073,7 @@ export function CreateProjectView({
                         onClick={handleSelectAllOfficers}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                       >
-                        Select All ({INITIAL_OFFICERS.length})
+                        Select All ({officersList.length})
                       </button>
                       <button
                         type="button"

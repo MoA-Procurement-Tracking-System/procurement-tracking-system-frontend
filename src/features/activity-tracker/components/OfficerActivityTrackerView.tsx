@@ -33,8 +33,14 @@ import {
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
 import {
+  fetchProjects,
+  mapBackendProjectToOfficerProject,
+} from "@/lib/projectsApi";
+import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
+import {
   ArrowUpDown,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -87,6 +93,40 @@ export function OfficerActivityTrackerView({
   const [trackingRecords, setTrackingRecords] = useState<
     OfficerActivityTrackingRecord[]
   >([]);
+  const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [rawProjects, rawPlans] = await Promise.all([
+          fetchProjects(),
+          fetchPlans(),
+        ]);
+        if (isMounted && rawProjects && rawProjects.length > 0) {
+          const mapped = rawProjects.map((p) => {
+            const officerProj = mapBackendProjectToOfficerProject(p);
+            const projPlans = (rawPlans || [])
+              .filter(
+                (pl) => pl.projectId === p.id || pl.project?.code === p.code,
+              )
+              .map(mapBackendPlanToOfficerPlanSummary);
+            return {
+              ...officerProj,
+              plans: projPlans.length > 0 ? projPlans : officerProj.plans,
+            };
+          });
+          setBackendProjects(mapped);
+        }
+      } catch (err) {
+        console.warn("fetchProjects tracker note:", err);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadRecords = window.setTimeout(() => {
@@ -110,9 +150,15 @@ export function OfficerActivityTrackerView({
     return () => window.clearTimeout(loadRecords);
   }, []);
 
+  const allProjects = useMemo(() => {
+    const existingCodes = new Set(backendProjects.map((p) => p.code));
+    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
+    return [...backendProjects, ...baseline];
+  }, [backendProjects]);
+
   const projects = useMemo(
-    () => mergeSavedPlans(officerProjects, savedPlanRecords),
-    [savedPlanRecords],
+    () => mergeSavedPlans(allProjects, savedPlanRecords),
+    [allProjects, savedPlanRecords],
   );
   const items = useMemo(
     () =>
@@ -157,13 +203,17 @@ export function collectTrackableActivities(
 
   for (const project of projects) {
     for (const plan of project.plans) {
-      if (plan.status !== "Approved") continue;
+      if (plan.status !== "Approved" && plan.status !== "Finally Approved") {
+        continue;
+      }
 
       const savedActivities = savedActivityRecords
         .filter(
           (record) =>
-            record.projectCode === project.code &&
-            record.planReference === plan.reference,
+            record.projectCode?.toLowerCase() === project.code?.toLowerCase() &&
+            (record.planReference?.toLowerCase() ===
+              plan.reference?.toLowerCase() ||
+              record.planReference?.toLowerCase() === plan.name?.toLowerCase()),
         )
         .map((record) => record.activity);
 
@@ -352,7 +402,7 @@ function resolvedStageTracking(
     item.tracking.stages.find(
       (tracking) => tracking.stageName === stage.name,
     ) ?? {
-      remarks: stage.remarks,
+      remarks: stage.remarks || "",
       revisions: [],
       stageName: stage.name,
       status: stage.notApplicable
@@ -399,8 +449,8 @@ function dateFromStage(
   stage: NonNullable<ProcurementActivitySummary["details"]>["roadmap"][number],
 ): TrackingDateValue {
   return {
-    ethiopian: stage.ethiopianDate,
-    gregorian: stage.gregorianDate,
+    ethiopian: stage.ethiopianDate || "",
+    gregorian: stage.gregorianDate || "",
   };
 }
 
@@ -1221,6 +1271,79 @@ function QuickFilterButton({
     >
       {label} <span className="font-semibold text-slate-400">{count}</span>
     </button>
+  );
+}
+
+function CompactDateInput({
+  label,
+  max,
+  min,
+  onChange,
+  value,
+}: {
+  label: string;
+  max?: string;
+  min?: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="relative block min-w-0">
+      <span className="sr-only">{label}</span>
+      <CalendarDays
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+      />
+      <input
+        aria-label={label}
+        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
+        max={max}
+        min={min}
+        onChange={(event) => onChange(event.target.value)}
+        type="date"
+        value={value}
+      />
+    </label>
+  );
+}
+
+function CompactSelect({
+  icon,
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  onChange: (value: string) => void;
+  options: readonly { label: string; value: string }[];
+  value: string;
+}) {
+  return (
+    <label className="relative block min-w-0">
+      <span className="sr-only">{label}</span>
+      {icon ? (
+        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500">
+          {icon}
+        </span>
+      ) : null}
+      <select
+        className={`h-10 w-full cursor-pointer appearance-none truncate rounded-sm border border-slate-300 bg-[#fbfcfd] py-2 pr-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15 ${icon ? "pl-9" : "pl-3"}`}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-500"
+      />
+    </label>
   );
 }
 

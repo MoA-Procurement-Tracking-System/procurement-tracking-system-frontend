@@ -10,7 +10,10 @@ import {
   Home,
   Info,
   Lock,
+  ListChecks,
+  Save,
   Search,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
@@ -73,8 +76,24 @@ export function ProjectPlansView({
     null,
   );
 
+  // Editable Form States for Director Plan Review & Edits page
+  const [editablePlanName, setEditablePlanName] = useState("");
+  const [editableDescription, setEditableDescription] = useState("");
+  const [editableBudgetYear, setEditableBudgetYear] = useState("");
+  const [editableRegion, setEditableRegion] = useState("");
+  const [editablePeriodFrom, setEditablePeriodFrom] = useState("");
+  const [editablePeriodTo, setEditablePeriodTo] = useState("");
+  const [editableNoticeDate, setEditableNoticeDate] = useState("");
+
   const handleOpenPlanDetail = (plan: ProcurementPlan) => {
     setReadOnlyPlan(plan);
+    setEditablePlanName(plan.planName);
+    setEditableDescription(plan.description || "");
+    setEditableBudgetYear(plan.budgetYear);
+    setEditableRegion(plan.organizationRegion);
+    setEditablePeriodFrom(plan.planPeriodFrom);
+    setEditablePeriodTo(plan.planPeriodTo);
+    setEditableNoticeDate(plan.generalNoticeDate || "10-Jul-2025");
   };
 
   // Filter plans under this project

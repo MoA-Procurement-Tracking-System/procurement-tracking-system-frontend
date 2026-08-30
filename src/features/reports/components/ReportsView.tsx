@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FileSpreadsheet, ChevronRight, Filter } from "lucide-react";
 import Link from "next/link";
+import { fetchPlans, type BackendPlan } from "@/lib/plansApi";
+import { fetchProjects, type BackendProject } from "@/lib/projectsApi";
 import {
   MOCK_ANNUAL_PLAN_REPORT,
   MOCK_PLAN_VS_ACTUAL_REPORT,
@@ -13,6 +15,9 @@ import {
   MOCK_DETAILED_PROCUREMENT_REPORT,
   MOCK_PROJECT_OFFICER_SUMMARY_REPORT,
   exportToExcelCSV,
+  type AnnualPlanReportRow,
+  type PlanVsActualReportRow,
+  type DelayedProcurementRow,
 } from "../reportsData";
 
 type ReportType =
@@ -27,6 +32,199 @@ type ReportType =
 
 export function ReportsView() {
   const [activeReport, setActiveReport] = useState<ReportType>("annual-plan");
+  const [backendPlans, setBackendPlans] = useState<BackendPlan[]>([]);
+  const [backendProjects, setBackendProjects] = useState<BackendProject[]>([]);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCurrentTime(Date.now()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [plans, projects] = await Promise.all([
+          fetchPlans(),
+          fetchProjects(),
+        ]);
+        if (isMounted) {
+          setBackendPlans(plans || []);
+          setBackendProjects(projects || []);
+        }
+      } catch (err) {
+        console.warn("ReportsView loadData error:", err);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const annualPlanRows = useMemo(() => {
+    if (backendPlans.length === 0) return MOCK_ANNUAL_PLAN_REPORT;
+    const rows: AnnualPlanReportRow[] = [];
+    for (const p of backendPlans) {
+      for (const a of p.activities || []) {
+        rows.push({
+          id: a.id,
+          projectCode: p.project?.code || "MOA",
+          planName: p.title || "Procurement Plan",
+          refNo: a.reference || a.id,
+          description: a.description || "",
+          category: (p as any).category || a.category || "Goods",
+          method:
+            a.procurementMethod?.label ||
+            a.procurementMethod?.code ||
+            "RFB - National",
+          estimatedAmount: a.estimatedBudget || 0,
+          currency: a.currency || "ETB",
+          fundingSource:
+            a.fundings?.[0]?.fundingSource || "African Development Bank (AfDB)",
+          region: p.organization || "Federal",
+          officer:
+            p.creator?.displayName || p.creator?.name || "Assigned Officer",
+          status:
+            p.status === "APPROVED"
+              ? "Approved"
+              : p.status === "SUBMITTED"
+                ? "Submitted"
+                : "Draft",
+        });
+      }
+    }
+    return rows.length > 0 ? rows : MOCK_ANNUAL_PLAN_REPORT;
+  }, [backendPlans]);
+
+  const planVsActualRows = useMemo(() => {
+    if (backendPlans.length === 0) return MOCK_PLAN_VS_ACTUAL_REPORT;
+    const rows: PlanVsActualReportRow[] = [];
+    for (const p of backendPlans) {
+      for (const a of p.activities || []) {
+        const stages = a.stages || [];
+        const adv = stages.find(
+          (s: any) =>
+            s.stageType?.label?.toLowerCase().includes("advert") ||
+            s.stageType?.label?.toLowerCase().includes("notice") ||
+            s.sequence === 1,
+        );
+        const opn = stages.find(
+          (s: any) =>
+            s.stageType?.label?.toLowerCase().includes("opening") ||
+            s.stageType?.label?.toLowerCase().includes("bid submission"),
+        );
+        const awd = stages.find(
+          (s: any) =>
+            s.stageType?.label?.toLowerCase().includes("award") ||
+            s.stageType?.label?.toLowerCase().includes("evaluation"),
+        );
+        const sig = stages.find(
+          (s: any) =>
+            s.stageType?.label?.toLowerCase().includes("contract") ||
+            s.stageType?.label?.toLowerCase().includes("sign"),
+        );
+
+        rows.push({
+          id: a.id,
+          refNo: a.reference || a.id,
+          description: a.description || "",
+          method:
+            a.procurementMethod?.label || a.procurementMethod?.code || "RFB",
+          plannedAdvertisingDate: adv?.plannedStartDate
+            ? new Date(adv.plannedStartDate).toISOString().slice(0, 10)
+            : "—",
+          actualAdvertisingDate: adv?.actualStartDate
+            ? new Date(adv.actualStartDate).toISOString().slice(0, 10)
+            : "—",
+          plannedOpeningDate: opn?.plannedStartDate
+            ? new Date(opn.plannedStartDate).toISOString().slice(0, 10)
+            : "—",
+          actualOpeningDate: opn?.actualStartDate
+            ? new Date(opn.actualStartDate).toISOString().slice(0, 10)
+            : "—",
+          plannedAwardDate: awd?.plannedStartDate
+            ? new Date(awd.plannedStartDate).toISOString().slice(0, 10)
+            : "—",
+          actualAwardDate: awd?.actualStartDate
+            ? new Date(awd.actualStartDate).toISOString().slice(0, 10)
+            : "—",
+          plannedSignatureDate: sig?.plannedStartDate
+            ? new Date(sig.plannedStartDate).toISOString().slice(0, 10)
+            : "—",
+          actualSignatureDate: sig?.actualStartDate
+            ? new Date(sig.actualStartDate).toISOString().slice(0, 10)
+            : "—",
+          status:
+            a.status === "COMPLETED"
+              ? "Signed"
+              : a.status === "IN_PROGRESS"
+                ? "In Progress"
+                : "Not Started",
+        });
+      }
+    }
+    return rows.length > 0 ? rows : MOCK_PLAN_VS_ACTUAL_REPORT;
+  }, [backendPlans]);
+
+  const delayedProcurementRows = useMemo(() => {
+    if (backendPlans.length === 0) return MOCK_DELAYED_PROCUREMENT_REPORT;
+    const rows: DelayedProcurementRow[] = [];
+    for (const p of backendPlans) {
+      for (const a of p.activities || []) {
+        const stages = a.stages || [];
+        for (const s of stages) {
+          const isOverdue =
+            s.currentTargetStartDate &&
+            currentTime !== null &&
+            new Date(s.currentTargetStartDate).getTime() < currentTime &&
+            s.status !== "COMPLETED" &&
+            !s.isNotApplicable;
+          if (s.status === "DELAYED" || isOverdue) {
+            const target = s.currentTargetStartDate
+              ? new Date(s.currentTargetStartDate).toISOString().slice(0, 10)
+              : "2026-08-01";
+            const delayDays =
+              s.currentTargetStartDate && currentTime !== null
+                ? Math.max(
+                    1,
+                    Math.floor(
+                      (currentTime -
+                        new Date(s.currentTargetStartDate).getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )
+                : 14;
+            const latestRev = (s.revisions || [])[
+              (s.revisions || []).length - 1
+            ];
+            rows.push({
+              id: `${a.id}-${s.id}`,
+              refNo: a.reference || a.id,
+              description: a.description || "",
+              method:
+                a.procurementMethod?.label ||
+                a.procurementMethod?.code ||
+                "RFB",
+              currentOverdueStage:
+                s.stageType?.label || (s as any).name || "Overdue Stage",
+              effectiveTargetDate: target,
+              actualOrCurrentDate: new Date().toISOString().slice(0, 10),
+              delayDays,
+              replanningReason:
+                latestRev?.reason ||
+                s.remarks ||
+                "Delay in evaluation completion",
+              officer:
+                p.creator?.displayName || p.creator?.name || "Assigned Officer",
+            });
+          }
+        }
+      }
+    }
+    return rows.length > 0 ? rows : MOCK_DELAYED_PROCUREMENT_REPORT;
+  }, [backendPlans, currentTime]);
 
   // Dynamic Filters State
   const [efy, setEfy] = useState("2018");
@@ -63,7 +261,7 @@ export function ReportsView() {
           "Officer",
           "Status",
         ];
-        const rows = MOCK_ANNUAL_PLAN_REPORT.map((r) => [
+        const rows = annualPlanRows.map((r) => [
           r.projectCode,
           r.planName,
           r.refNo,
@@ -95,7 +293,7 @@ export function ReportsView() {
           "Actual Signature",
           "Status",
         ];
-        const rows = MOCK_PLAN_VS_ACTUAL_REPORT.map((r) => [
+        const rows = planVsActualRows.map((r) => [
           r.refNo,
           r.description,
           r.method,
@@ -152,7 +350,7 @@ export function ReportsView() {
           "Replanning Reason",
           "Officer",
         ];
-        const rows = MOCK_DELAYED_PROCUREMENT_REPORT.map((r) => [
+        const rows = delayedProcurementRows.map((r) => [
           r.refNo,
           r.description,
           r.method,
@@ -163,7 +361,11 @@ export function ReportsView() {
           r.replanningReason,
           r.officer,
         ]);
-        exportToExcelCSV("MoA_Delayed_Procurement_Report", headers, rows);
+        exportToExcelCSV(
+          "MoA_Delayed_Procurement_Action_Report",
+          headers,
+          rows,
+        );
         break;
       }
       case "monthly-summary": {
@@ -800,7 +1002,7 @@ export function ReportsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_ANNUAL_PLAN_REPORT.map((row) => (
+                    {annualPlanRows.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
                           {row.projectCode}
@@ -845,7 +1047,7 @@ export function ReportsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_PLAN_VS_ACTUAL_REPORT.map((row) => (
+                    {planVsActualRows.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
                           {row.refNo}
@@ -895,7 +1097,7 @@ export function ReportsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_DELAYED_PROCUREMENT_REPORT.map((row) => (
+                    {delayedProcurementRows.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
                           {row.refNo}

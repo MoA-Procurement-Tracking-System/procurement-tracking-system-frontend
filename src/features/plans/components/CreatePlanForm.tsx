@@ -12,6 +12,7 @@ import {
   Send,
   RotateCcw,
   MessageSquare,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";

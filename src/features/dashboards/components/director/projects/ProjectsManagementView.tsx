@@ -30,6 +30,7 @@ import {
   mapBackendPlanToFrontend,
 } from "@/lib/plansApi";
 import { fetchLookups, fetchOfficers, type LookupItem } from "@/lib/lookupsApi";
+import { getOfficerReviewPlans } from "@/features/plans/components/PlanForReviewView";
 
 type ViewMode =
   "list" | "project-form" | "plans-list" | "plan-form" | "activities-list";
@@ -79,12 +80,21 @@ export function ProjectsManagementView() {
       }
       if (offList.status === "fulfilled" && offList.value.length > 0) {
         setAvailableOfficers(
-          offList.value.map((o) => ({
-            id: o.id,
-            name: o.name,
-            email: o.email,
-            roleTag: "OFFICER",
-          })),
+          offList.value
+            .filter(
+              (o) =>
+                o.isActive &&
+                o.status !== "INACTIVE" &&
+                o.status !== "PENDING_INVITATION",
+            )
+            .map((o) => ({
+              id: o.id,
+              name: o.name,
+              email: o.email,
+              roleTag: "OFFICER",
+              isActive: o.isActive,
+              status: o.status,
+            })),
         );
       }
 
@@ -95,14 +105,17 @@ export function ProjectsManagementView() {
         setProjects(mapped);
       }
 
-      // 3. Fetch plans from backend
+      // 3. Fetch plans from backend & merge with saved drafts
       const backendPlans = await fetchPlans();
-      if (backendPlans && backendPlans.length > 0) {
-        const mappedPlans = backendPlans.map((p) =>
-          mapBackendPlanToFrontend(p),
-        );
-        setPlans(mappedPlans);
-      }
+      const mappedPlans =
+        backendPlans && backendPlans.length > 0
+          ? backendPlans.map((p) => mapBackendPlanToFrontend(p))
+          : [];
+      const officerPlans = getOfficerReviewPlans();
+      const planMap = new Map<string, ProcurementPlan>();
+      officerPlans.forEach((p) => planMap.set(p.id, p));
+      mappedPlans.forEach((p) => planMap.set(p.id, p));
+      setPlans(Array.from(planMap.values()));
     } catch {}
   }, []);
 
@@ -238,8 +251,7 @@ export function ProjectsManagementView() {
           console.warn("Backend create project API note:", apiErr);
         }
 
-        const projectWithId = { ...savedProject, id: createdId };
-        setProjects((prev) => [projectWithId, ...prev]);
+        await loadData();
         showToast(
           `New sector project "${savedProject.code}" registered and officer assigned!`,
         );

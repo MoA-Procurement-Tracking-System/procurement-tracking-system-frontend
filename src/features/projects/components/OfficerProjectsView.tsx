@@ -32,12 +32,23 @@ import {
   type ProcurementPlanSummary,
   type ProjectStatus,
 } from "@/features/projects/data/officerProjects";
-import { createPlan, submitPlanForReview } from "@/lib/plansApi";
+import {
+  createPlan,
+  submitPlanForReview,
+  fetchPlans,
+  mapBackendPlanToOfficerPlanSummary,
+  type BackendPlan,
+} from "@/lib/plansApi";
 import { createActivity } from "@/lib/activitiesApi";
+import {
+  fetchProjects,
+  mapBackendProjectToOfficerProject,
+  type BackendProject,
+} from "@/lib/projectsApi";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 
 export function OfficerProjectsView({
   fromTracker,
@@ -59,6 +70,36 @@ export function OfficerProjectsView({
   const [savedActivityRecords, setSavedActivityRecords] = useState<
     SavedOfficerActivityRecord[]
   >([]);
+  const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
+  const [backendPlans, setBackendPlans] = useState<BackendPlan[]>([]);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [projData, planData] = await Promise.allSettled([
+        fetchProjects(),
+        fetchPlans(),
+      ]);
+
+      if (projData.status === "fulfilled" && projData.value.length > 0) {
+        setBackendProjects(
+          projData.value.map(mapBackendProjectToOfficerProject),
+        );
+      }
+      if (planData.status === "fulfilled" && planData.value.length > 0) {
+        setBackendPlans(planData.value);
+      }
+    } catch (err) {
+      console.warn("loadData officer view note:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadData]);
 
   useEffect(() => {
     const loadSavedRecords = window.setTimeout(() => {
@@ -77,9 +118,43 @@ export function OfficerProjectsView({
     return () => window.clearTimeout(loadSavedRecords);
   }, []);
 
+  const allProjects = useMemo(() => {
+    const existingCodes = new Set(backendProjects.map((p) => p.code));
+    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
+    const combined = [...backendProjects, ...baseline];
+
+    // Merge backend plans into each project
+    return combined.map((proj) => {
+      const matchingBackendPlans = backendPlans
+        .filter(
+          (bp) =>
+            bp.project?.code === proj.code ||
+            bp.projectId === proj.code ||
+            (bp.project && bp.project.name === proj.name),
+        )
+        .map(mapBackendPlanToOfficerPlanSummary);
+
+      if (matchingBackendPlans.length === 0) return proj;
+
+      const existingPlanRefs = new Set(
+        matchingBackendPlans.map((p) => p.reference),
+      );
+      const remainingBaselinePlans = proj.plans.filter(
+        (p) => !existingPlanRefs.has(p.reference),
+      );
+
+      return {
+        ...proj,
+        activePlans:
+          matchingBackendPlans.length + remainingBaselinePlans.length,
+        plans: [...matchingBackendPlans, ...remainingBaselinePlans],
+      };
+    });
+  }, [backendProjects, backendPlans]);
+
   const projects = useMemo(
-    () => mergeSavedPlans(officerProjects, savedPlanRecords),
-    [savedPlanRecords],
+    () => mergeSavedPlans(allProjects, savedPlanRecords),
+    [allProjects, savedPlanRecords],
   );
   const selectedProject = projects.find(
     (project) => project.code === selectedProjectCode,
@@ -121,6 +196,33 @@ export function OfficerProjectsView({
 
     if (!planForNavigation) {
       planForNavigation = createDraftPlan(selectedProject, input);
+
+      let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+        "GOODS";
+      if (input.category === "Works") catEnum = "WORKS";
+      else if (input.category === "Consultancy Services")
+        catEnum = "CONSULTANCY";
+      else if (input.category === "Non-Consulting Services")
+        catEnum = "NON_CONSULTING";
+
+      try {
+        const created = await createPlan({
+          projectId: selectedProject.code,
+          title: input.planName.trim(),
+          budgetYear: `${input.budgetYear} EFY`,
+          procurementCategory: catEnum,
+          organization: input.organizationRegion,
+          description: input.remarks || undefined,
+          periodStart: new Date(input.periodFrom || "2025-07-08").toISOString(),
+          periodEnd: new Date(input.periodTo || "2026-07-07").toISOString(),
+        });
+        if (created && created.id) {
+          planForNavigation.reference = created.id;
+        }
+      } catch (err) {
+        console.warn("Backend createPlan note:", err);
+      }
+
       const nextRecords = addSavedPlanRecord(savedPlanRecords, {
         plan: planForNavigation,
         projectCode: selectedProject.code,
@@ -132,29 +234,7 @@ export function OfficerProjectsView({
         JSON.stringify(nextRecords),
       );
 
-      // Async backend creation
-      try {
-        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
-          "GOODS";
-        if (input.category === "Works") catEnum = "WORKS";
-        else if (input.category === "Consultancy Services")
-          catEnum = "CONSULTANCY";
-        else if (input.category === "Non-Consulting Services")
-          catEnum = "NON_CONSULTING";
-
-        await createPlan({
-          projectId: selectedProject.code,
-          title: input.planName.trim(),
-          budgetYear: `${input.budgetYear} EFY`,
-          procurementCategory: catEnum,
-          organization: input.organizationRegion,
-          description: input.remarks || undefined,
-          periodStart: new Date(input.periodFrom || "2025-07-08").toISOString(),
-          periodEnd: new Date(input.periodTo || "2026-07-07").toISOString(),
-        });
-      } catch (err) {
-        console.warn("Backend createPlan note:", err);
-      }
+      await loadData();
     }
 
     if (action === "activity") {
@@ -189,15 +269,54 @@ export function OfficerProjectsView({
 
     // Async backend activity creation
     try {
+      const methodLabel = activity.method || "RFB - National";
+      const methodCode = methodLabel.includes("International")
+        ? "RFB_INT"
+        : methodLabel.includes("National") || methodLabel.includes("NCB")
+          ? "RFB_NAT"
+          : methodLabel.includes("Shopping") || methodLabel.includes("RFQ")
+            ? "STEP_RFQ"
+            : methodLabel.includes("Direct")
+              ? "DIR"
+              : methodLabel.includes("QCBS")
+                ? "QCBS"
+                : methodLabel.includes("FBS")
+                  ? "FBS"
+                  : methodLabel.includes("LCS")
+                    ? "LCS"
+                    : methodLabel.includes("CQS")
+                      ? "CQS"
+                      : methodLabel.includes("INDV")
+                        ? "INDV"
+                        : "RFB_NAT";
+
+      const customStages = (
+        activity.details?.roadmap ||
+        (activity as any).roadmap ||
+        []
+      ).map((st: any, sIdx: number) => ({
+        name: st.name || st.stageName,
+        sequence: sIdx + 1,
+        plannedStartDate: st.gregorianDate || st.plannedStartDate || undefined,
+        gregorianDate: st.gregorianDate || undefined,
+        ethiopianDate: st.ethiopianDate || undefined,
+        isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+        notApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+        remarks: st.remarks || undefined,
+      }));
+
       await createActivity({
         planId: selectedPlan.reference,
-        procurementMethodId: "pm-standard",
+        procurementMethodId: methodCode,
         description: activity.description || "Activity description",
         estimatedBudget: Number(activity.estimatedAmount) || 500000,
         currency: selectedPlan.currency || "ETB",
+        stages: customStages.length > 0 ? customStages : undefined,
         fundings: [
           {
-            fundingSource: selectedProject.fundingSource || "World Bank",
+            fundingSource:
+              selectedProject.fundingSource ||
+              "African Development Bank (AfDB)",
             loanGrantNumber: selectedProject.financingNumbers?.[0] || undefined,
             allocationPct: 100,
           },
@@ -206,6 +325,8 @@ export function OfficerProjectsView({
     } catch (err) {
       console.warn("Backend createActivity note:", err);
     }
+
+    await loadData();
 
     router.push(
       "/workspace/projects?project=" +
@@ -218,6 +339,14 @@ export function OfficerProjectsView({
   async function submitPlanToDirector() {
     if (!selectedProject || !selectedPlan) return;
 
+    // 1. Submit on backend
+    try {
+      await submitPlanForReview(selectedPlan.reference);
+    } catch (err) {
+      console.warn("Backend submitPlanForReview note:", err);
+    }
+
+    // 2. Update local state
     const updatedPlan: ProcurementPlanSummary = {
       ...selectedPlan,
       status: "Submitted to Director",
@@ -234,12 +363,7 @@ export function OfficerProjectsView({
       JSON.stringify(nextRecords),
     );
 
-    // Async backend plan submission
-    try {
-      await submitPlanForReview(selectedPlan.reference);
-    } catch (err) {
-      console.warn("Backend submitPlanForReview note:", err);
-    }
+    await loadData();
   }
 
   if (selectedProject && mode === "create-plan") {

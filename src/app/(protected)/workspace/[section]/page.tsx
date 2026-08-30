@@ -137,6 +137,10 @@ export default async function WorkspaceSectionPage({
     );
   }
 
+  if (section === "activity-tracker" && session.user.role === "DIRECTOR") {
+    return <DirectorActivityTrackerView />;
+  }
+
   return (
     <div>
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

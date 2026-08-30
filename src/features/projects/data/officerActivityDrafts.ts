@@ -18,6 +18,9 @@ export interface ProcurementActivityLot {
 }
 
 export interface ProcurementActivityRoadmapStage {
+  id?: string;
+  stageTypeId?: string;
+  sequence?: number;
   allowNotApplicable: boolean;
   days: string;
   ethiopianDate: string;
@@ -25,6 +28,21 @@ export interface ProcurementActivityRoadmapStage {
   name: string;
   notApplicable: boolean;
   remarks: string;
+  plannedStartDate?: string;
+  plannedEndDate?: string;
+  currentTargetStartDate?: string;
+  currentTargetEndDate?: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  actualDate?: string;
+  status?: string;
+  revisions?: {
+    revisionNo: number;
+    revisedStartDate: string;
+    revisedEndDate?: string;
+    reason: string;
+    createdAt?: string;
+  }[];
 }
 
 export interface ProcurementActivityFormValues {
@@ -67,6 +85,10 @@ export interface ProcurementActivityDetails {
 }
 
 export interface ProcurementActivitySummary {
+  id?: string;
+  activityId?: string;
+  planId?: string;
+  projectId?: string;
   category: string;
   currentStage: string;
   description: string;
@@ -122,7 +144,9 @@ function isSavedOfficerActivityRecord(
   return (
     typeof record.projectCode === "string" &&
     typeof record.planReference === "string" &&
-    isProcurementActivitySummary(record.activity)
+    record.activity !== undefined &&
+    typeof record.activity === "object" &&
+    typeof (record.activity as any).description === "string"
   );
 }
 
@@ -134,17 +158,7 @@ function isProcurementActivitySummary(
   const activity = value as Partial<ProcurementActivitySummary>;
   return (
     typeof activity.reference === "string" &&
-    typeof activity.description === "string" &&
-    typeof activity.category === "string" &&
-    typeof activity.method === "string" &&
-    typeof activity.currentStage === "string" &&
-    typeof activity.estimatedAmount === "number" &&
-    (activity.details === undefined ||
-      isProcurementActivityDetails(activity.details)) &&
-    (activity.status === "Completed" ||
-      activity.status === "Delayed" ||
-      activity.status === "In Progress" ||
-      activity.status === "Not Started")
+    typeof activity.description === "string"
   );
 }
 
@@ -240,13 +254,5 @@ function isActivityRoadmapStage(
 ): value is ProcurementActivityRoadmapStage {
   if (!value || typeof value !== "object") return false;
   const stage = value as Partial<ProcurementActivityRoadmapStage>;
-  return (
-    typeof stage.name === "string" &&
-    typeof stage.allowNotApplicable === "boolean" &&
-    typeof stage.days === "string" &&
-    typeof stage.ethiopianDate === "string" &&
-    typeof stage.gregorianDate === "string" &&
-    typeof stage.notApplicable === "boolean" &&
-    typeof stage.remarks === "string"
-  );
+  return typeof stage.name === "string";
 }

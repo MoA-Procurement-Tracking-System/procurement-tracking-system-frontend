@@ -33,6 +33,7 @@ export interface ProcurementPlanSummary {
   };
   reference: string;
   status: ProcurementPlanStatus;
+  planActivities?: readonly import("./officerActivityDrafts").ProcurementActivitySummary[];
 }
 
 export interface OfficerProject {
@@ -72,10 +73,7 @@ export const officerProjects: readonly OfficerProject[] = [
   {
     activePlans: 3,
     assignedOfficers: ["Yeabsira Fikre"],
-    assignmentStart: {
-      ethiopian: "02 Hamle 2016",
-      gregorian: "10 Jan 2024",
-    },
+    assignmentStart: { ethiopian: "02 Hamle 2016", gregorian: "10 Jan 2024" },
     availableOrganizationRegions: ["FPCU / Federal"],
     baseCurrency: "USD",
     code: "PRJ-24-001",
@@ -128,10 +126,7 @@ export const officerProjects: readonly OfficerProject[] = [
         status: "Submitted to Director",
       },
     ],
-    projectPeriod: {
-      from: "01 Jul 2023",
-      to: "30 Jun 2028",
-    },
+    projectPeriod: { from: "01 Jul 2023", to: "30 Jun 2028" },
     shortName: "DRIVE",
     status: "Active",
     supportsGeneralProcurementNotice: true,
@@ -139,10 +134,7 @@ export const officerProjects: readonly OfficerProject[] = [
   {
     activePlans: 5,
     assignedOfficers: ["Yeabsira Fikre"],
-    assignmentStart: {
-      ethiopian: "07 Hamle 2016",
-      gregorian: "15 Feb 2024",
-    },
+    assignmentStart: { ethiopian: "07 Hamle 2016", gregorian: "15 Feb 2024" },
     availableOrganizationRegions: [
       "FPCU / Federal",
       "Oromia",
@@ -227,10 +219,7 @@ export const officerProjects: readonly OfficerProject[] = [
         status: "Draft",
       },
     ],
-    projectPeriod: {
-      from: "01 Jan 2024",
-      to: "31 Dec 2029",
-    },
+    projectPeriod: { from: "01 Jan 2024", to: "31 Dec 2029" },
     shortName: "BREFONS",
     status: "Active",
     supportsGeneralProcurementNotice: true,
