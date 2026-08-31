@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { officerContracts } from "../../contracts/data/officerContracts";
-import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
-import { officerProjects } from "../../projects/data/officerProjects";
 import type { ProcurementActivitySummary } from "@/features/projects/data/officerActivityDrafts";
 import {
   calculateDelayDays,
@@ -22,6 +20,345 @@ const activity: ProcurementActivitySummary = {
   status: "In Progress",
 };
 
+// Inline mock for a completed activity — has a full roadmap with all stages done.
+const completedActivity: ProcurementActivitySummary = {
+  category: "Goods",
+  currentStage: "Contract Completion",
+  description: "Supply of Veterinary Cold Chain Equipment (Completed)",
+  estimatedAmount: 8_500_000,
+  method: "RFQ / Shopping",
+  reference: "ET-MoA-000006-GO-RFQ",
+  status: "Completed",
+  details: {
+    componentAllocations: [
+      { id: "Livestock Value Chains", percent: "100", selected: true },
+    ],
+    financingAllocations: [{ id: "IDA-E0380", percent: "100", selected: true }],
+    form: {
+      activityDescription: "Supply of Veterinary Cold Chain Equipment",
+      classificationCode: "42221500",
+      comments: "",
+      contractType: "Lump Sum",
+      currency: "ETB",
+      domesticPreference: "No",
+      estimatedAmount: "8500000",
+      evaluationOptionCode: "",
+      fundingSource: "World Bank",
+      highRiskCode: "",
+      inProcess: false,
+      invitationReference: "",
+      latitude: "",
+      location: "Federal",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "Open - National",
+      method: "rfq",
+      oversightClassification: "",
+      pricingBasis: "Not Applicable",
+      procurementDocumentType: "RFQ SPD",
+      procurementProcess: "Single Stage",
+      qualificationApproach: "Post-qualification",
+      requiresUnAgency: false,
+      reviewType: "Post Review",
+      scopeNotes: "",
+      specificMethod: "RFQ / Shopping",
+      subcomponent: "",
+    },
+    lots: [],
+    roadmap: [
+      {
+        allowNotApplicable: false,
+        days: "7",
+        ethiopianDate: "03-Hamle-2018",
+        gregorianDate: "2026-07-10",
+        name: "Preparation of Specification",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "3",
+        ethiopianDate: "06-Hamle-2018",
+        gregorianDate: "2026-07-13",
+        name: "Invitation to Quote",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "20-Hamle-2018",
+        gregorianDate: "2026-07-27",
+        name: "Submission and Opening of Quotations",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "5",
+        ethiopianDate: "25-Hamle-2018",
+        gregorianDate: "2026-08-01",
+        name: "Evaluation Report",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "3",
+        ethiopianDate: "28-Hamle-2018",
+        gregorianDate: "2026-08-04",
+        name: "Notification of Award",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "12-Nehase-2018",
+        gregorianDate: "2026-08-18",
+        name: "Signed Contract",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "30",
+        ethiopianDate: "12-Meskerem-2019",
+        gregorianDate: "2026-09-17",
+        name: "Contract Completion",
+        notApplicable: false,
+        remarks: "",
+      },
+    ],
+  },
+};
+
+// Inline mock for an in-progress contracted activity.
+const contractedActivity: ProcurementActivitySummary = {
+  category: "Goods",
+  currentStage: "Signed Contract",
+  description: "Procurement of Vaccines and Lab Supplies",
+  estimatedAmount: 45_000_000,
+  method: "RFB - National",
+  reference: "ET-MoA-000001-GO-RFB",
+  status: "In Progress",
+  details: {
+    componentAllocations: [
+      { id: "Livestock Value Chains", percent: "100", selected: true },
+    ],
+    financingAllocations: [{ id: "IDA-E0380", percent: "100", selected: true }],
+    form: {
+      activityDescription: "Procurement of Vaccines and Lab Supplies",
+      classificationCode: "42221501",
+      comments: "",
+      contractType: "Lump Sum",
+      currency: "ETB",
+      domesticPreference: "No",
+      estimatedAmount: "45000000",
+      evaluationOptionCode: "",
+      fundingSource: "World Bank",
+      highRiskCode: "",
+      inProcess: true,
+      invitationReference: "",
+      latitude: "",
+      location: "Federal",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "Open - National",
+      method: "rfb-national",
+      oversightClassification: "",
+      pricingBasis: "Not Applicable",
+      procurementDocumentType: "Request for Bids SPD (Goods) - 1 envelope",
+      procurementProcess: "Single Stage - One Envelope",
+      qualificationApproach: "Post-qualification",
+      requiresUnAgency: false,
+      reviewType: "Prior Review",
+      scopeNotes: "",
+      specificMethod: "Request for Bids",
+      subcomponent: "",
+    },
+    lots: [],
+    roadmap: [
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "02-Hamle-2018",
+        gregorianDate: "2026-07-09",
+        name: "Preparation of Specification",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "7",
+        ethiopianDate: "09-Hamle-2018",
+        gregorianDate: "2026-07-16",
+        name: "Draft Bidding Document",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "28",
+        ethiopianDate: "07-Nehase-2018",
+        gregorianDate: "2026-08-13",
+        name: "Issuance of Bidding Document",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "3",
+        ethiopianDate: "10-Nehase-2018",
+        gregorianDate: "2026-08-16",
+        name: "Bid Opening",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "21",
+        ethiopianDate: "01-Meskerem-2019",
+        gregorianDate: "2026-09-06",
+        name: "Bid Evaluation Report",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "5",
+        ethiopianDate: "06-Meskerem-2019",
+        gregorianDate: "2026-09-11",
+        name: "Notification of Award",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "20-Meskerem-2019",
+        gregorianDate: "2026-09-25",
+        name: "Signed Contract",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "90",
+        ethiopianDate: "20-Tahisas-2019",
+        gregorianDate: "2026-12-24",
+        name: "Contract Completion",
+        notApplicable: false,
+        remarks: "",
+      },
+    ],
+  },
+};
+
+// Inline mock for a delayed activity.
+const delayedActivity: ProcurementActivitySummary = {
+  category: "Goods",
+  currentStage: "Bid Evaluation Report",
+  description: "Supply of Agricultural Machinery",
+  estimatedAmount: 22_000_000,
+  method: "RFB - National",
+  reference: "ET-MoA-000002-GO-RFB",
+  status: "Delayed",
+  details: {
+    componentAllocations: [
+      { id: "Livestock Value Chains", percent: "100", selected: true },
+    ],
+    financingAllocations: [{ id: "IDA-E0380", percent: "100", selected: true }],
+    form: {
+      activityDescription: "Supply of Agricultural Machinery",
+      classificationCode: "44100000",
+      comments: "",
+      contractType: "Lump Sum",
+      currency: "ETB",
+      domesticPreference: "No",
+      estimatedAmount: "22000000",
+      evaluationOptionCode: "",
+      fundingSource: "World Bank",
+      highRiskCode: "",
+      inProcess: true,
+      invitationReference: "",
+      latitude: "",
+      location: "Oromia",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "Open - National",
+      method: "rfb-national",
+      oversightClassification: "",
+      pricingBasis: "Not Applicable",
+      procurementDocumentType: "Request for Bids SPD (Goods) - 1 envelope",
+      procurementProcess: "Single Stage - One Envelope",
+      qualificationApproach: "Post-qualification",
+      requiresUnAgency: false,
+      reviewType: "Prior Review",
+      scopeNotes: "",
+      specificMethod: "Request for Bids",
+      subcomponent: "",
+    },
+    lots: [],
+    roadmap: [
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "02-Hamle-2018",
+        gregorianDate: "2026-07-09",
+        name: "Preparation of Specification",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "7",
+        ethiopianDate: "09-Hamle-2018",
+        gregorianDate: "2026-07-16",
+        name: "Draft Bidding Document",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "21",
+        ethiopianDate: "01-Meskerem-2019",
+        gregorianDate: "2026-09-06",
+        name: "Bid Evaluation Report",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "5",
+        ethiopianDate: "06-Meskerem-2019",
+        gregorianDate: "2026-09-11",
+        name: "Notification of Award",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "14",
+        ethiopianDate: "20-Meskerem-2019",
+        gregorianDate: "2026-09-25",
+        name: "Signed Contract",
+        notApplicable: false,
+        remarks: "",
+      },
+      {
+        allowNotApplicable: false,
+        days: "90",
+        ethiopianDate: "20-Tahisas-2019",
+        gregorianDate: "2026-12-24",
+        name: "Contract Completion",
+        notApplicable: false,
+        remarks: "",
+      },
+    ],
+  },
+};
+
 describe("officer activity tracking", () => {
   it("creates an execution record without changing planning data", () => {
     const record = createInitialActivityTrackingRecord(
@@ -34,26 +371,12 @@ describe("officer activity tracking", () => {
     expect(record.stages).toEqual([]);
   });
 
-  it("materializes a completed activity with its approved roadmap and contract", () => {
-    const project = officerProjects.find((item) => item.code === "PRJ-24-001")!;
-    const plan = project.plans.find(
-      (item) => item.reference === "PP-DRIVE-2016-01",
-    )!;
-    const completedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "ET-MoA-000006-GO-RFQ",
-    )!;
+  it("materializes a completed activity with its approved roadmap", () => {
     const record = createInitialActivityTrackingRecord(
-      project.code,
-      plan.reference,
+      "PRJ-24-001",
+      "PP-DRIVE-2016-01",
       completedActivity,
     );
-    const contract = officerContracts.find(
-      (item) =>
-        item.details?.projectCode === project.code &&
-        item.details.planReference === plan.reference &&
-        item.details.activityReference === completedActivity.reference,
-    );
-
     expect(completedActivity.status).toBe("Completed");
     expect(completedActivity.currentStage).toBe("Contract Completion");
     expect(record.processStatus).toBe("Completed");
@@ -64,68 +387,26 @@ describe("officer activity tracking", () => {
           stage.status === "Completed" || stage.status === "Not Applicable",
       ),
     ).toBe(true);
-    expect(contract).toMatchObject({
-      remainingBalance: 0,
-      status: "Completed",
-      totalPaid: completedActivity.estimatedAmount,
-      details: {
-        activityReference: "ET-MoA-000006-GO-RFQ",
-        planReference: "PP-DRIVE-2016-01",
-        projectCode: "PRJ-24-001",
-      },
-    });
   });
 
-  it("materializes an in-progress contracted activity with partial execution and active contract", () => {
-    const project = officerProjects.find((item) => item.code === "PRJ-24-001")!;
-    const plan = project.plans.find(
-      (item) => item.reference === "PP-DRIVE-2016-01",
-    )!;
-    const contractedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "ET-MoA-000001-GO-RFB",
-    )!;
+  it("materializes an in-progress contracted activity with partial execution", () => {
     const record = createInitialActivityTrackingRecord(
-      project.code,
-      plan.reference,
+      "PRJ-24-001",
+      "PP-DRIVE-2016-01",
       contractedActivity,
     );
-    const contract = officerContracts.find(
-      (item) =>
-        item.details?.projectCode === project.code &&
-        item.details.planReference === plan.reference &&
-        item.details.activityReference === contractedActivity.reference,
-    );
-
     expect(contractedActivity.status).toBe("In Progress");
     expect(contractedActivity.currentStage).toBe("Signed Contract");
     expect(record.processStatus).toBe("Signed");
     expect(record.progressPercent).toBeGreaterThan(50);
-    expect(contract).toMatchObject({
-      status: "Active / Under Implementation",
-      details: {
-        activityReference: "ET-MoA-000001-GO-RFB",
-        planReference: "PP-DRIVE-2016-01",
-        projectCode: "PRJ-24-001",
-      },
-    });
-    expect(contract?.remainingBalance).toBeGreaterThan(0);
-    expect(contract?.totalPaid).toBeGreaterThan(0);
   });
 
   it("materializes a delayed activity with mid-stage tracking and delay details", () => {
-    const project = officerProjects.find((item) => item.code === "PRJ-24-001")!;
-    const plan = project.plans.find(
-      (item) => item.reference === "PP-DRIVE-2016-01",
-    )!;
-    const delayedActivity = getPlanActivities(project, plan).find(
-      (item) => item.reference === "ET-MoA-000002-GO-RFB",
-    )!;
     const record = createInitialActivityTrackingRecord(
-      project.code,
-      plan.reference,
+      "PRJ-24-001",
+      "PP-DRIVE-2016-01",
       delayedActivity,
     );
-
     expect(delayedActivity.status).toBe("Delayed");
     expect(record.stages.some((stage) => stage.status === "In Progress")).toBe(
       true,

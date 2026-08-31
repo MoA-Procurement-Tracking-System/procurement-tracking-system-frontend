@@ -1,7 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ProcurementActivityFormValues } from "../../projects/data/officerActivityDrafts";
-import { officerProjects } from "../../projects/data/officerProjects";
+import type {
+  ProcurementActivityFormValues,
+  ProcurementActivitySummary,
+} from "../../projects/data/officerActivityDrafts";
+import type {
+  OfficerProject,
+  ProcurementPlanSummary,
+} from "../../projects/data/officerProjects";
 import {
   collectTrackableActivities,
   OfficerActivityTrackerView,
@@ -11,6 +17,47 @@ import {
   trackerStageProgress,
   type OfficerTrackedActivityItem,
 } from "./OfficerActivityTrackerView";
+
+const mockPlan: ProcurementPlanSummary = {
+  activities: 1,
+  budgetYear: "2016 EFY",
+  category: "Goods",
+  completedActivities: 0,
+  currency: "ETB",
+  delayedActivities: 0,
+  estimatedValue: 2_500_000,
+  inProgressActivities: 0,
+  name: "2016 EFY Annual Procurement Plan",
+  reference: "PP-DRIVE-2016-01",
+  status: "Approved",
+};
+
+const mockProject: OfficerProject = {
+  activePlans: 1,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "ETB",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [mockPlan],
+  shortName: "DRIVE",
+  status: "Active",
+};
+
+const mockSavedActivity: ProcurementActivitySummary = {
+  category: "Goods",
+  currentStage: "Bid Opening",
+  description: "Supply of veterinary cold-chain equipment",
+  estimatedAmount: 2_500_000,
+  method: "RFQ / Shopping",
+  reference: "ET-MoA-000001-GO-RFQ",
+  status: "Not Started",
+};
 
 describe("OfficerActivityTrackerView", () => {
   it("renders the officer tracking workspace and filters", () => {
@@ -31,10 +78,14 @@ describe("OfficerActivityTrackerView", () => {
   });
 
   it("includes activities from approved plans only", () => {
-    const items = collectTrackableActivities(officerProjects, [], []);
-    expect(items).toHaveLength(27);
+    const savedRecord = {
+      activity: mockSavedActivity,
+      planReference: mockPlan.reference,
+      projectCode: mockProject.code,
+    };
+    const items = collectTrackableActivities([mockProject], [savedRecord], []);
+    expect(items).toHaveLength(1);
     expect(items.every((item) => item.plan.status === "Approved")).toBe(true);
-    expect(items.some((item) => item.plan.status === "Draft")).toBe(false);
   });
 
   it("uses the latest revised target and derives due-soon stage progress", () => {
@@ -77,14 +128,11 @@ function makeTrackedItem({
   revisedTarget?: string;
   signedContractCompleted?: boolean;
 } = {}): OfficerTrackedActivityItem {
-  const base = collectTrackableActivities(officerProjects, [], [])[0];
-  if (!base) throw new Error("Expected an approved fixture activity.");
-
   return {
-    ...base,
     activity: {
-      ...base.activity,
+      category: "Goods",
       currentStage: "Bid Opening",
+      description: "Supply of cold-chain equipment",
       details: {
         componentAllocations: [],
         financingAllocations: [],
@@ -120,12 +168,21 @@ function makeTrackedItem({
           },
         ],
       },
+      estimatedAmount: 2_500_000,
+      method: "RFQ / Shopping",
+      reference: "ET-MoA-000001-GO-RFQ",
       status: "In Progress",
     },
+    plan: mockPlan,
+    project: mockProject,
     tracking: {
-      ...base.tracking,
+      activityReference: "ET-MoA-000001-GO-RFQ",
+      activityStatus: "Cleared",
+      generalRemarks: "",
+      planReference: mockPlan.reference,
       processStatus,
       progressPercent: 50,
+      projectCode: mockProject.code,
       stages: [
         {
           actualDate: {
@@ -168,6 +225,7 @@ function makeTrackedItem({
           status: signedContractCompleted ? "Completed" : "Not Started",
         },
       ],
+      updatedAt: "2026-08-01T00:00:00.000Z",
     },
   };
 }

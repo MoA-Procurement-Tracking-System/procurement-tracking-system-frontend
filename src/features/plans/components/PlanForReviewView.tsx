@@ -39,128 +39,10 @@ import {
 } from "../../dashboards/components/director/projects/projectsData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
-import {
-  officerProjects,
-  type OfficerProject,
-  type ProcurementCategory,
-  type ProcurementPlanSummary,
-} from "../../projects/data/officerProjects";
-import {
-  mergeSavedPlans,
-  OFFICER_PLAN_DRAFTS_STORAGE_KEY,
-  parseSavedPlanRecords,
-  upsertSavedPlanRecord,
-} from "../../projects/data/officerPlanDrafts";
-import {
-  OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
-  parseSavedActivityRecords,
-  type ProcurementActivitySummary,
-} from "../../projects/data/officerActivityDrafts";
-import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
-import {
-  INITIAL_ACTIVITIES,
-  type ProcurementActivity,
-} from "../../activities/activitiesData";
+import type { ProcurementActivity, ActivityStage } from "../../activities/activitiesData";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
-}
-
-function mapOfficerPlanToDirectorPlan(
-  project: OfficerProject,
-  plan: ProcurementPlanSummary,
-  savedActivities: readonly ProcurementActivitySummary[],
-): ProcurementPlan {
-  const activities = getPlanActivities(project, plan, savedActivities);
-  return {
-    id: `officer-${project.code}-${plan.reference}`,
-    projectId: `proj-${project.code}`,
-    projectCode: project.code,
-    projectName: project.name,
-    planName: plan.name,
-    budgetYear: plan.budgetYear,
-    category: plan.category as PlanCategory,
-    planPeriodFrom: plan.planPeriod?.from?.gregorian ?? "2025-07-08",
-    planPeriodTo: plan.planPeriod?.to?.gregorian ?? "2026-07-07",
-    organizationRegion:
-      plan.organizationRegion ?? project.organizationRegion ?? "Federal",
-    description: plan.description,
-    status: (plan.status === "Submitted to Director"
-      ? "Submitted to Director"
-      : plan.status === "Returned"
-        ? "Returned"
-        : plan.status === "Committee Review"
-          ? "Committee Review"
-          : "Submitted to Director") as PlanStatus,
-    createdBy: project.assignedOfficers?.[0] ?? "Assigned Officer",
-    createdAt: "2026-08-26",
-    activitiesCount: activities.length,
-    activities,
-  };
-}
-
-export function getOfficerReviewPlans(): ProcurementPlan[] {
-  try {
-    const savedRecords = parseSavedPlanRecords(
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(OFFICER_PLAN_DRAFTS_STORAGE_KEY)
-        : null,
-    );
-    const savedActivityRecords = parseSavedActivityRecords(
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY)
-        : null,
-    );
-
-    const mergedOfficerProjects = mergeSavedPlans(
-      officerProjects,
-      savedRecords,
-    );
-
-    const officerReviewPlans: ProcurementPlan[] = [];
-
-    for (const project of mergedOfficerProjects) {
-      for (const plan of project.plans) {
-        if (
-          plan.status === "Submitted to Director" ||
-          plan.status === "Returned" ||
-          plan.status === "Committee Review"
-        ) {
-          const planActivities = savedActivityRecords
-            .filter((r) => {
-              const projCode = (r.projectCode || "").toLowerCase();
-              const pCode = (project.code || "").toLowerCase();
-              const pRef = (r.planReference || "").toLowerCase();
-              const planRef = (plan.reference || "").toLowerCase();
-              const planName = (plan.name || "").toLowerCase();
-
-              const projMatches =
-                !projCode ||
-                !pCode ||
-                projCode === pCode ||
-                planName.includes(projCode);
-              const planMatches =
-                !pRef ||
-                pRef === planRef ||
-                pRef === planName ||
-                planName.includes(pRef) ||
-                savedActivityRecords.length <= 10;
-
-              return projMatches && planMatches;
-            })
-            .map((r) => r.activity);
-
-          officerReviewPlans.push(
-            mapOfficerPlanToDirectorPlan(project, plan, planActivities),
-          );
-        }
-      }
-    }
-
-    return officerReviewPlans;
-  } catch {
-    return [];
-  }
 }
 
 export function PlanForReviewView({ user }: PlanForReviewViewProps) {
@@ -181,21 +63,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const mapped = rawPlans.map((p) =>
         mapBackendPlanToFrontend(p, user.id, user.email),
       );
-      const officerPlans = getOfficerReviewPlans();
 
       const planMap = new Map<string, ProcurementPlan>();
       INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-      officerPlans.forEach((p) => planMap.set(p.id, p));
       mapped.forEach((p) => planMap.set(p.id, p));
 
       setPlans(Array.from(planMap.values()));
     } catch (err) {
       console.error(err);
-      const officerPlans = getOfficerReviewPlans();
-      const planMap = new Map<string, ProcurementPlan>();
-      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-      officerPlans.forEach((p) => planMap.set(p.id, p));
-      setPlans(Array.from(planMap.values()));
+      setPlans([...INITIAL_PLANS]);
     } finally {
       setLoading(false);
     }
@@ -677,7 +553,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     reviewActivities.map((act, idx) => {
                       const currentTargetDate =
                         act.roadmap.find(
-                          (s) => s.revisedTargetDate || s.originalPlannedDate,
+                          (s: ActivityStage) =>
+                            s.revisedTargetDate || s.originalPlannedDate,
                         )?.revisedTargetDate ||
                         act.roadmap[0]?.originalPlannedDate ||
                         "N/A";
@@ -919,7 +796,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     rows={3}
                     value={editingActivity.description}
                     onChange={(e) =>
-                      setEditingActivity((prev) =>
+                      setEditingActivity((prev: ProcurementActivity | null) =>
                         prev ? { ...prev, description: e.target.value } : null,
                       )
                     }
@@ -938,7 +815,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     type="date"
                     value={
                       editingActivity.roadmap.find(
-                        (s) => s.revisedTargetDate || s.originalPlannedDate,
+                        (s: ActivityStage) =>
+                          s.revisedTargetDate || s.originalPlannedDate,
                       )?.revisedTargetDate ||
                       editingActivity.roadmap[0]?.originalPlannedDate ||
                       ""
@@ -946,10 +824,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     onChange={(e) => {
                       const newDate = e.target.value;
                       const updatedRoadmap = editingActivity.roadmap.map(
-                        (s, sIdx) =>
+                        (s: ActivityStage, sIdx: number) =>
                           sIdx === 0 ? { ...s, revisedTargetDate: newDate } : s,
                       );
-                      setEditingActivity((prev) =>
+                      setEditingActivity((prev: ProcurementActivity | null) =>
                         prev ? { ...prev, roadmap: updatedRoadmap } : null,
                       );
                     }}
@@ -966,7 +844,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     type="text"
                     value={editingActivity.remarks || ""}
                     onChange={(e) =>
-                      setEditingActivity((prev) =>
+                      setEditingActivity((prev: ProcurementActivity | null) =>
                         prev ? { ...prev, remarks: e.target.value } : null,
                       )
                     }
@@ -984,7 +862,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     type="text"
                     value={editingActivity.additionalRemarks || ""}
                     onChange={(e) =>
-                      setEditingActivity((prev) =>
+                      setEditingActivity((prev: ProcurementActivity | null) =>
                         prev
                           ? { ...prev, additionalRemarks: e.target.value }
                           : null,

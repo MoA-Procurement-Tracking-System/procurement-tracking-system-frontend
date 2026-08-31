@@ -30,7 +30,6 @@ import {
   mapBackendPlanToFrontend,
 } from "@/lib/plansApi";
 import { fetchLookups, fetchOfficers, type LookupItem } from "@/lib/lookupsApi";
-import { getOfficerReviewPlans } from "@/features/plans/components/PlanForReviewView";
 
 type ViewMode =
   "list" | "project-form" | "plans-list" | "plan-form" | "activities-list";
@@ -65,57 +64,41 @@ export function ProjectsManagementView() {
 
   const loadData = useCallback(async () => {
     try {
-      // 1. Fetch live lookups and officers
-      const [secList, fsList, offList] = await Promise.allSettled([
+      // 1. Fetch lookups & officers
+      const [officers, secList, fundList] = await Promise.all([
+        fetchOfficers(),
         fetchLookups("SECTOR"),
         fetchLookups("FUNDING_SOURCE"),
-        fetchOfficers(),
       ]);
-
-      if (secList.status === "fulfilled" && secList.value.length > 0) {
-        setSectors(secList.value);
-      }
-      if (fsList.status === "fulfilled" && fsList.value.length > 0) {
-        setFundingSources(fsList.value);
-      }
-      if (offList.status === "fulfilled" && offList.value.length > 0) {
-        setAvailableOfficers(
-          offList.value
-            .filter(
-              (o) =>
-                o.isActive &&
-                o.status !== "INACTIVE" &&
-                o.status !== "PENDING_INVITATION",
-            )
-            .map((o) => ({
-              id: o.id,
-              name: o.name,
-              email: o.email,
-              roleTag: "OFFICER",
-              isActive: o.isActive,
-              status: o.status,
-            })),
-        );
-      }
+      setAvailableOfficers(
+        officers.map((o) => ({
+          id: o.id,
+          name: o.name,
+          email: o.email,
+          roleTag: "OFFICER",
+          isActive: o.isActive,
+          status: o.status,
+        })),
+      );
+      setSectors(secList);
+      setFundingSources(fundList);
 
       // 2. Fetch projects from backend
       const backendProjects = await fetchProjects();
       if (backendProjects && backendProjects.length > 0) {
-        const mapped = backendProjects.map(mapBackendProjectToProjectItem);
+        const mapped = backendProjects.map((bp) =>
+          mapBackendProjectToProjectItem(bp),
+        );
         setProjects(mapped);
       }
 
-      // 3. Fetch plans from backend & merge with saved drafts
+      // 3. Fetch plans from backend
       const backendPlans = await fetchPlans();
       const mappedPlans =
         backendPlans && backendPlans.length > 0
           ? backendPlans.map((p) => mapBackendPlanToFrontend(p))
           : [];
-      const officerPlans = getOfficerReviewPlans();
-      const planMap = new Map<string, ProcurementPlan>();
-      officerPlans.forEach((p) => planMap.set(p.id, p));
-      mappedPlans.forEach((p) => planMap.set(p.id, p));
-      setPlans(Array.from(planMap.values()));
+      setPlans(mappedPlans);
     } catch {}
   }, []);
 

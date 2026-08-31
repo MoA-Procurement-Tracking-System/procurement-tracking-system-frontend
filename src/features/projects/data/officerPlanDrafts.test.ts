@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { officerProjects } from "./officerProjects";
 import {
   addSavedPlanRecord,
   createDraftPlan,
@@ -7,6 +6,69 @@ import {
   parseSavedPlanRecords,
   type ProcurementPlanDraftInput,
 } from "./officerPlanDrafts";
+import type { OfficerProject } from "./officerProjects";
+
+// Minimal inline mock that gives the tests a stable project with two plans.
+const mockProject: OfficerProject = {
+  activePlans: 2,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "USD",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  financingNumbers: ["IDA-E0380"],
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [
+    {
+      activities: 12,
+      budgetYear: "2016 EFY",
+      category: "Goods",
+      completedActivities: 8,
+      currency: "ETB",
+      delayedActivities: 1,
+      estimatedValue: 125_500_000,
+      inProgressActivities: 3,
+      name: "2016 EFY Annual Procurement Plan",
+      reference: "PP-DRIVE-2016-01",
+      status: "Approved",
+    },
+    {
+      activities: 4,
+      budgetYear: "2016 EFY",
+      category: "Consultancy Services",
+      completedActivities: 1,
+      currency: "USD",
+      delayedActivities: 1,
+      estimatedValue: 14_000_000,
+      inProgressActivities: 2,
+      name: "Q2 Consultancy Requirements",
+      reference: "PP-DRIVE-2016-02",
+      status: "Draft",
+    },
+    {
+      activities: 7,
+      budgetYear: "2017 EFY",
+      category: "Goods",
+      completedActivities: 3,
+      currency: "ETB",
+      delayedActivities: 1,
+      estimatedValue: 68_750_000,
+      inProgressActivities: 3,
+      name: "2017 EFY Procurement Pipeline",
+      reference: "PP-DRIVE-2017-01",
+      status: "Submitted to Director",
+    },
+  ],
+  shortName: "DRIVE",
+  status: "Active",
+  supportsGeneralProcurementNotice: true,
+};
+
+const mockProjects: readonly OfficerProject[] = [mockProject];
 
 const draftInput: ProcurementPlanDraftInput = {
   budgetYear: "2017",
@@ -24,7 +86,7 @@ const draftInput: ProcurementPlanDraftInput = {
 
 describe("officer plan draft persistence", () => {
   it("creates a Draft summary containing the entered plan data", () => {
-    const plan = createDraftPlan(officerProjects[0], draftInput);
+    const plan = createDraftPlan(mockProject, draftInput);
 
     expect(plan.reference).toBe("PP-DRIVE-2017-02");
     expect(plan.status).toBe("Draft");
@@ -36,19 +98,19 @@ describe("officer plan draft persistence", () => {
   });
 
   it("merges a saved plan into its project and updates the plan count", () => {
-    const plan = createDraftPlan(officerProjects[0], draftInput);
-    const projects = mergeSavedPlans(officerProjects, [
-      { plan, projectCode: officerProjects[0].code },
+    const plan = createDraftPlan(mockProject, draftInput);
+    const projects = mergeSavedPlans(mockProjects, [
+      { plan, projectCode: mockProject.code },
     ]);
 
     expect(projects[0].plans.at(-1)?.reference).toBe(plan.reference);
-    expect(projects[0].activePlans).toBe(officerProjects[0].activePlans + 1);
-    expect(projects[1].plans).toHaveLength(officerProjects[1].plans.length);
+    expect(projects[0].activePlans).toBe(mockProject.activePlans + 1);
+    expect(projects[1]).toBeUndefined();
   });
 
   it("round-trips valid saved records and ignores duplicate additions", () => {
-    const plan = createDraftPlan(officerProjects[0], draftInput);
-    const record = { plan, projectCode: officerProjects[0].code };
+    const plan = createDraftPlan(mockProject, draftInput);
+    const record = { plan, projectCode: mockProject.code };
     const records = addSavedPlanRecord(addSavedPlanRecord([], record), record);
 
     expect(records).toHaveLength(1);
@@ -57,7 +119,7 @@ describe("officer plan draft persistence", () => {
   });
 
   it("migrates legacy saved plans to their first valid plan category", () => {
-    const plan = createDraftPlan(officerProjects[0], draftInput);
+    const plan = createDraftPlan(mockProject, draftInput);
     const legacyPlan = {
       ...plan,
       categories: ["Consultancy", "Goods"],
@@ -65,9 +127,7 @@ describe("officer plan draft persistence", () => {
     };
 
     const [record] = parseSavedPlanRecords(
-      JSON.stringify([
-        { plan: legacyPlan, projectCode: officerProjects[0].code },
-      ]),
+      JSON.stringify([{ plan: legacyPlan, projectCode: mockProject.code }]),
     );
 
     expect(record.plan.category).toBe("Consultancy Services");
@@ -75,14 +135,14 @@ describe("officer plan draft persistence", () => {
   });
 
   it("merges status updates on existing plans when submitted to director", () => {
-    const project = officerProjects[0];
+    const project = mockProject;
     const initialPlan = project.plans[0];
     const submittedPlan = {
       ...initialPlan,
       status: "Submitted to Director" as const,
     };
 
-    const projects = mergeSavedPlans(officerProjects, [
+    const projects = mergeSavedPlans(mockProjects, [
       { plan: submittedPlan, projectCode: project.code },
     ]);
 

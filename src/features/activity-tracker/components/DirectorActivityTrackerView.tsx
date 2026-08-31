@@ -29,7 +29,6 @@ import {
   type ActivityStageTracking,
   type OfficerActivityTrackingRecord,
 } from "../data/officerActivityTracking";
-import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
 import {
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
@@ -43,7 +42,6 @@ import {
   type SavedOfficerPlanRecord,
 } from "../../projects/data/officerPlanDrafts";
 import {
-  officerProjects,
   type OfficerProject,
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
@@ -147,11 +145,7 @@ export function DirectorActivityTrackerView() {
     return () => window.clearTimeout(loadRecords);
   }, []);
 
-  const allProjects = useMemo(() => {
-    const existingCodes = new Set(backendProjects.map((p) => p.code));
-    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
-    return [...backendProjects, ...baseline];
-  }, [backendProjects]);
+  const allProjects = useMemo(() => backendProjects, [backendProjects]);
 
   const projects = useMemo(
     () => mergeSavedPlans(allProjects, savedPlanRecords),
@@ -204,11 +198,7 @@ function collectTrackableActivities(
         )
         .map((record) => record.activity);
 
-      for (const activity of getPlanActivities(
-        project,
-        plan,
-        savedActivities,
-      )) {
+      for (const activity of savedActivities) {
         const tracking =
           findActivityTrackingRecord(
             trackingRecords,

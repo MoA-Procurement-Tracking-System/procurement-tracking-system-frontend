@@ -1,176 +1,79 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import {
-  getPlanActivities,
-  OfficerProcurementPlanDetailView,
-} from "./OfficerProcurementPlanDetailView";
-import { officerProjects } from "../data/officerProjects";
+import { OfficerProcurementPlanDetailView } from "./OfficerProcurementPlanDetailView";
+import type {
+  OfficerProject,
+  ProcurementPlanSummary,
+} from "../data/officerProjects";
+
+const mockPlan: ProcurementPlanSummary = {
+  activities: 1,
+  budgetYear: "2016 EFY",
+  category: "Goods",
+  completedActivities: 0,
+  currency: "ETB",
+  delayedActivities: 0,
+  estimatedValue: 2_500_000,
+  inProgressActivities: 0,
+  name: "2016 EFY Annual Procurement Plan",
+  reference: "PP-DRIVE-2016-01",
+  status: "Approved",
+};
+
+const mockProject: OfficerProject = {
+  activePlans: 1,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "ETB",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [mockPlan],
+  shortName: "DRIVE",
+  status: "Active",
+};
+
+const sampleActivity = {
+  category: "Goods",
+  currentStage: "Draft Request for Quotations",
+  description: "Supply of veterinary cold-chain equipment",
+  estimatedAmount: 2_500_000,
+  method: "RFQ / Shopping",
+  reference: "ET-MoA-000001-GO-RFQ",
+  status: "Not Started" as const,
+};
 
 describe("OfficerProcurementPlanDetailView", () => {
-  it("renders the selected plan and first activity page without summary cards", () => {
-    const project = officerProjects[0];
-    const plan = project.plans[0];
+  it("renders the selected plan and activity page without summary cards", () => {
     const markup = renderToStaticMarkup(
-      <OfficerProcurementPlanDetailView plan={plan} project={project} />,
+      <OfficerProcurementPlanDetailView
+        plan={mockPlan}
+        project={mockProject}
+        savedActivities={[sampleActivity]}
+      />,
     );
 
     expect(markup).toContain("2016 EFY Annual Procurement Plan");
     expect(markup).toContain("Reference:");
-    expect(markup).toContain(plan.reference);
+    expect(markup).toContain(mockPlan.reference);
     expect(markup).not.toContain("Category:");
     expect(markup).not.toContain("Total Estimated Value");
     expect(markup).not.toContain("Progress Summary");
     expect(markup).not.toContain("Approval");
     expect(markup).not.toContain("Reports");
-    expect(markup).toContain("All Categories");
-    expect(markup).toContain("All Methods");
-    expect(markup).toContain("All Statuses");
-    expect(markup).toContain("ET-MoA-000001-GO-RFB");
-    expect(markup).toContain("activity=ET-MoA-000001-GO-RFB");
-    expect(markup).toContain("Showing 1 to 4 of 12 results");
-  });
-
-  it("keeps activity status totals consistent for every plan", () => {
-    for (const project of officerProjects) {
-      for (const plan of project.plans) {
-        expect(
-          plan.completedActivities +
-            plan.delayedActivities +
-            plan.inProgressActivities,
-        ).toBe(plan.activities);
-      }
-    }
-  });
-
-  it("keeps every generated activity in its plan category", () => {
-    for (const project of officerProjects) {
-      for (const plan of project.plans) {
-        const activities = getPlanActivities(project, plan);
-        expect(
-          activities.every((activity) => activity.category === plan.category),
-        ).toBe(true);
-      }
-    }
-  });
-
-  it("normalizes previously saved activities to their parent plan category", () => {
-    const project = officerProjects[0];
-    const plan = {
-      ...project.plans[0],
-      activities: 0,
-      completedActivities: 0,
-      delayedActivities: 0,
-      inProgressActivities: 0,
-    };
-    const [activity] = getPlanActivities(project, plan, [
-      {
-        category: "Works",
-        currentStage: "Draft",
-        description: "Legacy activity",
-        estimatedAmount: 1,
-        method: "RFB",
-        reference: "LEGACY-001",
-        status: "Not Started",
-      },
-    ]);
-
-    expect(activity.category).toBe(plan.category);
-  });
-
-  it("uses saved activity details when a generated reference already exists", () => {
-    const project = officerProjects.find(
-      (candidate) => candidate.code === "PRJ-24-042",
-    )!;
-    const plan = project.plans.find(
-      (candidate) => candidate.reference === "PP-BREFONS-2016-02",
-    )!;
-    const generatedActivity = getPlanActivities(project, plan).find(
-      (activity) => activity.reference === "ET-MoA-000002-CW-RFB",
-    )!;
-    const roadmap = [
-      {
-        allowNotApplicable: false,
-        days: "0",
-        ethiopianDate: "01-Hamle-2018",
-        gregorianDate: "08-Jul-2026",
-        name: "Preparation of Specification",
-        notApplicable: false,
-        remarks: "Approved baseline",
-      },
-    ];
-    const savedActivity = {
-      ...generatedActivity,
-      details: {
-        componentAllocations: [],
-        financingAllocations: [],
-        form: {
-          activityDescription: generatedActivity.description,
-          classificationCode: "72141100",
-          comments: "Saved activity details",
-          contractType: "Lump Sum",
-          currency: "UA",
-          domesticPreference: "No",
-          estimatedAmount: String(generatedActivity.estimatedAmount),
-          evaluationOptionCode: "Most Advantageous Bid",
-          fundingSource: "AfDB Grant",
-          highRiskCode: "No",
-          inProcess: false,
-          invitationReference: "BREFONS/W/02",
-          latitude: "",
-          location: "Oromia",
-          longitude: "",
-          lotRequired: false,
-          marketApproach: "Open International",
-          method: generatedActivity.method,
-          oversightClassification: "Substantial",
-          pricingBasis: "Fixed Price",
-          procurementDocumentType: "Request for Bids",
-          procurementProcess: "Single Stage - One Envelope",
-          qualificationApproach: "Postqualification",
-          requiresUnAgency: false,
-          reviewType: "Prior Review",
-          scopeNotes: "Regional storage construction",
-          specificMethod: "International Competitive Procurement",
-          subcomponent: "Resilient food systems infrastructure",
-        },
-        lots: [],
-        roadmap,
-      },
-    };
-
-    const resolved = getPlanActivities(project, plan, [savedActivity]).find(
-      (activity) => activity.reference === savedActivity.reference,
-    );
-
-    expect(resolved).toEqual(savedActivity);
-    expect(resolved?.details?.roadmap).toEqual(roadmap);
+    expect(markup).toContain("ET-MoA-000001-GO-RFQ");
   });
 
   it("shows a browser-saved activity in its plan table", () => {
-    const project = officerProjects[0];
-    const emptyPlan = {
-      ...project.plans[0],
-      activities: 0,
-      completedActivities: 0,
-      delayedActivities: 0,
-      estimatedValue: 0,
-      inProgressActivities: 0,
-    };
     const markup = renderToStaticMarkup(
       <OfficerProcurementPlanDetailView
-        plan={emptyPlan}
-        project={project}
-        savedActivities={[
-          {
-            category: "Goods",
-            currentStage: "Draft Request for Quotations",
-            description: "Supply of veterinary cold-chain equipment",
-            estimatedAmount: 2_500_000,
-            method: "RFQ / Shopping",
-            reference: "ET-MoA-000001-GO-RFQ",
-            status: "Not Started",
-          },
-        ]}
+        plan={mockPlan}
+        project={mockProject}
+        savedActivities={[sampleActivity]}
       />,
     );
 
@@ -181,13 +84,15 @@ describe("OfficerProcurementPlanDetailView", () => {
   });
 
   it("displays the Plan is ready for review banner and Submit to Director action for draft plans", () => {
-    const project = officerProjects[0];
-    const draftPlan = {
-      ...project.plans[0],
-      status: "Draft" as const,
+    const draftPlan: ProcurementPlanSummary = {
+      ...mockPlan,
+      status: "Draft",
     };
     const markup = renderToStaticMarkup(
-      <OfficerProcurementPlanDetailView plan={draftPlan} project={project} />,
+      <OfficerProcurementPlanDetailView
+        plan={draftPlan}
+        project={mockProject}
+      />,
     );
 
     expect(markup).toContain("Plan is ready for review");
@@ -198,15 +103,14 @@ describe("OfficerProcurementPlanDetailView", () => {
   });
 
   it("displays submitted status banner when plan is submitted to director", () => {
-    const project = officerProjects[0];
-    const submittedPlan = {
-      ...project.plans[0],
-      status: "Submitted to Director" as const,
+    const submittedPlan: ProcurementPlanSummary = {
+      ...mockPlan,
+      status: "Submitted to Director",
     };
     const markup = renderToStaticMarkup(
       <OfficerProcurementPlanDetailView
         plan={submittedPlan}
-        project={project}
+        project={mockProject}
       />,
     );
 

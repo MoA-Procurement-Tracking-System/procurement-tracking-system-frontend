@@ -5,8 +5,6 @@ import type {
   OfficerProject,
   ProcurementPlanSummary,
 } from "@/features/projects/data/officerProjects";
-import { getPlanActivities as getFixturePlanActivities } from "../data/fixtureActivityLifecycle";
-export { getPlanActivities } from "../data/fixtureActivityLifecycle";
 import type {
   ProcurementActivityStatus,
   ProcurementActivitySummary,
@@ -58,8 +56,8 @@ export function OfficerProcurementPlanDetailView({
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const activities = useMemo(
-    () => getFixturePlanActivities(project, plan, savedActivities),
-    [plan, project, savedActivities],
+    () => (savedActivities.length > 0 ? [...savedActivities] : []),
+    [savedActivities],
   );
   const categoryOptions = useMemo(
     () =>

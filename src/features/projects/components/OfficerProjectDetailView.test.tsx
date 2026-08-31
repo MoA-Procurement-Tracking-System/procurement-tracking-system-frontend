@@ -1,12 +1,34 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { officerProjects } from "../data/officerProjects";
+import type { OfficerProject } from "../data/officerProjects";
 import { OfficerProjectDetailView } from "./OfficerProjectDetailView";
+
+const mockProject: OfficerProject = {
+  activePlans: 2,
+  assignedOfficers: ["Yeabsira Fikre"],
+  assignmentStart: { ethiopian: "02 Hamle 2016", gregorian: "10 Jan 2024" },
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "USD",
+  code: "PRJ-24-001",
+  components: ["Livestock Value Chains and Trade Facilitation"],
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  financingNumbers: ["IDA-E0380", "IDA-61650"],
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [],
+  projectPeriod: { from: "01 Jul 2023", to: "30 Jun 2028" },
+  shortName: "DRIVE",
+  status: "Active",
+  supportsGeneralProcurementNotice: true,
+};
 
 describe("OfficerProjectDetailView", () => {
   it("shows entered Create Project fields and excludes non-project fields", () => {
     const markup = renderToStaticMarkup(
-      <OfficerProjectDetailView project={officerProjects[0]} />,
+      <OfficerProjectDetailView project={mockProject} />,
     );
 
     expect(markup).toContain("Country / organisation");
@@ -24,7 +46,7 @@ describe("OfficerProjectDetailView", () => {
 
   it("omits optional project fields that were not entered", () => {
     const project = {
-      ...officerProjects[0],
+      ...mockProject,
       components: undefined,
       financingNumbers: undefined,
       organizationRegion: undefined,

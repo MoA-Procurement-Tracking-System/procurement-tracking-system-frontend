@@ -4,10 +4,7 @@ import { StatusText } from "../../../components/dashboard/StatusText";
 import { CreateProcurementActivityView } from "@/features/projects/components/CreateProcurementActivityView";
 import { CreateProcurementPlanView } from "@/features/projects/components/CreateProcurementPlanView";
 import { OfficerProcurementActivityDetailView } from "@/features/projects/components/OfficerProcurementActivityDetailView";
-import {
-  getPlanActivities,
-  OfficerProcurementPlanDetailView,
-} from "@/features/projects/components/OfficerProcurementPlanDetailView";
+import { OfficerProcurementPlanDetailView } from "@/features/projects/components/OfficerProcurementPlanDetailView";
 import { OfficerProjectDetailView } from "@/features/projects/components/OfficerProjectDetailView";
 import {
   addSavedActivityRecord,
@@ -27,7 +24,6 @@ import {
   upsertSavedPlanRecord,
 } from "@/features/projects/data/officerPlanDrafts";
 import {
-  officerProjects,
   type OfficerProject,
   type ProcurementPlanSummary,
   type ProjectStatus,
@@ -119,12 +115,8 @@ export function OfficerProjectsView({
   }, []);
 
   const allProjects = useMemo(() => {
-    const existingCodes = new Set(backendProjects.map((p) => p.code));
-    const baseline = officerProjects.filter((p) => !existingCodes.has(p.code));
-    const combined = [...backendProjects, ...baseline];
-
     // Merge backend plans into each project
-    return combined.map((proj) => {
+    return backendProjects.map((proj) => {
       const matchingBackendPlans = backendPlans
         .filter(
           (bp) =>
@@ -171,11 +163,9 @@ export function OfficerProjectsView({
     .map((record) => record.activity);
   const selectedActivity =
     selectedProject && selectedPlan && selectedActivityReference
-      ? getPlanActivities(
-          selectedProject,
-          selectedPlan,
-          selectedPlanActivities,
-        ).find((activity) => activity.reference === selectedActivityReference)
+      ? selectedPlanActivities.find(
+          (activity) => activity.reference === selectedActivityReference,
+        )
       : undefined;
 
   async function savePlan(
@@ -661,10 +651,10 @@ function OfficerProjectsList({
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-sm font-medium text-slate-700">
-                        {project.assignmentStart.gregorian}
+                        {project.assignmentStart?.gregorian ?? "—"}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-500">
-                        {project.assignmentStart.ethiopian}
+                        {project.assignmentStart?.ethiopian}
                       </p>
                     </td>
                     <td className="px-4 py-4 text-center text-sm font-bold text-slate-800">
