@@ -30,7 +30,10 @@ export function SearchableSelect({
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -44,7 +47,8 @@ export function SearchableSelect({
     return options.filter((o) => o.label.toLowerCase().includes(s));
   }, [options, search]);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label || placeholder;
+  const selectedLabel =
+    options.find((o) => o.value === value)?.label || placeholder;
 
   return (
     <div className="relative" ref={containerRef}>
@@ -95,7 +99,9 @@ export function SearchableSelect({
                 >
                   <span className="truncate">{opt.label}</span>
                   {opt.value === value && (
-                    <span className="text-[11px] text-slate-700 ml-1 font-bold">✓</span>
+                    <span className="text-[11px] text-slate-700 ml-1 font-bold">
+                      ✓
+                    </span>
                   )}
                 </button>
               ))

@@ -6,7 +6,6 @@ import {
   type PlanVsActualReportRow,
   type DelayedProcurementRow,
   type ContractPaymentReportRow,
-  MOCK_ANNUAL_PLAN_REPORT,
 } from "../reportsData";
 
 export interface ReportTablesProps {
@@ -24,7 +23,9 @@ export function ReportTables({
   delayedProcurementRows,
   contractPaymentRows = [],
 }: ReportTablesProps) {
-  const currentReportTitle = REPORT_LIST.find((r) => r.id === activeReport)?.label;
+  const currentReportTitle = REPORT_LIST.find(
+    (r) => r.id === activeReport,
+  )?.label;
 
   return (
     <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden max-w-full">
@@ -66,7 +67,9 @@ export function ReportTables({
                   <td className="py-2.5 px-3 font-mono">{row.refNo}</td>
                   <td className="py-2.5 px-3">{row.description}</td>
                   <td className="py-2.5 px-3 font-semibold">{row.category}</td>
-                  <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">{row.method}</td>
+                  <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">
+                    {row.method}
+                  </td>
                   <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
                     {row.currency} {row.estimatedAmount.toLocaleString()}
                   </td>
@@ -237,7 +240,7 @@ export function ReportTables({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {MOCK_ANNUAL_PLAN_REPORT.map((row) => (
+              {annualPlanRows.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50">
                   <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
                     {row.refNo}
@@ -246,7 +249,9 @@ export function ReportTables({
                     {row.description}
                   </td>
                   <td className="py-2.5 px-3 font-semibold">{row.category}</td>
-                  <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">{row.method}</td>
+                  <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">
+                    {row.method}
+                  </td>
                   <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
                     {row.currency} {row.estimatedAmount.toLocaleString()}
                   </td>

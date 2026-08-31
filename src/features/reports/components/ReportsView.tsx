@@ -4,7 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { fetchPlans, type BackendPlan } from "@/lib/plansApi";
 import { fetchProjects, type BackendProject } from "@/lib/projectsApi";
-import { fetchLookups, fetchOfficers, type LookupItem, type OfficerUserItem } from "@/lib/lookupsApi";
+import {
+  fetchLookups,
+  fetchOfficers,
+  type LookupItem,
+  type OfficerUserItem,
+} from "@/lib/lookupsApi";
 import {
   downloadAnnualProcurementPlanReport,
   downloadPlanVsActualReport,
@@ -16,15 +21,16 @@ import {
   downloadProjectOfficerSummaryReport,
 } from "@/lib/reportsApi";
 import {
-  MOCK_ANNUAL_PLAN_REPORT,
-  MOCK_PLAN_VS_ACTUAL_REPORT,
-  MOCK_DELAYED_PROCUREMENT_REPORT,
-  MOCK_CONTRACT_PAYMENT_REPORT,
   type AnnualPlanReportRow,
   type PlanVsActualReportRow,
   type DelayedProcurementRow,
 } from "../reportsData";
-import { type ReportType, type ReportFilterState, DEFAULT_FILTERS } from "../types";
+import {
+  type ReportType,
+  type ReportFilterState,
+  DEFAULT_FILTERS,
+} from "../types";
+import { ShieldAlert, LogOut } from "lucide-react";
 import { ReportTypeSelector } from "./ReportTypeSelector";
 import { ReportFiltersPanel } from "./ReportFiltersPanel";
 import { ReportTables } from "./ReportTables";
@@ -39,6 +45,7 @@ export function ReportsView() {
   const [currentTime, setCurrentTime] = useState<number | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   // Per-report filter state persistence
   const [savedFiltersPerReport, setSavedFiltersPerReport] = useState<
@@ -47,7 +54,9 @@ export function ReportsView() {
     "annual-plan": { ...DEFAULT_FILTERS },
   });
 
-  const [filters, setFilters] = useState<ReportFilterState>({ ...DEFAULT_FILTERS });
+  const [filters, setFilters] = useState<ReportFilterState>({
+    ...DEFAULT_FILTERS,
+  });
   const [isApplying, setIsApplying] = useState(false);
   const [appliedFeedback, setAppliedFeedback] = useState(false);
 
@@ -113,8 +122,15 @@ export function ReportsView() {
           setMethods(pmList || []);
           setOfficers(offList || []);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn("ReportsView loadData error:", err);
+        if (
+          err?.status === 401 ||
+          err?.message?.toLowerCase().includes("session") ||
+          err?.message?.toLowerCase().includes("unauthorized")
+        ) {
+          setIsSessionExpired(true);
+        }
       }
     }
     loadData();
@@ -240,7 +256,8 @@ export function ReportsView() {
             estimatedAmount: a.estimatedBudget || 0,
             currency: a.currency || "ETB",
             fundingSource:
-              a.fundings?.[0]?.fundingSource || "African Development Bank (AfDB)",
+              a.fundings?.[0]?.fundingSource ||
+              "African Development Bank (AfDB)",
             region: p.organization || "Federal",
             officer:
               p.creator?.displayName || p.creator?.name || "Assigned Officer",
@@ -431,7 +448,9 @@ export function ReportsView() {
                   s.remarks ||
                   "Delay in evaluation completion",
                 officer:
-                  p.creator?.displayName || p.creator?.name || "Assigned Officer",
+                  p.creator?.displayName ||
+                  p.creator?.name ||
+                  "Assigned Officer",
               });
             }
           }
@@ -448,7 +467,8 @@ export function ReportsView() {
       switch (activeReport) {
         case "annual-plan":
           await downloadAnnualProcurementPlanReport({
-            budgetYear: filters.efy && filters.efy !== "ALL" ? filters.efy : "2017 EFY",
+            budgetYear:
+              filters.efy && filters.efy !== "ALL" ? filters.efy : "2017 EFY",
             projectId: filters.project !== "ALL" ? filters.project : undefined,
             category: filters.category !== "ALL" ? filters.category : undefined,
             methodId:
@@ -529,11 +549,20 @@ export function ReportsView() {
           });
           break;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Export failed:", err);
-      setExportError(
-        err instanceof Error ? err.message : "Failed to generate report",
-      );
+      if (
+        err?.status === 401 ||
+        err?.message?.toLowerCase().includes("session") ||
+        err?.message?.toLowerCase().includes("unauthorized")
+      ) {
+        setIsSessionExpired(true);
+        setExportError("Your session has ended. Please sign in again.");
+      } else {
+        setExportError(
+          err instanceof Error ? err.message : "Failed to generate report",
+        );
+      }
     } finally {
       setIsExporting(false);
     }
@@ -542,7 +571,10 @@ export function ReportsView() {
   return (
     <div className="space-y-4 animate-in fade-in duration-200 pb-12 max-w-full overflow-hidden">
       {/* BREADCRUMB NAVIGATION */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs mb-1">
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-2 text-xs mb-1"
+      >
         <Link
           href="/dashboard"
           className="text-slate-500 hover:text-slate-900 transition-colors"
@@ -552,6 +584,33 @@ export function ReportsView() {
         <span className="text-slate-400 text-xs">›</span>
         <span className="font-bold text-[#0A3C2F]">Reports</span>
       </nav>
+
+      {/* SESSION EXPIRED BANNER */}
+      {isSessionExpired && (
+        <div className="bg-amber-50/90 border border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                Session Expired
+              </h4>
+              <p className="text-xs text-amber-800 font-medium">
+                Your session has ended. Please sign in again to continue working
+                with reports.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-900 text-white hover:bg-amber-950 text-xs font-bold transition-all shadow-2xs whitespace-nowrap self-start sm:self-auto"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Sign In Again</span>
+          </Link>
+        </div>
+      )}
 
       {/* TOP SECTION: Horizontal Report Type Selector & Export Button */}
       <ReportTypeSelector
@@ -565,30 +624,30 @@ export function ReportsView() {
       <ReportFiltersPanel
         activeReport={activeReport}
         filters={filters}
-          onUpdateFilter={updateFilter}
-          onApply={triggerApplyFeedback}
-          onReset={handleResetFilters}
-          onExport={handleExportExcel}
-          isExporting={isExporting}
-          exportError={exportError}
-          isApplying={isApplying}
-          appliedFeedback={appliedFeedback}
-          activeFilterCount={activeFilterCount}
-          projectOptions={projectOptions}
-          fundingSourceOptions={fundingSourceOptions}
-          methodOptions={methodOptions}
-          officerOptions={officerOptions}
-          categoryOptions={categoryOptions}
-        />
+        onUpdateFilter={updateFilter}
+        onApply={triggerApplyFeedback}
+        onReset={handleResetFilters}
+        onExport={handleExportExcel}
+        isExporting={isExporting}
+        exportError={exportError}
+        isApplying={isApplying}
+        appliedFeedback={appliedFeedback}
+        activeFilterCount={activeFilterCount}
+        projectOptions={projectOptions}
+        fundingSourceOptions={fundingSourceOptions}
+        methodOptions={methodOptions}
+        officerOptions={officerOptions}
+        categoryOptions={categoryOptions}
+      />
 
-        {/* Bottom Container: Full Width Data Output Tables */}
-        <ReportTables
-          activeReport={activeReport}
-          annualPlanRows={annualPlanRows}
-          planVsActualRows={planVsActualRows}
-          delayedProcurementRows={delayedProcurementRows}
-          contractPaymentRows={MOCK_CONTRACT_PAYMENT_REPORT}
-        />
+      {/* Bottom Container: Full Width Data Output Tables */}
+      <ReportTables
+        activeReport={activeReport}
+        annualPlanRows={annualPlanRows}
+        planVsActualRows={planVsActualRows}
+        delayedProcurementRows={delayedProcurementRows}
+        contractPaymentRows={[]}
+      />
     </div>
   );
 }
