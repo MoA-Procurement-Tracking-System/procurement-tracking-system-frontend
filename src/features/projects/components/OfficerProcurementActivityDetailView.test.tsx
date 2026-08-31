@@ -1,11 +1,42 @@
 import type { ProcurementActivitySummary } from "../data/officerActivityDrafts";
-import { officerProjects } from "../data/officerProjects";
+import type {
+  OfficerProject,
+  ProcurementPlanSummary,
+} from "../data/officerProjects";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { OfficerProcurementActivityDetailView } from "./OfficerProcurementActivityDetailView";
 
-const project = officerProjects[0];
-const plan = project.plans[0];
+const plan: ProcurementPlanSummary = {
+  activities: 1,
+  budgetYear: "2016 EFY",
+  category: "Goods",
+  completedActivities: 0,
+  currency: "ETB",
+  delayedActivities: 0,
+  estimatedValue: 2_500_000,
+  inProgressActivities: 0,
+  name: "2016 EFY Annual Procurement Plan",
+  reference: "PP-DRIVE-2016-01",
+  status: "Approved",
+};
+
+const project: OfficerProject = {
+  activePlans: 1,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "ETB",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [plan],
+  shortName: "DRIVE",
+  status: "Active",
+};
 
 const detailedActivity: ProcurementActivitySummary = {
   category: "Goods",

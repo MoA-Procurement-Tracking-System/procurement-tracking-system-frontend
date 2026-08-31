@@ -6,14 +6,6 @@ import Link from "next/link";
 import { fetchPlans, type BackendPlan } from "@/lib/plansApi";
 import { fetchProjects, type BackendProject } from "@/lib/projectsApi";
 import {
-  MOCK_ANNUAL_PLAN_REPORT,
-  MOCK_PLAN_VS_ACTUAL_REPORT,
-  MOCK_STEP_REPORT,
-  MOCK_DELAYED_PROCUREMENT_REPORT,
-  MOCK_MONTHLY_SUMMARY_REPORT,
-  MOCK_CONTRACT_PAYMENT_REPORT,
-  MOCK_DETAILED_PROCUREMENT_REPORT,
-  MOCK_PROJECT_OFFICER_SUMMARY_REPORT,
   exportToExcelCSV,
   type AnnualPlanReportRow,
   type PlanVsActualReportRow,
@@ -64,7 +56,6 @@ export function ReportsView() {
   }, []);
 
   const annualPlanRows = useMemo(() => {
-    if (backendPlans.length === 0) return MOCK_ANNUAL_PLAN_REPORT;
     const rows: AnnualPlanReportRow[] = [];
     for (const p of backendPlans) {
       for (const a of p.activities || []) {
@@ -95,11 +86,10 @@ export function ReportsView() {
         });
       }
     }
-    return rows.length > 0 ? rows : MOCK_ANNUAL_PLAN_REPORT;
+    return rows;
   }, [backendPlans]);
 
   const planVsActualRows = useMemo(() => {
-    if (backendPlans.length === 0) return MOCK_PLAN_VS_ACTUAL_REPORT;
     const rows: PlanVsActualReportRow[] = [];
     for (const p of backendPlans) {
       for (const a of p.activities || []) {
@@ -165,11 +155,10 @@ export function ReportsView() {
         });
       }
     }
-    return rows.length > 0 ? rows : MOCK_PLAN_VS_ACTUAL_REPORT;
+    return rows;
   }, [backendPlans]);
 
   const delayedProcurementRows = useMemo(() => {
-    if (backendPlans.length === 0) return MOCK_DELAYED_PROCUREMENT_REPORT;
     const rows: DelayedProcurementRow[] = [];
     for (const p of backendPlans) {
       for (const a of p.activities || []) {
@@ -223,7 +212,7 @@ export function ReportsView() {
         }
       }
     }
-    return rows.length > 0 ? rows : MOCK_DELAYED_PROCUREMENT_REPORT;
+    return rows;
   }, [backendPlans, currentTime]);
 
   // Dynamic Filters State
@@ -323,18 +312,7 @@ export function ReportsView() {
           "Est Amount",
           "Contract Amount",
         ];
-        const rows = MOCK_STEP_REPORT.map((r) => [
-          r.refNo,
-          r.description,
-          r.category,
-          r.method,
-          r.marketApproach,
-          r.reviewType,
-          r.processStatus,
-          r.activityStatus,
-          r.estimatedAmount,
-          r.signedContractAmount,
-        ]);
+        const rows: (string | number)[][] = [];
         exportToExcelCSV("MoA_STEP_Procurement_Report", headers, rows);
         break;
       }
@@ -377,14 +355,7 @@ export function ReportsView() {
           "Package Count",
           "Total Amount (ETB)",
         ];
-        const rows = MOCK_MONTHLY_SUMMARY_REPORT.map((r) => [
-          r.monthYear,
-          r.category,
-          r.method,
-          r.fundingType,
-          r.packageCount,
-          r.totalAmountETB,
-        ]);
+        const rows: (string | number)[][] = [];
         exportToExcelCSV("MoA_Monthly_Quarterly_Summary_Report", headers, rows);
         break;
       }
@@ -401,18 +372,7 @@ export function ReportsView() {
           "Remaining Balance",
           "Status",
         ];
-        const rows = MOCK_CONTRACT_PAYMENT_REPORT.map((r) => [
-          r.contractNo,
-          r.refNo,
-          r.supplierName,
-          r.region,
-          r.originalContractAmount,
-          r.vatAmount,
-          r.finalContractAmount,
-          r.totalPaidAmount,
-          r.remainingBalance,
-          r.contractStatus,
-        ]);
+        const rows: (string | number)[][] = [];
         exportToExcelCSV("MoA_Contract_and_Payment_Report", headers, rows);
         break;
       }
@@ -429,18 +389,7 @@ export function ReportsView() {
           "Completion Date",
           "Status",
         ];
-        const rows = MOCK_DETAILED_PROCUREMENT_REPORT.map((r) => [
-          r.refNo,
-          r.description,
-          r.category,
-          r.method,
-          r.winnerSupplier,
-          r.awardedAmount,
-          r.currency,
-          r.fundingSource,
-          r.completionDate,
-          r.status,
-        ]);
+        const rows: (string | number)[][] = [];
         exportToExcelCSV("MoA_Detailed_Procurement_Report", headers, rows);
         break;
       }
@@ -454,15 +403,7 @@ export function ReportsView() {
           "Approved Count",
           "Delayed Count",
         ];
-        const rows = MOCK_PROJECT_OFFICER_SUMMARY_REPORT.map((r) => [
-          r.projectCode,
-          r.officerName,
-          r.totalPlans,
-          r.totalActivities,
-          r.totalBudgetETB,
-          r.approvedCount,
-          r.delayedCount,
-        ]);
+        const rows: (string | number)[][] = [];
         exportToExcelCSV("MoA_Project_Officer_Summary_Report", headers, rows);
         break;
       }
@@ -1144,34 +1085,36 @@ export function ReportsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_CONTRACT_PAYMENT_REPORT.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                          {row.contractNo}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-[#0A3C2F]">
-                          {row.refNo}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">
-                          {row.supplierName}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">
-                          {row.originalContractAmount.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-500">
-                          {row.vatAmount.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                          {row.finalContractAmount.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-extrabold text-emerald-700">
-                          {row.totalPaidAmount.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-extrabold text-slate-950">
-                          {row.remainingBalance.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {([] as ReturnType<typeof Array.prototype.map>).map(
+                      (row: any) => (
+                        <tr key={row.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                            {row.contractNo}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-[#0A3C2F]">
+                            {row.refNo}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">
+                            {row.supplierName}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono">
+                            {row.originalContractAmount?.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-slate-500">
+                            {row.vatAmount?.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                            {row.finalContractAmount?.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-extrabold text-emerald-700">
+                            {row.totalPaidAmount?.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-extrabold text-slate-950">
+                            {row.remainingBalance?.toLocaleString()}
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
               )}
@@ -1192,7 +1135,7 @@ export function ReportsView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {MOCK_ANNUAL_PLAN_REPORT.map((row) => (
+                    {annualPlanRows.map((row) => (
                       <tr key={row.id} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-bold text-[#0A3C2F]">
                           {row.refNo}

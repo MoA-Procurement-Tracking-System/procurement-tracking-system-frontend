@@ -1,7 +1,6 @@
 "use client";
 
 import { DualCalendarField } from "../../projects/components/CreateProcurementPlanView";
-import { getPlanActivities } from "../../projects/components/OfficerProcurementPlanDetailView";
 import {
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
@@ -1042,7 +1041,7 @@ export function buildEligibleActivities(
           )
           .map((record) => record.activity);
 
-        return getPlanActivities(project, plan, savedForPlan)
+        return savedForPlan
           .filter(isContractReadyActivity)
           .map((activity) => ({ activity, plan, project }));
       }),

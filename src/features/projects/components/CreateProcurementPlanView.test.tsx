@@ -1,17 +1,48 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { officerProjects } from "../data/officerProjects";
+import type { OfficerProject } from "../data/officerProjects";
 import {
   CreateProcurementPlanView,
   suggestedPlanName,
 } from "./CreateProcurementPlanView";
+
+const mockProject1: OfficerProject = {
+  activePlans: 1,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "ETB",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [],
+  shortName: "DRIVE",
+  status: "Active",
+};
+
+const mockProject2: OfficerProject = {
+  ...mockProject1,
+  availableOrganizationRegions: [
+    "FPCU / Federal",
+    "Oromia",
+    "Somali",
+    "Afar",
+    "Southwest Ethiopia",
+    "South Ethiopia",
+  ],
+  code: "PRJ-24-042",
+  shortName: "BREFONS",
+};
 
 describe("CreateProcurementPlanView", () => {
   it("starts with the specification-defined procurement category dropdown", () => {
     const markup = renderToStaticMarkup(
       <CreateProcurementPlanView
         onSavePlan={() => undefined}
-        project={officerProjects[0]}
+        project={mockProject1}
       />,
     );
 
@@ -24,16 +55,16 @@ describe("CreateProcurementPlanView", () => {
   });
 
   it("builds the editable suggested name from project, category, and fiscal year", () => {
-    expect(suggestedPlanName(officerProjects[0], "Goods", "2018")).toBe(
+    expect(suggestedPlanName(mockProject1, "Goods", "2018")).toBe(
       "DRIVE - Goods Procurement Plan - 2018 EFY",
     );
   });
 
   it("provides organization choices only from the assigned project scope", () => {
-    expect(officerProjects[0].availableOrganizationRegions).toEqual([
+    expect(mockProject1.availableOrganizationRegions).toEqual([
       "FPCU / Federal",
     ]);
-    expect(officerProjects[1].availableOrganizationRegions).toEqual([
+    expect(mockProject2.availableOrganizationRegions).toEqual([
       "FPCU / Federal",
       "Oromia",
       "Somali",
@@ -47,7 +78,7 @@ describe("CreateProcurementPlanView", () => {
     const markup = renderToStaticMarkup(
       <CreateProcurementPlanView
         onSavePlan={() => undefined}
-        project={officerProjects[0]}
+        project={mockProject1}
       />,
     );
 

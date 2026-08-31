@@ -1,9 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { getPlanActivities } from "../../projects/components/OfficerProcurementPlanDetailView";
 import type { ProcurementActivityFormValues } from "../../projects/data/officerActivityDrafts";
-import { officerProjects } from "../../projects/data/officerProjects";
 import { createInitialActivityTrackingRecord } from "../data/officerActivityTracking";
+
 import type {
   OfficerProject,
   ProcurementPlanSummary,
@@ -189,25 +188,33 @@ describe("ActivityTrackingDetailView", () => {
   });
 
   it("provides real tab panels and clear states for a summary-only activity", () => {
-    const brefonsProject = officerProjects.find(
-      (candidate) => candidate.code === "PRJ-24-042",
-    )!;
-    const worksPlan = brefonsProject.plans.find(
-      (candidate) => candidate.reference === "PP-BREFONS-2016-02",
-    )!;
     const summaryActivity = {
-      ...getPlanActivities(brefonsProject, worksPlan).find(
-        (activity) => activity.reference === "ET-MoA-000002-CW-RFB",
-      )!,
+      category: "Works" as const,
+      currentStage: "Bid Opening",
+      description: "Construction of regional storage facilities",
       details: undefined,
+      estimatedAmount: 180_000_000,
+      method: "RFB - National",
+      reference: "ET-MoA-000002-CW-RFB",
+      status: "Not Started" as const,
     };
     const summaryItem: OfficerTrackedActivityItem = {
       activity: summaryActivity,
-      plan: worksPlan,
-      project: brefonsProject,
+      plan: {
+        ...plan,
+        category: "Works",
+        name: "Regional Works Procurement Plan",
+        reference: "PP-BREFONS-2016-02",
+      },
+      project: {
+        ...project,
+        code: "PRJ-24-042",
+        name: "BREFONS",
+        shortName: "BREFONS",
+      },
       tracking: createInitialActivityTrackingRecord(
-        brefonsProject.code,
-        worksPlan.reference,
+        "PRJ-24-042",
+        "PP-BREFONS-2016-02",
         summaryActivity,
       ),
     };

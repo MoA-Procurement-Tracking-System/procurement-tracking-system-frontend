@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { officerContracts } from "./officerContracts";
+import type { OfficerContract } from "./officerContracts";
 import {
   addSavedPayment,
   applyPaymentsToContract,
@@ -7,9 +7,36 @@ import {
   type OfficerContractPayment,
 } from "./officerPayments";
 
+const mockContract: OfficerContract = {
+  completionDate: { ethiopian: "30-Sene-2018", gregorian: "2026-07-07" },
+  contractNumber: "MOA-CON-001-01-000001",
+  currency: "ETB",
+  currentAmount: 45_000_000,
+  details: {
+    activityReference: "ET-MoA-000001-GO-RFB",
+    amendments: [],
+    amountWithVat: 45_000_000,
+    netOfVat: 39_130_434.78,
+    organizationRegion: "FPCU / Federal",
+    planReference: "PP-DRIVE-2016-01",
+    projectCode: "PRJ-24-001",
+    startDate: { ethiopian: "12-Nehase-2018", gregorian: "2026-08-18" },
+    vatRate: 15,
+  },
+  id: "contract-1",
+  originalAmount: 45_000_000,
+  procurementActivity: "Supply of Veterinary Vaccines",
+  project: "DRIVE",
+  remainingBalance: 24_750_000,
+  signingDate: { ethiopian: "12-Nehase-2018", gregorian: "2026-08-18" },
+  status: "Active / Under Implementation",
+  supplier: "Agricultural Supply Enterprise",
+  totalPaid: 20_250_000,
+};
+
 const payment: OfficerContractPayment = {
   amount: 2_000_000,
-  contractNumber: officerContracts[0].contractNumber,
+  contractNumber: mockContract.contractNumber,
   date: { ethiopian: "01-Hamle-2018", gregorian: "2026-07-08" },
   id: "payment-1",
   paymentType: "1st / Interim",
@@ -32,12 +59,10 @@ describe("officer payment storage", () => {
   });
 
   it("calculates total paid and remaining balance", () => {
-    const contract = applyPaymentsToContract(officerContracts[0], [payment]);
-    expect(contract.totalPaid).toBe(
-      officerContracts[0].totalPaid + payment.amount,
-    );
+    const contract = applyPaymentsToContract(mockContract, [payment]);
+    expect(contract.totalPaid).toBe(mockContract.totalPaid + payment.amount);
     expect(contract.remainingBalance).toBe(
-      officerContracts[0].remainingBalance - payment.amount,
+      mockContract.remainingBalance - payment.amount,
     );
   });
 
