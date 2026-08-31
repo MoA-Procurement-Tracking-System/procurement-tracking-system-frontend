@@ -39,7 +39,10 @@ import {
 } from "../../dashboards/components/director/projects/projectsData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
-import type { ProcurementActivity, ActivityStage } from "../../activities/activitiesData";
+import type {
+  ProcurementActivity,
+  ActivityStage,
+} from "../../activities/activitiesData";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
