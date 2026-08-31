@@ -5,8 +5,6 @@ import type {
   OfficerProject,
   ProcurementPlanSummary,
 } from "@/features/projects/data/officerProjects";
-import { getPlanActivities as getFixturePlanActivities } from "../data/fixtureActivityLifecycle";
-export { getPlanActivities } from "../data/fixtureActivityLifecycle";
 import type {
   ProcurementActivityStatus,
   ProcurementActivitySummary,
@@ -57,10 +55,18 @@ export function OfficerProcurementPlanDetailView({
     "All",
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const activities = useMemo(
-    () => getFixturePlanActivities(project, plan, savedActivities),
-    [plan, project, savedActivities],
-  );
+  const activities = useMemo(() => {
+    const list = [...savedActivities];
+    if (plan.planActivities && plan.planActivities.length > 0) {
+      const existingRefs = new Set(list.map((a) => a.reference.toLowerCase()));
+      plan.planActivities.forEach((pa) => {
+        if (!existingRefs.has(pa.reference.toLowerCase())) {
+          list.push(pa);
+        }
+      });
+    }
+    return list;
+  }, [savedActivities, plan.planActivities]);
   const categoryOptions = useMemo(
     () =>
       Array.from(new Set(activities.map((activity) => activity.category))).sort(

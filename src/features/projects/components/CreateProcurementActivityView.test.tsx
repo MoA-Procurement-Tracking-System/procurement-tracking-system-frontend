@@ -5,13 +5,44 @@ import {
   methodsForCategory,
   roadmapForMethod,
 } from "../data/procurementActivityConfig";
-import { officerProjects } from "../data/officerProjects";
+import type {
+  OfficerProject,
+  ProcurementPlanSummary,
+} from "../data/officerProjects";
 import { CreateProcurementActivityView } from "./CreateProcurementActivityView";
 
-describe("CreateProcurementActivityView", () => {
-  const project = officerProjects[0];
-  const plan = project.plans[0];
+const plan: ProcurementPlanSummary = {
+  activities: 1,
+  budgetYear: "2016 EFY",
+  category: "Goods",
+  completedActivities: 0,
+  currency: "ETB",
+  delayedActivities: 0,
+  estimatedValue: 2_500_000,
+  inProgressActivities: 0,
+  name: "2016 EFY Annual Procurement Plan",
+  reference: "PP-DRIVE-2016-01",
+  status: "Approved",
+};
 
+const project: OfficerProject = {
+  activePlans: 1,
+  assignedOfficers: ["Yeabsira Fikre"],
+  availableOrganizationRegions: ["FPCU / Federal"],
+  baseCurrency: "ETB",
+  code: "PRJ-24-001",
+  countryOrganisation: "Ethiopia",
+  executingAgency: "Ministry of Agriculture",
+  fundingSource: "World Bank",
+  fundingType: "Loan / Grant",
+  name: "DRIVE - De-Risking, Inclusion and Value Enhancement",
+  organizationRegion: "FPCU / Federal",
+  plans: [plan],
+  shortName: "DRIVE",
+  status: "Active",
+};
+
+describe("CreateProcurementActivityView", () => {
   it("starts with the document-defined four-step structure and locked context", () => {
     const markup = renderToStaticMarkup(
       <CreateProcurementActivityView plan={plan} project={project} />,

@@ -1,6 +1,3 @@
-import { getPlanActivities } from "../../projects/data/fixtureActivityLifecycle";
-import { officerProjects } from "../../projects/data/officerProjects";
-
 export const OFFICER_CONTRACTS_STORAGE_KEY = "moa-pts:officer-contracts:v2";
 
 export type ContractCurrency = "ETB" | "UA" | "USD";
@@ -57,108 +54,8 @@ export interface OfficerContract {
   totalPaid: number;
 }
 
-// UI-only records model the same lifecycle as the approved project activity
-// baselines. When an activity reaches Signed Contract or Contract Completion,
-// it has exactly one matching contract record. API data will replace this
-// fixture generator without changing the view contracts.
-export const officerContracts: readonly OfficerContract[] =
-  officerProjects.flatMap((project) =>
-    project.plans
-      .filter((plan) => plan.status === "Approved")
-      .flatMap((plan) =>
-        getPlanActivities(project, plan).flatMap((activity) => {
-          const roadmap = activity.details?.roadmap ?? [];
-          const signedContract = roadmap.find(
-            (stage) => stage.name === "Signed Contract" && !stage.notApplicable,
-          );
-          const contractCompletion = roadmap.find(
-            (stage) =>
-              stage.name === "Contract Completion" && !stage.notApplicable,
-          );
-          const hasReachedContract =
-            activity.status === "Completed" ||
-            activity.currentStage === "Signed Contract" ||
-            activity.currentStage === "Contract Completion";
-
-          if (!hasReachedContract || !signedContract || !contractCompletion) {
-            return [];
-          }
-
-          const isCompleted = activity.status === "Completed";
-          const isDelayed = activity.status === "Delayed";
-          const paidAmount = isCompleted
-            ? activity.estimatedAmount
-            : isDelayed
-              ? Math.round(activity.estimatedAmount * 0.35 * 100) / 100
-              : Math.round(activity.estimatedAmount * 0.45 * 100) / 100;
-          const activitySequence = activity.reference.includes("/")
-            ? activity.reference.split("/").at(-1)
-            : (activity.reference.split("-")[2] ?? activity.reference);
-          const contractSuffix = `${plan.reference.split("-").at(-1)}-${activitySequence}`;
-          const dateValue = (stage: (typeof roadmap)[number]) => ({
-            ethiopian: stage.ethiopianDate || "",
-            gregorian: stage.gregorianDate || "",
-          });
-          const awardStage = roadmap.find((stage) =>
-            stage.name.toLowerCase().includes("notification"),
-          );
-          const vatRate = 15;
-
-          return [
-            {
-              completionDate: dateValue(contractCompletion),
-              contractNumber: `MOA-CON-${project.code.slice(-3)}-${contractSuffix}`,
-              currency: plan.currency,
-              currentAmount: activity.estimatedAmount,
-              details: {
-                ...(isCompleted
-                  ? { actualCompletionDate: dateValue(contractCompletion) }
-                  : {}),
-                amendments: [],
-                amountWithVat:
-                  Math.round(
-                    activity.estimatedAmount * (1 + vatRate / 100) * 100,
-                  ) / 100,
-                ...(awardStage ? { awardDate: dateValue(awardStage) } : {}),
-                netOfVat: activity.estimatedAmount,
-                organizationRegion: activity.details?.form.location,
-                planReference: plan.reference,
-                projectCode: project.code,
-                remarks: isCompleted
-                  ? "Completed in accordance with the approved roadmap."
-                  : isDelayed
-                    ? "Contract implementation is delayed against scheduled completion."
-                    : "Contract signed; implementation and final completion are underway.",
-                startDate: dateValue(signedContract),
-                subcomponent: activity.details?.form.subcomponent,
-                vatRate,
-                activityReference: activity.reference,
-              },
-              id: `fixture-contract-${project.code}-${plan.reference}-${activity.reference}`,
-              originalAmount: activity.estimatedAmount,
-              procurementActivity: activity.description,
-              project: project.shortName,
-              remainingBalance: activity.estimatedAmount - paidAmount,
-              signingDate: dateValue(signedContract),
-              status: isCompleted
-                ? "Completed"
-                : isDelayed
-                  ? "Delayed"
-                  : "Active / Under Implementation",
-              supplier: supplierForCategory(plan.category),
-              totalPaid: paidAmount,
-            },
-          ];
-        }),
-      ),
-  );
-
-function supplierForCategory(category: string) {
-  if (category === "Works") return "National Construction Enterprise";
-  if (category === "Consultancy Services") return "Agriculture Advisory PLC";
-  if (category === "Non-Consulting Services") return "Rural Services PLC";
-  return "Agricultural Supply Enterprise";
-}
+// Contracts are now loaded exclusively from the backend API via contractsApi.
+export const officerContracts: readonly OfficerContract[] = [];
 
 export function addSavedContract(
   contracts: readonly OfficerContract[],
