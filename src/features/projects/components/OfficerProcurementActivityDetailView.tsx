@@ -611,20 +611,41 @@ function formatAmount(value: number) {
   }).format(value);
 }
 
+function safeParseDate(dateStr?: string | null): Date | null {
+  if (!dateStr || dateStr === "N/A" || dateStr === "Date not recorded")
+    return null;
+  if (dateStr.includes("T")) {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(`${dateStr.trim()}T00:00:00Z`);
+  if (!isNaN(d.getTime())) return d;
+  const d2 = new Date(dateStr);
+  return isNaN(d2.getTime()) ? null : d2;
+}
+
 function formatRoadmapDate(stage: ProcurementActivityRoadmapStage) {
-  const gregorian = stage.gregorianDate
+  const d = safeParseDate(stage.gregorianDate);
+  const gregorian = d
     ? new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "short",
         timeZone: "UTC",
         year: "numeric",
       })
-        .format(new Date(`${stage.gregorianDate}T00:00:00Z`))
+        .format(d)
         .replaceAll(" ", "-")
-    : "Date not recorded";
-  return stage.ethiopianDate
-    ? `${gregorian} (${stage.ethiopianDate})`
-    : gregorian;
+    : stage.gregorianDate && stage.gregorianDate !== "N/A"
+      ? stage.gregorianDate
+      : "Date not recorded";
+
+  const hasEthiopian = Boolean(
+    stage.ethiopianDate &&
+    stage.ethiopianDate !== "N/A" &&
+    stage.ethiopianDate !== "Date not recorded",
+  );
+
+  return hasEthiopian ? `${gregorian} (${stage.ethiopianDate})` : gregorian;
 }
 
 function formatDuration(
@@ -632,18 +653,21 @@ function formatDuration(
   stage: ProcurementActivityRoadmapStage,
 ) {
   const currentIndex = allStages.findIndex((item) => item.name === stage.name);
-  if (!stage.gregorianDate || currentIndex < 0) return "—";
+  const currentD = safeParseDate(stage.gregorianDate);
+  if (!currentD || currentIndex < 0) return "—";
 
   const previousStage = allStages
     .slice(0, currentIndex)
     .reverse()
-    .find((item) => !item.notApplicable && item.gregorianDate);
+    .find(
+      (item) =>
+        !item.notApplicable && safeParseDate(item.gregorianDate) !== null,
+    );
   if (!previousStage) return "0 days";
 
-  const currentDate = Date.parse(`${stage.gregorianDate}T00:00:00Z`);
-  const previousDate = Date.parse(`${previousStage.gregorianDate}T00:00:00Z`);
-  if (!Number.isFinite(currentDate) || !Number.isFinite(previousDate)) {
-    return "—";
-  }
-  return `${Math.round((currentDate - previousDate) / 86_400_000)} days`;
+  const previousD = safeParseDate(previousStage.gregorianDate);
+  if (!previousD) return "—";
+
+  const diffMs = currentD.getTime() - previousD.getTime();
+  return `${Math.round(diffMs / 86_400_000)} days`;
 }

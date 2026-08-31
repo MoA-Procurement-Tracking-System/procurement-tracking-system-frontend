@@ -8,6 +8,7 @@ import { OfficerProcurementPlanDetailView } from "@/features/projects/components
 import { OfficerProjectDetailView } from "@/features/projects/components/OfficerProjectDetailView";
 import {
   addSavedActivityRecord,
+  mapBackendActivityToProcurementActivitySummary,
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
   type ProcurementActivitySummary,
@@ -35,7 +36,11 @@ import {
   mapBackendPlanToOfficerPlanSummary,
   type BackendPlan,
 } from "@/lib/plansApi";
-import { createActivity } from "@/lib/activitiesApi";
+import {
+  createActivity,
+  fetchActivities,
+  type BackendActivity,
+} from "@/lib/activitiesApi";
 import {
   fetchProjects,
   mapBackendProjectToOfficerProject,
@@ -44,7 +49,7 @@ import {
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function OfficerProjectsView({
   fromTracker,
@@ -68,21 +73,48 @@ export function OfficerProjectsView({
   >([]);
   const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
   const [backendPlans, setBackendPlans] = useState<BackendPlan[]>([]);
+  const [backendActivities, setBackendActivities] = useState<
+    SavedOfficerActivityRecord[]
+  >([]);
 
   const loadData = useCallback(async () => {
     try {
-      const [projData, planData] = await Promise.allSettled([
+      const [projData, planData, actData] = await Promise.allSettled([
         fetchProjects(),
         fetchPlans(),
+        fetchActivities(),
       ]);
+
+      let fetchedPlans: BackendPlan[] = [];
+      if (planData.status === "fulfilled" && planData.value.length > 0) {
+        fetchedPlans = planData.value;
+        setBackendPlans(fetchedPlans);
+      }
 
       if (projData.status === "fulfilled" && projData.value.length > 0) {
         setBackendProjects(
           projData.value.map(mapBackendProjectToOfficerProject),
         );
       }
-      if (planData.status === "fulfilled" && planData.value.length > 0) {
-        setBackendPlans(planData.value);
+
+      if (actData.status === "fulfilled" && actData.value.length > 0) {
+        const mappedDbRecords: SavedOfficerActivityRecord[] = actData.value.map(
+          (ba: BackendActivity) => {
+            const summary = mapBackendActivityToProcurementActivitySummary(ba);
+            const parentPlan = fetchedPlans.find((p) => p.id === ba.planId);
+            const planRef = parentPlan?.title || ba.plan?.title || ba.planId;
+            const projCode =
+              parentPlan?.project?.code ||
+              ba.plan?.project?.code ||
+              "PRJ-24-001";
+            return {
+              activity: summary,
+              planReference: planRef,
+              projectCode: projCode,
+            };
+          },
+        );
+        setBackendActivities(mappedDbRecords);
       }
     } catch (err) {
       console.warn("loadData officer view note:", err);
@@ -113,6 +145,16 @@ export function OfficerProjectsView({
 
     return () => window.clearTimeout(loadSavedRecords);
   }, []);
+
+  const effectiveSavedActivityRecords = useMemo(() => {
+    const map = new Map<string, SavedOfficerActivityRecord>();
+    backendActivities.forEach((rec) => {
+      const key =
+        `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
+      map.set(key, rec);
+    });
+    return Array.from(map.values());
+  }, [backendActivities]);
 
   const allProjects = useMemo(() => {
     // Merge backend plans into each project
@@ -154,13 +196,51 @@ export function OfficerProjectsView({
   const selectedPlan = selectedProject?.plans.find(
     (plan) => plan.reference === selectedPlanReference,
   );
-  const selectedPlanActivities = savedActivityRecords
-    .filter(
-      (record) =>
-        record.projectCode === selectedProject?.code &&
-        record.planReference === selectedPlan?.reference,
-    )
-    .map((record) => record.activity);
+
+  const selectedPlanActivities = useMemo(() => {
+    if (!selectedPlan || !selectedProject) return [];
+
+    const matchingBackendPlan = backendPlans.find(
+      (bp) =>
+        bp.id === (selectedPlan as any).id ||
+        bp.title === selectedPlan.reference ||
+        bp.title === selectedPlan.name,
+    );
+
+    const directBackendActivities = (matchingBackendPlan?.activities || []).map(
+      mapBackendActivityToProcurementActivitySummary,
+    );
+
+    const matchingSaved = effectiveSavedActivityRecords
+      .filter(
+        (record) =>
+          (record.projectCode?.toLowerCase() ===
+            selectedProject.code?.toLowerCase() ||
+            record.projectCode?.toLowerCase() ===
+              selectedProject.shortName?.toLowerCase()) &&
+          (record.planReference?.toLowerCase() ===
+            selectedPlan.reference?.toLowerCase() ||
+            record.planReference?.toLowerCase() ===
+              selectedPlan.name?.toLowerCase() ||
+            (matchingBackendPlan &&
+              record.planReference?.toLowerCase() ===
+                matchingBackendPlan.id.toLowerCase())),
+      )
+      .map((record) => record.activity);
+
+    const combinedMap = new Map<string, ProcurementActivitySummary>();
+    directBackendActivities.forEach((a) =>
+      combinedMap.set(a.reference.toLowerCase(), a),
+    );
+    matchingSaved.forEach((a) => combinedMap.set(a.reference.toLowerCase(), a));
+
+    return Array.from(combinedMap.values());
+  }, [
+    selectedPlan,
+    selectedProject,
+    backendPlans,
+    effectiveSavedActivityRecords,
+  ]);
   const selectedActivity =
     selectedProject && selectedPlan && selectedActivityReference
       ? selectedPlanActivities.find(

@@ -278,53 +278,6 @@ export function DirectorActivitiesListView({
   const isEditable = parentSection === "plan-for-review" && !isCommittee;
 
   const [activities, setActivities] = useState<ProcurementActivity[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const rawLocal = window.localStorage.getItem(
-          OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
-        );
-        if (rawLocal) {
-          const records = parseSavedActivityRecords(rawLocal);
-          const cleanPlanId = plan.id.startsWith("officer-")
-            ? plan.id.replace(`officer-${plan.projectCode}-`, "")
-            : plan.id;
-
-          const matchingLocal = records.filter((r) => {
-            const projCode = (r.projectCode || "").toLowerCase();
-            const planProjCode = (plan.projectCode || "").toLowerCase();
-            const pRef = (r.planReference || "").toLowerCase();
-            const cPlanId = cleanPlanId.toLowerCase();
-            const pName = (plan.planName || "").toLowerCase();
-            const pId = plan.id.toLowerCase();
-
-            const projMatches =
-              !projCode ||
-              !planProjCode ||
-              projCode === planProjCode ||
-              pName.includes(projCode) ||
-              planProjCode.includes(projCode);
-
-            const planMatches =
-              !pRef ||
-              pRef === cPlanId ||
-              pRef === pId ||
-              pRef === pName ||
-              pName.includes(pRef) ||
-              cPlanId.includes(pRef) ||
-              records.length <= 10;
-
-            return projMatches && planMatches;
-          });
-
-          if (matchingLocal.length > 0) {
-            return matchingLocal.map((r) =>
-              mapBackendActivityToProcurementActivity(r.activity, plan),
-            );
-          }
-        }
-      } catch {}
-    }
-
     if (plan.activities && plan.activities.length > 0) {
       return plan.activities.map((a) =>
         mapBackendActivityToProcurementActivity(a, plan),
@@ -345,95 +298,32 @@ export function DirectorActivitiesListView({
     try {
       let loadedActs: ProcurementActivity[] = [];
 
-      // 1. Primary Source: Check local storage drafts created by the officer
-      if (typeof window !== "undefined") {
-        try {
-          const rawLocal = window.localStorage.getItem(
-            OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
-          );
-          if (rawLocal) {
-            const records = parseSavedActivityRecords(rawLocal);
-            const cleanPlanId = plan.id.startsWith("officer-")
-              ? plan.id.replace(`officer-${plan.projectCode}-`, "")
-              : plan.id;
+      // 1. Primary Source: Fetch live backend activities by planId from Database API
+      try {
+        const cleanPlanId = plan.id.startsWith("officer-")
+          ? plan.id.replace(`officer-${plan.projectCode}-`, "")
+          : plan.id;
+        const backendActs = await fetchActivities(cleanPlanId);
 
-            const matchingLocal = records.filter((r) => {
-              const projCode = (r.projectCode || "").toLowerCase();
-              const planProjCode = (plan.projectCode || "").toLowerCase();
-              const pRef = (r.planReference || "").toLowerCase();
-              const cPlanId = cleanPlanId.toLowerCase();
-              const pName = (plan.planName || "").toLowerCase();
-              const pId = plan.id.toLowerCase();
-
-              const projMatches =
-                !projCode ||
-                !planProjCode ||
-                projCode === planProjCode ||
-                pName.includes(projCode) ||
-                planProjCode.includes(projCode);
-
-              const planMatches =
-                !pRef ||
-                pRef === cPlanId ||
-                pRef === pId ||
-                pRef === pName ||
-                pName.includes(pRef) ||
-                cPlanId.includes(pRef) ||
-                records.length <= 10;
-
-              return projMatches && planMatches;
-            });
-
-            for (const rec of matchingLocal) {
-              const actSummary = rec.activity;
-              const mapped = mapBackendActivityToProcurementActivity(
-                actSummary,
-                plan,
-              );
-              if (
-                !loadedActs.some(
-                  (existing) =>
-                    existing.activityRefNo === mapped.activityRefNo ||
-                    existing.description === mapped.description,
-                )
-              ) {
-                loadedActs.push(mapped);
-              }
+        if (backendActs && backendActs.length > 0) {
+          for (const ba of backendActs) {
+            const mapped = mapBackendActivityToProcurementActivity(ba, plan);
+            if (
+              !loadedActs.some(
+                (x) =>
+                  x.id === mapped.id ||
+                  x.activityRefNo === mapped.activityRefNo,
+              )
+            ) {
+              loadedActs.push(mapped);
             }
           }
-        } catch (localErr) {
-          console.warn("localStorage draft load note:", localErr);
         }
+      } catch (backendErr) {
+        console.warn("Backend fetchActivities note:", backendErr);
       }
 
-      // 2. Fetch from live backend API by planId if no local drafts
-      if (loadedActs.length === 0) {
-        try {
-          const cleanPlanId = plan.id.startsWith("officer-")
-            ? plan.id.replace(`officer-${plan.projectCode}-`, "")
-            : plan.id;
-          const backendActs = await fetchActivities(cleanPlanId);
-
-          if (backendActs && backendActs.length > 0) {
-            for (const ba of backendActs) {
-              const mapped = mapBackendActivityToProcurementActivity(ba, plan);
-              if (
-                !loadedActs.some(
-                  (x) =>
-                    x.id === mapped.id ||
-                    x.activityRefNo === mapped.activityRefNo,
-                )
-              ) {
-                loadedActs.push(mapped);
-              }
-            }
-          }
-        } catch (backendErr) {
-          console.warn("Backend fetchActivities note:", backendErr);
-        }
-      }
-
-      // 3. If plan already has mapped activities passed in its props
+      // 2. If plan already has mapped activities passed in its props
       if (
         loadedActs.length === 0 &&
         plan.activities &&
