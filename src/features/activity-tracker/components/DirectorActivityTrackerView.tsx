@@ -18,6 +18,7 @@ import {
   Route,
   CalendarDays,
   ArrowUpDown,
+  ChevronDown,
 } from "lucide-react";
 import {
   calculateDelayDays,
@@ -30,6 +31,7 @@ import {
   type OfficerActivityTrackingRecord,
 } from "../data/officerActivityTracking";
 import {
+  mapBackendActivityToProcurementActivitySummary,
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
   type ProcurementActivitySummary,
@@ -50,6 +52,7 @@ import {
   mapBackendProjectToOfficerProject,
 } from "@/lib/projectsApi";
 import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
+import { fetchActivities, type BackendActivity } from "@/lib/activitiesApi";
 
 export interface DirectorTrackedActivityItem {
   activity: ProcurementActivitySummary;
@@ -83,6 +86,9 @@ export function DirectorActivityTrackerView() {
   const [savedActivityRecords, setSavedActivityRecords] = useState<
     SavedOfficerActivityRecord[]
   >([]);
+  const [backendActivities, setBackendActivities] = useState<
+    SavedOfficerActivityRecord[]
+  >([]);
   const [trackingRecords, setTrackingRecords] = useState<
     OfficerActivityTrackingRecord[]
   >([]);
@@ -94,9 +100,10 @@ export function DirectorActivityTrackerView() {
     let isMounted = true;
     async function loadData() {
       try {
-        const [rawProjects, rawPlans] = await Promise.all([
+        const [rawProjects, rawPlans, rawActivities] = await Promise.all([
           fetchProjects(),
           fetchPlans(),
+          fetchActivities(),
         ]);
         if (isMounted && rawProjects && rawProjects.length > 0) {
           const mapped = rawProjects.map((p) => {
@@ -112,6 +119,29 @@ export function DirectorActivityTrackerView() {
             };
           });
           setBackendProjects(mapped);
+        }
+
+        if (isMounted && rawActivities && rawActivities.length > 0) {
+          const dbRecords: SavedOfficerActivityRecord[] = rawActivities.map(
+            (ba: BackendActivity) => {
+              const summary =
+                mapBackendActivityToProcurementActivitySummary(ba);
+              const parentPlan = (rawPlans || []).find(
+                (p) => p.id === ba.planId,
+              );
+              const planRef = parentPlan?.title || ba.plan?.title || ba.planId;
+              const projCode =
+                parentPlan?.project?.code ||
+                ba.plan?.project?.code ||
+                "PRJ-24-001";
+              return {
+                activity: summary,
+                planReference: planRef,
+                projectCode: projCode,
+              };
+            },
+          );
+          setBackendActivities(dbRecords);
         }
       } catch (err) {
         console.warn("DirectorActivityTrackerView loadData note:", err);
@@ -145,6 +175,16 @@ export function DirectorActivityTrackerView() {
     return () => window.clearTimeout(loadRecords);
   }, []);
 
+  const effectiveActivityRecords = useMemo(() => {
+    const map = new Map<string, SavedOfficerActivityRecord>();
+    backendActivities.forEach((rec) => {
+      const key =
+        `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
+      map.set(key, rec);
+    });
+    return Array.from(map.values());
+  }, [backendActivities]);
+
   const allProjects = useMemo(() => backendProjects, [backendProjects]);
 
   const projects = useMemo(
@@ -156,10 +196,10 @@ export function DirectorActivityTrackerView() {
     () =>
       collectTrackableActivities(
         projects,
-        savedActivityRecords,
+        effectiveActivityRecords,
         trackingRecords,
       ),
-    [projects, savedActivityRecords, trackingRecords],
+    [projects, effectiveActivityRecords, trackingRecords],
   );
 
   if (selectedActivity) {
@@ -188,17 +228,32 @@ function collectTrackableActivities(
 
   for (const project of projects) {
     for (const plan of project.plans) {
+      const planDirectActivities = plan.planActivities || [];
+
       const savedActivities = savedActivityRecords
         .filter(
           (record) =>
-            record.projectCode?.toLowerCase() === project.code?.toLowerCase() &&
+            (record.projectCode?.toLowerCase() ===
+              project.code?.toLowerCase() ||
+              record.projectCode?.toLowerCase() ===
+                project.shortName?.toLowerCase()) &&
             (record.planReference?.toLowerCase() ===
               plan.reference?.toLowerCase() ||
               record.planReference?.toLowerCase() === plan.name?.toLowerCase()),
         )
         .map((record) => record.activity);
 
-      for (const activity of savedActivities) {
+      const combinedMap = new Map<string, ProcurementActivitySummary>();
+      planDirectActivities.forEach((act) =>
+        combinedMap.set(act.reference.toLowerCase(), act),
+      );
+      savedActivities.forEach((act) =>
+        combinedMap.set(act.reference.toLowerCase(), act),
+      );
+
+      const allActivitiesForPlan = Array.from(combinedMap.values());
+
+      for (const activity of allActivitiesForPlan) {
         const tracking =
           findActivityTrackingRecord(
             trackingRecords,
@@ -213,9 +268,6 @@ function collectTrackableActivities(
           );
 
         const item = { activity, plan, project, tracking };
-        // The API and browser fallback can briefly contain the same activity.
-        // Keep one canonical row so the tracker neither repeats it nor gives
-        // React two elements with the same identity.
         itemsByIdentity.set(trackedActivityIdentity(item), item);
       }
     }
@@ -458,7 +510,6 @@ function DirectorActivityTrackerList({
   const [projectCode, setProjectCode] = useState("all");
   const [category, setCategory] = useState("all");
   const [method, setMethod] = useState("all");
-  const [assignedOfficer, setAssignedOfficer] = useState("all");
   const [quickFilter, setQuickFilter] = useState<TrackerQuickFilter>("all");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
@@ -571,7 +622,6 @@ function DirectorActivityTrackerList({
         (planReference === "all" || item.plan.reference === planReference) &&
         (category === "all" || item.activity.category === category) &&
         (method === "all" || item.activity.method === method) &&
-        (assignedOfficer === "all" || officers.includes(assignedOfficer)) &&
         (fiscalYear === "all" || item.plan.budgetYear === fiscalYear) &&
         (organization === "all" || org === organization) &&
         (currentStage === "all" || stage.name === currentStage) &&
@@ -594,7 +644,6 @@ function DirectorActivityTrackerList({
       );
     });
   }, [
-    assignedOfficer,
     category,
     currentStage,
     delayStatus,
@@ -651,7 +700,6 @@ function DirectorActivityTrackerList({
     setDisplayStatus("all");
     setFiscalYear("all");
     setMethod("all");
-    setAssignedOfficer("all");
     setOrganization("all");
     setPlanReference("all");
     setProjectCode("all");
@@ -727,77 +775,86 @@ function DirectorActivityTrackerList({
       </div>
 
       {/* 4. Filters Panel matching Screenshot */}
-      <section className="rounded-2xl bg-white p-4 border border-slate-200/80 shadow-2xs space-y-3">
-        {/* Row 1: Search, Project, Category, Method, More Filters */}
+      <section className="w-full rounded-3xl border border-slate-200/80 bg-white p-5 shadow-2xs space-y-4">
+        {/* Row 1: Search, Project, Category, Method, Officer, More Filters */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[260px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search reference, activity title, officer name, or stage..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0A3C2F] transition-all"
+              placeholder="Search reference, activity title, officer r..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] transition-all shadow-2xs placeholder:text-slate-400 hover:border-slate-300"
             />
           </div>
 
           {/* Project Dropdown */}
-          <select
-            value={projectCode}
-            onChange={(e) => setProjectCode(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
-          >
-            <option value="all">All Projects</option>
-            {projectOptions.map(([val, name]) => (
-              <option key={val} value={val}>
-                {name} ({val})
-              </option>
-            ))}
-          </select>
+          <div className="relative flex-1 min-w-[140px]">
+            <select
+              value={projectCode}
+              onChange={(e) => setProjectCode(e.target.value)}
+              className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] transition-all cursor-pointer shadow-2xs hover:border-slate-300"
+            >
+              <option value="all">All Projects</option>
+              {projectOptions.map(([val, name]) => (
+                <option key={val} value={val}>
+                  {name} ({val})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          </div>
 
           {/* Category Dropdown */}
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
-          >
-            <option value="all">All Categories</option>
-            {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <div className="relative flex-1 min-w-[140px]">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] transition-all cursor-pointer shadow-2xs hover:border-slate-300"
+            >
+              <option value="all">All Categories</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          </div>
 
           {/* Method Dropdown */}
-          <select
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            className="px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] transition-all cursor-pointer min-w-[130px]"
-          >
-            <option value="all">All Methods</option>
-            {methodOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          <div className="relative flex-1 min-w-[140px]">
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] transition-all cursor-pointer shadow-2xs hover:border-slate-300"
+            >
+              <option value="all">All Methods</option>
+              {methodOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          </div>
 
           {/* More Filters Toggle */}
           <button
             type="button"
             onClick={() => setShowMoreFilters((prev) => !prev)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 ${
               showMoreFilters || activeFilterCount > 0
-                ? "bg-emerald-50 text-[#0A3C2F] border-emerald-300 shadow-2xs"
-                : "bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200 text-[#0A3C2F]"
+                ? "bg-[#E6F4EA] text-[#0D6E53] border-[#A8E6CF]"
+                : "bg-[#E6F4EA]/80 hover:bg-[#E6F4EA] border-[#A8E6CF] text-[#0D6E53]"
             }`}
           >
-            <Filter className="h-4 w-4 text-[#0A3C2F]" />
+            <Filter className="h-4 w-4 text-[#0D6E53]" />
             <span>More Filters</span>
             {activeFilterCount > 0 ? (
-              <span className="bg-[#0A3C2F] text-white px-1.5 py-0.5 rounded-full text-[10px] font-extrabold">
+              <span className="bg-[#0D6E53] text-white px-1.5 py-0.5 rounded-full text-[10px] font-extrabold">
                 {activeFilterCount}
               </span>
             ) : null}
@@ -806,87 +863,103 @@ function DirectorActivityTrackerList({
 
         {/* Expanded 3-Column Grid matching Screenshot */}
         {showMoreFilters && (
-          <div className="pt-3 border-t border-slate-200/80 space-y-3 animate-in fade-in duration-150">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="pt-4 border-t border-slate-200/80 space-y-4 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
               {/* Column 1 */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {/* All Procurement Plans */}
-                <select
-                  value={planReference}
-                  onChange={(e) => setPlanReference(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Procurement Plans</option>
-                  {planOptions.map(([val, label]) => (
-                    <option key={val} value={val}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={planReference}
+                    onChange={(e) => setPlanReference(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Procurement Plans</option>
+                    {planOptions.map(([val, label]) => (
+                      <option key={val} value={val}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
 
                 {/* All Delay Statuses */}
-                <select
-                  value={delayStatus}
-                  onChange={(e) => setDelayStatus(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Delay Statuses</option>
-                  <option value="delayed">Delayed</option>
-                  <option value="due-soon">Due Soon</option>
-                  <option value="on-schedule">On Schedule</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={delayStatus}
+                    onChange={(e) => setDelayStatus(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Delay Statuses</option>
+                    <option value="delayed">Delayed</option>
+                    <option value="due-soon">Due Soon</option>
+                    <option value="on-schedule">On Schedule</option>
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
 
                 {/* All Organizations */}
-                <select
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Organizations</option>
-                  {organizationOptions.map((org) => (
-                    <option key={org} value={org}>
-                      {org}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Organizations</option>
+                    {organizationOptions.map((org) => (
+                      <option key={org} value={org}>
+                        {org}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
               </div>
 
               {/* Column 2 */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {/* All Fiscal Years */}
-                <select
-                  value={fiscalYear}
-                  onChange={(e) => setFiscalYear(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Fiscal Years</option>
-                  {fiscalYearOptions.map((fy) => (
-                    <option key={fy} value={fy}>
-                      {fy}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={fiscalYear}
+                    onChange={(e) => setFiscalYear(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Fiscal Years</option>
+                    {fiscalYearOptions.map((fy) => (
+                      <option key={fy} value={fy}>
+                        {fy}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
 
                 {/* All Current Stages */}
-                <select
-                  value={currentStage}
-                  onChange={(e) => setCurrentStage(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Current Stages</option>
-                  {currentStageOptions.map((stg) => (
-                    <option key={stg} value={stg}>
-                      {stg}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={currentStage}
+                    onChange={(e) => setCurrentStage(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Current Stages</option>
+                    {currentStageOptions.map((stg) => (
+                      <option key={stg} value={stg}>
+                        {stg}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
 
                 {/* Attention Priority / Sort By */}
                 <div className="relative">
+                  <ArrowUpDown className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as TrackerSort)}
-                    className="w-full px-3.5 py-2.5 pl-8 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
+                    className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
                   >
                     <option value="attention">Attention Priority</option>
                     <option value="target-asc">Target Date</option>
@@ -895,63 +968,67 @@ function DirectorActivityTrackerList({
                     <option value="reference">Reference</option>
                     <option value="status">Overall Status</option>
                   </select>
-                  <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* Column 3 */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {/* All Statuses */}
-                <select
-                  value={displayStatus}
-                  onChange={(e) => setDisplayStatus(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:border-[#0A3C2F] cursor-pointer"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Delayed">Delayed</option>
-                  <option value="Contracted">Contracted</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Not Started">Not Started</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={displayStatus}
+                    onChange={(e) => setDisplayStatus(e.target.value)}
+                    className="w-full appearance-none px-4 py-2.5 pr-9 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-[#1E293B] outline-none focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Contracted">Contracted</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Not Started">Not Started</option>
+                  </select>
+                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
 
                 {/* Target Date From */}
-                <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
+                <div className="relative flex items-center bg-white border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs font-medium text-slate-500 shadow-2xs focus-within:border-[#0A3C2F] focus-within:ring-1 focus-within:ring-[#0A3C2F] hover:border-slate-300 transition-all">
                   <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                  <span className="text-slate-500 font-bold text-xs mr-2 shrink-0">
                     Target From:
                   </span>
                   <input
                     type="date"
                     value={targetDateFrom}
                     onChange={(e) => setTargetDateFrom(e.target.value)}
-                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer"
+                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer placeholder:text-slate-400"
                   />
                 </div>
 
                 {/* Target Date To */}
-                <div className="relative flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-700">
+                <div className="relative flex items-center bg-white border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs font-medium text-slate-500 shadow-2xs focus-within:border-[#0A3C2F] focus-within:ring-1 focus-within:ring-[#0A3C2F] hover:border-slate-300 transition-all">
                   <CalendarDays className="h-4 w-4 text-slate-400 shrink-0 mr-2" />
-                  <span className="text-slate-500 font-medium mr-1 shrink-0">
+                  <span className="text-slate-500 font-bold text-xs mr-2 shrink-0">
                     Target To:
                   </span>
                   <input
                     type="date"
                     value={targetDateTo}
                     onChange={(e) => setTargetDateTo(e.target.value)}
-                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer"
+                    className="w-full bg-transparent text-xs text-slate-800 font-semibold outline-none cursor-pointer placeholder:text-slate-400"
                   />
                 </div>
               </div>
             </div>
 
+            {/* Bottom Right: Reset Filters */}
             <div className="flex justify-end pt-1">
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#0A3C2F] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
                 <span>Reset Filters</span>
               </button>
             </div>

@@ -4,6 +4,17 @@ import type {
   PlanStatus,
 } from "@/features/plans/plansData";
 import { roadmapForMethod } from "@/features/projects/data/procurementActivityConfig";
+import {
+  gregorianToEthiopian,
+  formatEthiopianDate,
+} from "@/features/projects/utils/ethiopianCalendar";
+
+function toEthiopianDateString(isoDate?: string | null): string {
+  if (!isoDate) return "";
+  const cleanIso = isoDate.slice(0, 10);
+  const ethiopianObj = gregorianToEthiopian(cleanIso);
+  return ethiopianObj ? formatEthiopianDate(ethiopianObj) : "";
+}
 
 export interface BackendCommitteeVote {
   id: string;
@@ -460,7 +471,9 @@ export function mapBackendPlanToOfficerPlanSummary(
                   `Stage ${st.sequence || idx + 1}`,
                 allowNotApplicable: true,
                 days: String(st.plannedDays || 14),
-                ethiopianDate: isNA ? "" : rawTargetDate,
+                ethiopianDate: isNA
+                  ? ""
+                  : toEthiopianDateString(rawTargetDate || rawPlannedDate),
                 gregorianDate: isNA ? "" : rawTargetDate || rawPlannedDate,
                 plannedStartDate: isNA ? "" : rawPlannedDate,
                 plannedEndDate: isNA
@@ -528,7 +541,7 @@ export function mapBackendPlanToOfficerPlanSummary(
                 name: tpl.name,
                 allowNotApplicable: true,
                 days: "14",
-                ethiopianDate: isNA ? "" : dateStr,
+                ethiopianDate: isNA ? "" : toEthiopianDateString(dateStr),
                 gregorianDate: isNA ? "" : dateStr,
                 plannedStartDate: isNA ? "" : dateStr,
                 plannedEndDate: isNA ? "" : dateStr,

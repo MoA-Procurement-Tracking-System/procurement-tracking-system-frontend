@@ -68,9 +68,7 @@ describe("OfficerActivityTrackerView", () => {
     );
     expect(markup).toContain("All Activities");
     expect(markup).not.toContain("Requires Attention");
-    expect(markup).toContain(
-      "Search reference, activity, project, or stage...",
-    );
+    expect(markup).toContain("Search reference, activity title, officer r...");
     expect(markup).toContain("More Filters");
     expect(markup).toContain("Reference No.");
     expect(markup).toContain("Effective Target");

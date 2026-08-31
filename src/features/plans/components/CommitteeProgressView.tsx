@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { fetchPlans, type BackendPlan } from "../../../lib/plansApi";
 import {
+  fetchCommitteeMembers,
+  type CommitteeUserItem,
+} from "../../../lib/lookupsApi";
+import {
   Search,
   Filter,
   Eye,
@@ -20,35 +24,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-
-// Real fallback list of Endorsement Committee members from the database
-export const FALLBACK_DB_COMMITTEE_MEMBERS = [
-  {
-    id: "dcb48490-bf61-4982-89b0-3556da376ea3",
-    name: "Workneh Tsionawit",
-    email: "tsionawit.ugr-4989-16@aau.edu.et",
-  },
-  {
-    id: "46258fbe-9684-41cf-b814-77788d30bca1",
-    name: "Edna Asmamaw",
-    email: "edna@gmail.com",
-  },
-  {
-    id: "265f711e-adf1-406a-b965-185a96496bce",
-    name: "Alula Girma",
-    email: "alula@gmail.com",
-  },
-  {
-    id: "d129e293-d9d6-4759-9705-1077c5a288ad",
-    name: "Worku Bekele",
-    email: "worku@gmail.com",
-  },
-  {
-    id: "0e02469a-39df-4af4-9400-c08c383dd903",
-    name: "Dawit Haile",
-    email: "dawit@gmail.com",
-  },
-];
 
 export interface CommitteeMemberVote {
   id: string;
@@ -85,7 +60,11 @@ export function CommitteeProgressView() {
 
   const loadData = useCallback(async () => {
     try {
-      const rawPlans = await fetchPlans();
+      const [rawPlans, dbCommitteeMembers] = await Promise.all([
+        fetchPlans(),
+        fetchCommitteeMembers(),
+      ]);
+
       const mappedItems: CommitteeProgressItem[] = rawPlans
         .filter(
           (bp) =>
@@ -99,19 +78,23 @@ export function CommitteeProgressView() {
           const committeeUsers =
             bp.committeeMembers && bp.committeeMembers.length > 0
               ? bp.committeeMembers
-              : FALLBACK_DB_COMMITTEE_MEMBERS;
+              : dbCommitteeMembers;
 
-          // Map the exact 5 real committee members from the database
+          // Map committee members fetched from database with their votes and comments
           const memberVotes: CommitteeMemberVote[] = committeeUsers.map(
             (userMember) => {
-              // EXACT MATCH: Match vote strictly by memberId or exact email
+              // EXACT MATCH: Match vote strictly by memberId, email, or name
               const matchingVote = rawVotes.find(
                 (v) =>
                   v.memberId === userMember.id ||
                   (v.memberEmail &&
                     userMember.email &&
                     v.memberEmail.toLowerCase() ===
-                      userMember.email.toLowerCase()),
+                      userMember.email.toLowerCase()) ||
+                  (v.memberName &&
+                    userMember.name &&
+                    v.memberName.toLowerCase() ===
+                      userMember.name.toLowerCase()),
               );
 
               const memberDisplayName =
@@ -131,7 +114,9 @@ export function CommitteeProgressView() {
                       ? "Approved"
                       : "Rejected",
                   feedback: matchingVote.comment || undefined,
-                  votedAt: new Date(matchingVote.createdAt).toLocaleString(),
+                  votedAt: matchingVote.createdAt
+                    ? new Date(matchingVote.createdAt).toLocaleString()
+                    : undefined,
                 };
               }
 
@@ -144,6 +129,30 @@ export function CommitteeProgressView() {
               };
             },
           );
+
+          // Append any votes cast by members not in the committeeUsers array
+          rawVotes.forEach((v) => {
+            const alreadyMapped = memberVotes.some(
+              (mv) =>
+                mv.id === v.memberId ||
+                (mv.email &&
+                  v.memberEmail &&
+                  mv.email.toLowerCase() === v.memberEmail.toLowerCase()),
+            );
+            if (!alreadyMapped) {
+              memberVotes.push({
+                id: v.memberId || `vote-${v.id}`,
+                name: v.memberName || "Committee Member",
+                email: v.memberEmail || undefined,
+                roleTitle: v.memberRole || "Endorsement Committee",
+                voteStatus: v.decision === "APPROVE" ? "Approved" : "Rejected",
+                feedback: v.comment || undefined,
+                votedAt: v.createdAt
+                  ? new Date(v.createdAt).toLocaleString()
+                  : undefined,
+              });
+            }
+          });
 
           const approvedCount = memberVotes.filter(
             (v) => v.voteStatus === "Approved",
