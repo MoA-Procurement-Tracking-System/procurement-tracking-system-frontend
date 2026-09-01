@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { fetchPlans, mapBackendPlanToFrontend } from "@/lib/plansApi";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/features/plans/plansData";
 
 export function CommitteeDashboard({ user }: { user: AuthUser }) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,11 +165,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
         {/* Card 1: Delayed Votes */}
         <div
           onClick={() => setFilter(filter === "delayed" ? "all" : "delayed")}
-          className={`relative overflow-hidden bg-gradient-to-br from-rose-50/70 to-red-50/40 rounded-[20px] p-5 border shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-red-500 hover:shadow-xs transition-all cursor-pointer select-none ${
-            filter === "delayed"
+          className={`relative overflow-hidden bg-gradient-to-br from-rose-50/70 to-red-50/40 rounded-[20px] p-5 border shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-red-500 hover:shadow-xs transition-all cursor-pointer select-none ${filter === "delayed"
               ? "border-red-400 ring-2 ring-red-500/20 scale-[1.01] shadow-xs"
               : "border-rose-200 hover:scale-[1.01]"
-          }`}
+            }`}
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -373,7 +374,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                     filteredAwaitingPlans.map((plan) => (
                       <tr
                         key={plan.id}
-                        className={`hover:bg-slate-50/50 transition-colors ${
+                        onClick={() =>
+                          router.push(`/workspace/plan-for-review?planId=${plan.id}`)
+                        }
+                        className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${
                           plan.isPriority ? "bg-rose-50/10" : ""
                         }`}
                       >
@@ -411,13 +415,12 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                         </td>
                         <td className="py-3.5 px-4">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
-                              plan.category === "Goods"
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${plan.category === "Goods"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
                                 : plan.category === "Works"
                                   ? "bg-amber-50 text-amber-700 border-amber-100"
                                   : "bg-purple-50 text-purple-700 border-purple-100"
-                            }`}
+                              }`}
                           >
                             {plan.category}
                           </span>
@@ -439,11 +442,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${
-                                  (plan.progress ?? 0) > 0
+                                className={`h-full rounded-full transition-all ${(plan.progress ?? 0) > 0
                                     ? "bg-emerald-500"
                                     : "bg-slate-200"
-                                }`}
+                                  }`}
                                 style={{ width: `${plan.progress ?? 0}%` }}
                               ></div>
                             </div>
@@ -505,51 +507,39 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                   className="p-4.5 space-y-3 hover:bg-slate-50/50 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="font-bold text-slate-900 text-xs leading-tight">
+                    <Link
+                      href={`/workspace/committee-progress?planId=${plan.id}`}
+                      className="font-bold text-slate-900 text-xs leading-tight hover:text-[#0A3C2F] transition-colors"
+                    >
                       {plan.planName}
-                    </h4>
+                    </Link>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${
-                        plan.committeeDecision === "Approved"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                          : "bg-rose-50 text-rose-700 border-rose-100"
-                      }`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${plan.committeeDecision === "Approved"
+                          ? " text-emerald-700 "
+                          : " text-rose-700 "
+                        }`}
                     >
                       {plan.committeeDecision === "Approved"
-                        ? "✓ Approved"
-                        : "✗ Rejected"}
+                        ? "Approved"
+                        : "Rejected"}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 font-medium">
                     My Vote recorded on {plan.decisionRecordedDate || "Recent"}
                   </p>
 
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[10px] text-slate-500 font-medium">
-                      <span>Overall Progress</span>
-                      <span
-                        className={`font-bold ${
-                          plan.status === "Finally Approved"
-                            ? "text-emerald-600"
-                            : "text-amber-600"
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                    <span>Plan Status</span>
+                    <span
+                      className={`font-bold ${plan.status === "Finally Approved"
+                          ? "text-emerald-600"
+                          : "text-amber-600"
                         }`}
-                      >
-                        {plan.status === "Finally Approved"
-                          ? "Finally Approved"
-                          : "Pending"}{" "}
-                        ({plan.progressText})
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          plan.status === "Finally Approved"
-                            ? "bg-emerald-500"
-                            : "bg-amber-500"
-                        }`}
-                        style={{ width: `${plan.progress}%` }}
-                      ></div>
-                    </div>
+                    >
+                      {plan.status === "Finally Approved"
+                        ? "Finally Approved"
+                        : "Pending Committee Review"}
+                    </span>
                   </div>
 
                   {plan.committeeDecision === "Rejected" &&
@@ -560,7 +550,7 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                     )}
 
                   <Link
-                    href="/workspace/my-decisions"
+                    href={`/workspace/committee-progress?planId=${plan.id}`}
                     className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer"
                   >
                     View Read-only Details ↗

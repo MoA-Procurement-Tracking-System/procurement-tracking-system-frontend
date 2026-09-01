@@ -1446,7 +1446,8 @@ export function DirectorActivitiesListView({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  Committee Feedback / Deliberation Notes (Optional)
+                  Committee Feedback / Deliberation Notes
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to reject)</span>
                 </label>
                 <textarea
                   rows={3}
@@ -1455,6 +1456,11 @@ export function DirectorActivitiesListView({
                   placeholder="Enter committee voting remarks or feedback..."
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
                 />
+                {!directorReturnRemarks.trim() && (
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    A comment is required before rejecting a plan.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
@@ -1466,17 +1472,22 @@ export function DirectorActivitiesListView({
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
                   <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
-                  <span>Vote: Endorse & Approve Plan</span>
+                  <span>Vote: Endorse &amp; Approve Plan</span>
                 </button>
 
                 <button
                   type="button"
+                  disabled={!directorReturnRemarks.trim()}
                   onClick={() =>
                     onCommitteeVote(plan, "REJECT", directorReturnRemarks)
                   }
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                    directorReturnRemarks.trim()
+                      ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
                 >
-                  <RotateCcw className="h-4 w-4 text-rose-600" />
+                  <RotateCcw className="h-4 w-4" />
                   <span>Vote: Reject / Return Plan</span>
                 </button>
               </div>
@@ -1492,7 +1503,8 @@ export function DirectorActivitiesListView({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  Revision Notes (If returning to Officer)
+                  Revision Notes
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to return to Officer)</span>
                 </label>
                 <textarea
                   rows={3}
@@ -1501,6 +1513,11 @@ export function DirectorActivitiesListView({
                   placeholder="Specify required corrections, missing documents or revision notes for the Procurement Officer..."
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
                 />
+                {!directorReturnRemarks.trim() && (
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Revision notes are required before returning a plan to the Procurement Officer.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
@@ -1510,15 +1527,20 @@ export function DirectorActivitiesListView({
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
                   <Send className="h-4 w-4 text-[#A3E635]" />
-                  <span>Approve & Send to Committee</span>
+                  <span>Approve &amp; Send to Committee</span>
                 </button>
 
                 <button
                   type="button"
+                  disabled={!directorReturnRemarks.trim()}
                   onClick={() => onReturnPlan(plan, directorReturnRemarks)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                    directorReturnRemarks.trim()
+                      ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
                 >
-                  <RotateCcw className="h-4 w-4 text-rose-600" />
+                  <RotateCcw className="h-4 w-4" />
                   <span>Return to Officer for Revision</span>
                 </button>
               </div>

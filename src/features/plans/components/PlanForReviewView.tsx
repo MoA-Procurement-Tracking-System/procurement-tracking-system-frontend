@@ -17,6 +17,8 @@ import {
   Eye,
   X,
   Calendar,
+  Clock,
+  Mail,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -67,11 +69,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         mapBackendPlanToFrontend(p, user.id, user.email),
       );
 
-      const planMap = new Map<string, ProcurementPlan>();
-      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-      mapped.forEach((p) => planMap.set(p.id, p));
-
-      setPlans(Array.from(planMap.values()));
+      // Only use real backend plans — no mock fallback merge
+      setPlans(mapped);
     } catch (err) {
       console.error(err);
       setPlans([...INITIAL_PLANS]);
@@ -125,6 +124,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   const [returnRemarks, setReturnRemarks] = useState("");
+  const [committeeDeadlineDate, setCommitteeDeadlineDate] = useState<string>(
+    () => {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      return d.toISOString().split("T")[0];
+    },
+  );
+  const [pendingApprovePlan, setPendingApprovePlan] =
+    useState<ProcurementPlan | null>(null);
 
   // Filter plans awaiting review only
   const filteredPlans = plans.filter((p) => {
@@ -186,17 +194,31 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   };
 
   // Director Decision 1: Approve & Send to Endorsement Committee
-  const handleApprovePlan = async (plan: ProcurementPlan) => {
+  const handleApprovePlan = async (
+    plan: ProcurementPlan,
+    deadlineDate?: string,
+  ) => {
     try {
-      await sendPlanToCommittee(plan.id);
+      const targetDate = deadlineDate || committeeDeadlineDate;
+      const days = targetDate
+        ? Math.max(
+            1,
+            Math.round(
+              (new Date(targetDate).getTime() - new Date().getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 7;
+      await sendPlanToCommittee(plan.id, targetDate, days);
     } catch (err) {
       console.warn("Backend sendPlanToCommittee note:", err);
     }
 
     await loadPlans();
     setSelectedPlanForReview(null);
+    setPendingApprovePlan(null);
     showToast(
-      `Plan "${plan.planName}" approved and forwarded to Endorsement Committee!`,
+      `Plan "${plan.planName}" approved and forwarded to Endorsement Committee (Deadline: ${committeeDeadlineDate})!`,
     );
   };
 
@@ -376,7 +398,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 >
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to Plans List
                 </button>
-                <span className="text-slate-300">•</span>
+                <span className="text-slate-300">â€¢</span>
                 <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
                   {selectedPlanForReview.projectCode}
                 </span>
@@ -421,21 +443,21 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     {selectedPlanForReview.category}
                   </strong>
                 </span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>
                   Fiscal Year:{" "}
                   <strong className="text-slate-900">
                     {selectedPlanForReview.budgetYear}
                   </strong>
                 </span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>
                   Region:{" "}
                   <strong className="text-slate-900">
                     {selectedPlanForReview.organizationRegion}
                   </strong>
                 </span>
-                <span>•</span>
+                <span>â€¢</span>
                 <span>
                   Coverage:{" "}
                   <strong className="text-slate-900">
@@ -581,7 +603,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                               <span className="font-bold text-slate-700 whitespace-nowrap">
                                 {act.method}
                               </span>
-                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-300">â€¢</span>
                               <span className="font-extrabold text-amber-800 whitespace-nowrap">
                                 {act.reviewType}
                               </span>
@@ -682,12 +704,19 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             </h3>
           </div>
 
-          {/* Remarks Textarea */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-800">
-              {user.role === "ENDORSING_COMMITTEE"
-                ? "Committee Feedback / Deliberation Notes (Optional)"
-                : "Revision Notes (If returning to Officer)"}
+              {user.role === "ENDORSING_COMMITTEE" ? (
+                <>
+                  Committee Feedback / Deliberation Notes
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to reject)</span>
+                </>
+              ) : (
+                <>
+                  Revision Notes
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to return to Officer)</span>
+                </>
+              )}
             </label>
             <textarea
               rows={3}
@@ -700,6 +729,16 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               }
               className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
             />
+            {user.role === "ENDORSING_COMMITTEE" && !returnRemarks.trim() && (
+              <p className="text-[10px] text-slate-400 font-medium">
+                A comment is required before rejecting a plan.
+              </p>
+            )}
+            {user.role !== "ENDORSING_COMMITTEE" && !returnRemarks.trim() && (
+              <p className="text-[10px] text-slate-400 font-medium">
+                Revision notes are required before returning a plan to the Procurement Officer.
+              </p>
+            )}
             {user.role === "ENDORSING_COMMITTEE" && (
               <p className="text-[11px] text-slate-500 font-medium pt-1">
                 Note: A plan requires at least 3 approval votes from the
@@ -709,52 +748,99 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             )}
           </div>
 
-          {/* Action Buttons */}
-          {user.role === "ENDORSING_COMMITTEE" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() =>
-                  handleCommitteeVote(selectedPlanForReview, "APPROVE")
-                }
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              >
-                <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
-                <span>Vote: Endorse & Approve Plan</span>
-              </button>
+            {/* Action Buttons */}
+            {user.role === "ENDORSING_COMMITTEE" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCommitteeVote(selectedPlanForReview, "APPROVE")
+                  }
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
+                  <span>Vote: Endorse & Approve Plan</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() =>
-                  handleCommitteeVote(selectedPlanForReview, "REJECT")
-                }
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
-              >
-                <RotateCcw className="h-4 w-4 text-rose-600" />
-                <span>Vote: Reject / Return Plan</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handleApprovePlan(selectedPlanForReview)}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              >
-                <Send className="h-4 w-4 text-[#A3E635]" />
-                <span>Approve & Send to Committee</span>
-              </button>
+                <button
+                  type="button"
+                  disabled={!returnRemarks.trim()}
+                  onClick={() =>
+                    handleCommitteeVote(selectedPlanForReview, "REJECT")
+                  }
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                    returnRemarks.trim()
+                      ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Vote: Reject / Return Plan</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Committee Voting Deadline
+                    <span className="ml-1 text-slate-500 font-normal">
+                      (Used for backend automated email reminders)
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={committeeDeadlineDate}
+                      onChange={(e) => setCommitteeDeadlineDate(e.target.value)}
+                      className="rounded-xl border border-slate-300 px-3.5 py-2 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
+                    />
+                    <div className="flex items-center gap-1">
+                      {[3, 7, 14].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + days);
+                            setCommitteeDeadlineDate(
+                              d.toISOString().split("T")[0],
+                            );
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition-colors"
+                        >
+                          +{days} Days
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => handleReturnPlan(selectedPlanForReview)}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer"
-              >
-                <RotateCcw className="h-4 w-4 text-rose-600" />
-                <span>Return to Officer for Revision</span>
-              </button>
-            </div>
-          )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPendingApprovePlan(selectedPlanForReview)}
+                    className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Send className="h-4 w-4 text-[#A3E635]" />
+                    <span>Approve &amp; Send to Committee</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!returnRemarks.trim()}
+                    onClick={() => handleReturnPlan(selectedPlanForReview)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                      returnRemarks.trim()
+                        ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                        : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                    }`}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>Return to Officer for Revision</span>
+                  </button>
+                </div>
+              </div>
+            )}
         </section>
 
         {/* Dedicated Edit Package Activity Details Modal */}
@@ -769,7 +855,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                       {editingActivity.activityRefNo}
                     </span>
                     <span className="text-xs font-bold text-slate-500">
-                      • {editingActivity.method}
+                      â€¢ {editingActivity.method}
                     </span>
                     <span className="text-xs font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                       {editingActivity.reviewType}
@@ -956,8 +1042,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
             {user.role === "ENDORSING_COMMITTEE"
-              ? "Endorsement Committee — Plans for Review"
-              : "Director — Plan for Review"}
+              ? "Endorsement Committee â€” Plans for Review"
+              : "Director â€” Plan for Review"}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {user.role === "ENDORSING_COMMITTEE"
@@ -1159,6 +1245,105 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           </table>
         </div>
       </div>
+      {/* SEND TO COMMITTEE DEADLINE MODAL */}
+      {pendingApprovePlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 text-[#0A3C2F] rounded-xl">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    Forward Plan to Committee
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Set voting deadline &amp; trigger email notifications
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingApprovePlan(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <p className="text-xs font-bold text-slate-900">
+                  {pendingApprovePlan.planName}
+                </p>
+                <p className="text-[11px] font-mono text-slate-600">
+                  Project: {pendingApprovePlan.projectCode} • {pendingApprovePlan.budgetYear}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Select Committee Voting Deadline Date
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={committeeDeadlineDate}
+                    onChange={(e) => setCommitteeDeadlineDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-[#0A3C2F] font-medium"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-[11px] font-semibold text-slate-500">Quick Presets:</span>
+                  {[3, 7, 14].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + days);
+                        setCommitteeDeadlineDate(d.toISOString().split("T")[0]);
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      +{days} Days
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
+                <Clock className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                  Endorsement Committee members will receive an automated email notification with a direct link and voting instructions valid until <strong>{committeeDeadlineDate}</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPendingApprovePlan(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleApprovePlan(pendingApprovePlan, committeeDeadlineDate)
+                }
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Send className="h-3.5 w-3.5 text-[#A3E635]" />
+                <span>Confirm &amp; Send to Committee</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
