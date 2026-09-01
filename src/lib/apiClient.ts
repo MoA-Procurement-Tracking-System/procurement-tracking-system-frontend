@@ -105,6 +105,12 @@ export async function directApiFetch<T>(
         errorMsg = responseData;
       }
     }
+    if (response.status === 401) {
+      if (typeof window !== "undefined") {
+        authTokenManager.clearToken();
+      }
+    }
+
     throw new ApiClientError(errorMsg, response.status, responseData);
   }
 
