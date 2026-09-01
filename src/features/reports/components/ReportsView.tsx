@@ -329,7 +329,7 @@ export function ReportsView() {
   }, [backendPlans, filters]);
 
   const planVsActualRows = useMemo(() => {
-    let rows: PlanVsActualReportRow[] = [];
+    const rows: PlanVsActualReportRow[] = [];
     if (backendPlans.length > 0) {
       for (const p of backendPlans) {
         for (const a of p.activities || []) {
@@ -400,7 +400,7 @@ export function ReportsView() {
   }, [backendPlans]);
 
   const delayedProcurementRows = useMemo(() => {
-    let rows: DelayedProcurementRow[] = [];
+    const rows: DelayedProcurementRow[] = [];
     if (backendPlans.length > 0) {
       for (const p of backendPlans) {
         for (const a of p.activities || []) {

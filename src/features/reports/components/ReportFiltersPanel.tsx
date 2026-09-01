@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
-  FileSpreadsheet,
 } from "lucide-react";
 import { type ReportType, type ReportFilterState } from "../types";
 import {
@@ -40,13 +39,13 @@ export function ReportFiltersPanel({
   activeReport,
   filters,
   onUpdateFilter,
-  onApply,
+  onApply: _onApply,
   onReset,
-  onExport,
-  isExporting,
+  onExport: _onExport,
+  isExporting: _isExporting,
   exportError,
-  isApplying,
-  appliedFeedback,
+  isApplying: _isApplying,
+  appliedFeedback: _appliedFeedback,
   activeFilterCount,
   projectOptions,
   fundingSourceOptions,
