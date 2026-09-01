@@ -31,7 +31,12 @@ import {
   parseSavedPayments,
   type OfficerContractPayment,
 } from "../data/officerPayments";
-import { createContract, recordContractPayment } from "@/lib/contractsApi";
+import {
+  createContract,
+  recordContractPayment,
+  fetchContracts,
+  mapBackendContractToOfficerContract,
+} from "@/lib/contractsApi";
 import {
   contractFiscalYear,
   filterOfficerContracts,
@@ -74,20 +79,37 @@ export function OfficerContractsView({
   }
 
   useEffect(() => {
-    const loadSavedContracts = window.setTimeout(() => {
-      setSavedContracts(
-        parseSavedContracts(
-          window.localStorage.getItem(OFFICER_CONTRACTS_STORAGE_KEY),
-        ),
+    async function loadContractsData() {
+      const localContracts = parseSavedContracts(
+        window.localStorage.getItem(OFFICER_CONTRACTS_STORAGE_KEY),
       );
-      setSavedPayments(
-        parseSavedPayments(
-          window.localStorage.getItem(OFFICER_PAYMENTS_STORAGE_KEY),
-        ),
+      const localPayments = parseSavedPayments(
+        window.localStorage.getItem(OFFICER_PAYMENTS_STORAGE_KEY),
       );
-    }, 0);
 
-    return () => window.clearTimeout(loadSavedContracts);
+      try {
+        const backendContracts = await fetchContracts();
+        if (backendContracts && backendContracts.length > 0) {
+          const mappedBackend = backendContracts.map(
+            mapBackendContractToOfficerContract,
+          );
+          const mapByNum = new Map<string, OfficerContract>();
+          localContracts.forEach((c) =>
+            mapByNum.set(c.contractNumber.toLowerCase(), c),
+          );
+          mappedBackend.forEach((c) =>
+            mapByNum.set(c.contractNumber.toLowerCase(), c),
+          );
+          setSavedContracts(Array.from(mapByNum.values()));
+        } else {
+          setSavedContracts(localContracts);
+        }
+      } catch {
+        setSavedContracts(localContracts);
+      }
+      setSavedPayments(localPayments);
+    }
+    loadContractsData();
   }, []);
 
   const contracts = useMemo(() => {

@@ -136,3 +136,41 @@ export async function recordContractPayment(
   );
   return res.data || res;
 }
+
+export function mapBackendContractToOfficerContract(bc: BackendContract): any {
+  const paidAmount = bc.paidAmount || 0;
+  const totalValue = bc.totalValue || 0;
+  return {
+    id: bc.id,
+    contractNumber: bc.contractNo,
+    procurementActivity:
+      bc.activity?.description ||
+      bc.activity?.reference ||
+      "Procurement Activity",
+    project: bc.activity?.reference ? "DRIVE" : "MoA Project",
+    supplier: bc.supplier?.name || "Contractor",
+    originalAmount: totalValue,
+    currentAmount: totalValue,
+    currency: bc.currency || "ETB",
+    status:
+      bc.status === "ACTIVE"
+        ? "Active"
+        : bc.status === "COMPLETED"
+          ? "Completed"
+          : "Planned / Prepared",
+    totalPaid: paidAmount,
+    remainingBalance: bc.remainingValue ?? totalValue - paidAmount,
+    signingDate: {
+      ethiopian: "01 Meskerem 2017",
+      gregorian: bc.createdAt
+        ? new Date(bc.createdAt).toLocaleDateString("en-GB")
+        : "Recent",
+    },
+    completionDate: {
+      ethiopian: "30 Sene 2017",
+      gregorian: bc.plannedEndDate
+        ? new Date(bc.plannedEndDate).toLocaleDateString("en-GB")
+        : "Pending",
+    },
+  };
+}

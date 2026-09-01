@@ -12,6 +12,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { fetchPlans, mapBackendPlanToFrontend } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
 import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
@@ -35,6 +36,7 @@ interface MyDecisionsViewProps {
 }
 
 export function MyDecisionsView({ user }: MyDecisionsViewProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [decisionFilter, setDecisionFilter] = useState("ALL");
   const [projectFilter, setProjectFilter] = useState("ALL");
@@ -63,7 +65,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
       }
     }
     loadPlans();
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   const [selectedDecision, setSelectedDecision] =
     useState<DecisionRecord | null>(null);
@@ -288,7 +290,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Date Voted</th>
                     <th className="py-3 px-4">My Vote</th>
-                    <th className="py-3 px-4">Consensus Quorum</th>
+                    <th className="py-3 px-4">Overall Plan Status</th>
                     <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
@@ -318,7 +320,12 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                     filteredDecisions.map((dec) => (
                       <tr
                         key={dec.id}
-                        className="hover:bg-slate-50/70 transition-colors"
+                        onClick={() =>
+                          router.push(
+                            `/workspace/committee-progress?planId=${dec.id}`,
+                          )
+                        }
+                        className="hover:bg-emerald-50/50 transition-colors cursor-pointer"
                       >
                         <td className="py-3.5 px-4 font-bold text-slate-900">
                           {dec.planName}
@@ -358,32 +365,32 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                             }`}
                           >
                             {dec.decision === "Approved"
-                              ? "✓ Approved"
-                              : "✗ Rejected"}
+                              ? "Approved"
+                              : "Rejected"}
                           </span>
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-slate-100 rounded-full h-1">
-                              <div
-                                className="bg-emerald-500 h-full rounded-full"
-                                style={{ width: `${dec.progress}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-[10px] text-slate-500 font-semibold whitespace-nowrap">
-                              {dec.progressText}
-                            </span>
-                          </div>
+                          <span
+                            className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              dec.overallStatus === "Finally Approved"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : "bg-amber-50 text-amber-700 border-amber-100"
+                            }`}
+                          >
+                            {dec.overallStatus === "Finally Approved"
+                              ? "Finally Approved"
+                              : "Pending Review"}
+                          </span>
                         </td>
 
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <button
-                            onClick={() => setSelectedDecision(dec)}
+                          <Link
+                            href={`/workspace/committee-progress?planId=${dec.id}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0A3C2F] text-white hover:bg-[#072b22] transition-colors cursor-pointer text-[10px] font-bold"
                           >
                             Inspect details
-                          </button>
+                          </Link>
                         </td>
                       </tr>
                     ))
