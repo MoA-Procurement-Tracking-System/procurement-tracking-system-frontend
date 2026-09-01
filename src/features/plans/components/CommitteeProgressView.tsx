@@ -227,7 +227,10 @@ export function CommitteeProgressView() {
     if (planIdFromQuery && items.length > 0) {
       const target = items.find((it) => it.id === planIdFromQuery);
       if (target) {
-        setSelectedPlan(target);
+        const timer = window.setTimeout(() => {
+          setSelectedPlan(target);
+        }, 0);
+        return () => window.clearTimeout(timer);
       }
     }
   }, [planIdFromQuery, items]);

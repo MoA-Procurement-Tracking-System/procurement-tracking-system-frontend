@@ -65,7 +65,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
       }
     }
     loadPlans();
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   const [selectedDecision, setSelectedDecision] =
     useState<DecisionRecord | null>(null);
@@ -321,7 +321,9 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                       <tr
                         key={dec.id}
                         onClick={() =>
-                          router.push(`/workspace/committee-progress?planId=${dec.id}`)
+                          router.push(
+                            `/workspace/committee-progress?planId=${dec.id}`,
+                          )
                         }
                         className="hover:bg-emerald-50/50 transition-colors cursor-pointer"
                       >

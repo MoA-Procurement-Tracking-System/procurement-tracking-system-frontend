@@ -1447,7 +1447,9 @@ export function DirectorActivitiesListView({
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
                   Committee Feedback / Deliberation Notes
-                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to reject)</span>
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">
+                    (Required to reject)
+                  </span>
                 </label>
                 <textarea
                   rows={3}
@@ -1504,7 +1506,9 @@ export function DirectorActivitiesListView({
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
                   Revision Notes
-                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to return to Officer)</span>
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">
+                    (Required to return to Officer)
+                  </span>
                 </label>
                 <textarea
                   rows={3}
@@ -1515,7 +1519,8 @@ export function DirectorActivitiesListView({
                 />
                 {!directorReturnRemarks.trim() && (
                   <p className="text-[10px] text-slate-400 font-medium">
-                    Revision notes are required before returning a plan to the Procurement Officer.
+                    Revision notes are required before returning a plan to the
+                    Procurement Officer.
                   </p>
                 )}
               </div>

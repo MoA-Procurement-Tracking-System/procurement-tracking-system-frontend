@@ -1,4 +1,3 @@
-
 import { authTokenManager } from "./authTokenManager";
 
 export const BACKEND_API_URL =
@@ -61,12 +60,21 @@ export async function directApiFetch<T>(
     }
   }
 
-  const response = await fetch(url.toString(), {
-    ...fetchOptions,
-    headers,
-    credentials: "include",
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      ...fetchOptions,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch (err: unknown) {
+    const errorMsg =
+      err instanceof Error
+        ? err.message
+        : "Network error: Unable to connect to backend server.";
+    throw new ApiClientError(errorMsg, 0, null);
+  }
 
   // Parse response
   let responseData: any = null;

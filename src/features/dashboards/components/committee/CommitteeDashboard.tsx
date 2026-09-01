@@ -165,10 +165,11 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
         {/* Card 1: Delayed Votes */}
         <div
           onClick={() => setFilter(filter === "delayed" ? "all" : "delayed")}
-          className={`relative overflow-hidden bg-gradient-to-br from-rose-50/70 to-red-50/40 rounded-[20px] p-5 border shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-red-500 hover:shadow-xs transition-all cursor-pointer select-none ${filter === "delayed"
+          className={`relative overflow-hidden bg-gradient-to-br from-rose-50/70 to-red-50/40 rounded-[20px] p-5 border shadow-3xs flex flex-col justify-between min-h-[140px] border-l-[5px] border-l-red-500 hover:shadow-xs transition-all cursor-pointer select-none ${
+            filter === "delayed"
               ? "border-red-400 ring-2 ring-red-500/20 scale-[1.01] shadow-xs"
               : "border-rose-200 hover:scale-[1.01]"
-            }`}
+          }`}
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -375,7 +376,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                       <tr
                         key={plan.id}
                         onClick={() =>
-                          router.push(`/workspace/plan-for-review?planId=${plan.id}`)
+                          router.push(
+                            `/workspace/plan-for-review?planId=${plan.id}`,
+                          )
                         }
                         className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${
                           plan.isPriority ? "bg-rose-50/10" : ""
@@ -415,12 +418,13 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                         </td>
                         <td className="py-3.5 px-4">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${plan.category === "Goods"
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                              plan.category === "Goods"
                                 ? "bg-blue-50 text-blue-700 border-blue-100"
                                 : plan.category === "Works"
                                   ? "bg-amber-50 text-amber-700 border-amber-100"
                                   : "bg-purple-50 text-purple-700 border-purple-100"
-                              }`}
+                            }`}
                           >
                             {plan.category}
                           </span>
@@ -442,10 +446,11 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${(plan.progress ?? 0) > 0
+                                className={`h-full rounded-full transition-all ${
+                                  (plan.progress ?? 0) > 0
                                     ? "bg-emerald-500"
                                     : "bg-slate-200"
-                                  }`}
+                                }`}
                                 style={{ width: `${plan.progress ?? 0}%` }}
                               ></div>
                             </div>
@@ -514,10 +519,11 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                       {plan.planName}
                     </Link>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${plan.committeeDecision === "Approved"
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${
+                        plan.committeeDecision === "Approved"
                           ? " text-emerald-700 "
                           : " text-rose-700 "
-                        }`}
+                      }`}
                     >
                       {plan.committeeDecision === "Approved"
                         ? "Approved"
@@ -531,10 +537,11 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                   <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
                     <span>Plan Status</span>
                     <span
-                      className={`font-bold ${plan.status === "Finally Approved"
+                      className={`font-bold ${
+                        plan.status === "Finally Approved"
                           ? "text-emerald-600"
                           : "text-amber-600"
-                        }`}
+                      }`}
                     >
                       {plan.status === "Finally Approved"
                         ? "Finally Approved"

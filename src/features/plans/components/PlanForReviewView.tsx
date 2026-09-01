@@ -23,8 +23,6 @@ import {
 import Link from "next/link";
 import {
   INITIAL_PLANS,
-  type PlanCategory,
-  type PlanStatus,
   type ProcurementPlan,
 } from "../plansData";
 import {
@@ -202,12 +200,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const targetDate = deadlineDate || committeeDeadlineDate;
       const days = targetDate
         ? Math.max(
-            1,
-            Math.round(
-              (new Date(targetDate).getTime() - new Date().getTime()) /
-                (1000 * 60 * 60 * 24),
-            ),
-          )
+          1,
+          Math.round(
+            (new Date(targetDate).getTime() - new Date().getTime()) /
+            (1000 * 60 * 60 * 24),
+          ),
+        )
         : 7;
       await sendPlanToCommittee(plan.id, targetDate, days);
     } catch (err) {
@@ -283,27 +281,27 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         onApprovePlan={
           user.role === "DIRECTOR"
             ? (p) => {
-                handleApprovePlan(p);
-                setActivitiesPlan(null);
-              }
+              handleApprovePlan(p);
+              setActivitiesPlan(null);
+            }
             : undefined
         }
         onReturnPlan={
           user.role === "DIRECTOR"
             ? (p, remarks) => {
-                setReturnRemarks(remarks);
-                handleReturnPlan(p);
-                setActivitiesPlan(null);
-              }
+              setReturnRemarks(remarks);
+              handleReturnPlan(p);
+              setActivitiesPlan(null);
+            }
             : undefined
         }
         onCommitteeVote={
           user.role === "ENDORSING_COMMITTEE"
             ? (p, decision, remarks) => {
-                if (remarks) setReturnRemarks(remarks);
-                handleCommitteeVote(p, decision);
-                setActivitiesPlan(null);
-              }
+              if (remarks) setReturnRemarks(remarks);
+              handleCommitteeVote(p, decision);
+              setActivitiesPlan(null);
+            }
             : undefined
         }
       />
@@ -709,12 +707,16 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               {user.role === "ENDORSING_COMMITTEE" ? (
                 <>
                   Committee Feedback / Deliberation Notes
-                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to reject)</span>
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">
+                    (Required to reject)
+                  </span>
                 </>
               ) : (
                 <>
                   Revision Notes
-                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">(Required to return to Officer)</span>
+                  <span className="ml-1 text-rose-500 text-[10px] font-semibold">
+                    (Required to return to Officer)
+                  </span>
                 </>
               )}
             </label>
@@ -736,7 +738,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             )}
             {user.role !== "ENDORSING_COMMITTEE" && !returnRemarks.trim() && (
               <p className="text-[10px] text-slate-400 font-medium">
-                Revision notes are required before returning a plan to the Procurement Officer.
+                Revision notes are required before returning a plan to the
+                Procurement Officer.
               </p>
             )}
             {user.role === "ENDORSING_COMMITTEE" && (
@@ -748,99 +751,97 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             )}
           </div>
 
-            {/* Action Buttons */}
-            {user.role === "ENDORSING_COMMITTEE" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+          {/* Action Buttons */}
+          {user.role === "ENDORSING_COMMITTEE" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() =>
+                  handleCommitteeVote(selectedPlanForReview, "APPROVE")
+                }
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
+                <span>Vote: Endorse & Approve Plan</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={!returnRemarks.trim()}
+                onClick={() =>
+                  handleCommitteeVote(selectedPlanForReview, "REJECT")
+                }
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${returnRemarks.trim()
+                  ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                  : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Vote: Reject / Return Plan</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Committee Voting Deadline
+                  <span className="ml-1 text-slate-500 font-normal">
+                    (Used for backend automated email reminders)
+                  </span>
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={committeeDeadlineDate}
+                    onChange={(e) => setCommitteeDeadlineDate(e.target.value)}
+                    className="rounded-xl border border-slate-300 px-3.5 py-2 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
+                  />
+                  <div className="flex items-center gap-1">
+                    {[3, 7, 14].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + days);
+                          setCommitteeDeadlineDate(
+                            d.toISOString().split("T")[0],
+                          );
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition-colors"
+                      >
+                        +{days} Days
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
-                  onClick={() =>
-                    handleCommitteeVote(selectedPlanForReview, "APPROVE")
-                  }
+                  onClick={() => setPendingApprovePlan(selectedPlanForReview)}
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  <CheckCircle2 className="h-4 w-4 text-[#A3E635]" />
-                  <span>Vote: Endorse & Approve Plan</span>
+                  <Send className="h-4 w-4 text-[#A3E635]" />
+                  <span>Approve &amp; Send to Committee</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={!returnRemarks.trim()}
-                  onClick={() =>
-                    handleCommitteeVote(selectedPlanForReview, "REJECT")
-                  }
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
-                    returnRemarks.trim()
-                      ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
-                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                  }`}
+                  onClick={() => handleReturnPlan(selectedPlanForReview)}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${returnRemarks.trim()
+                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                    }`}
                 >
                   <RotateCcw className="h-4 w-4" />
-                  <span>Vote: Reject / Return Plan</span>
+                  <span>Return to Officer for Revision</span>
                 </button>
               </div>
-            ) : (
-              <div className="space-y-4 pt-2 border-t border-slate-100">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Committee Voting Deadline
-                    <span className="ml-1 text-slate-500 font-normal">
-                      (Used for backend automated email reminders)
-                    </span>
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="date"
-                      value={committeeDeadlineDate}
-                      onChange={(e) => setCommitteeDeadlineDate(e.target.value)}
-                      className="rounded-xl border border-slate-300 px-3.5 py-2 text-xs text-slate-900 outline-none focus:border-[#0A3C2F]"
-                    />
-                    <div className="flex items-center gap-1">
-                      {[3, 7, 14].map((days) => (
-                        <button
-                          key={days}
-                          type="button"
-                          onClick={() => {
-                            const d = new Date();
-                            d.setDate(d.getDate() + days);
-                            setCommitteeDeadlineDate(
-                              d.toISOString().split("T")[0],
-                            );
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 transition-colors"
-                        >
-                          +{days} Days
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPendingApprovePlan(selectedPlanForReview)}
-                    className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0A3C2F] text-white hover:bg-[#072b22] text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Send className="h-4 w-4 text-[#A3E635]" />
-                    <span>Approve &amp; Send to Committee</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!returnRemarks.trim()}
-                    onClick={() => handleReturnPlan(selectedPlanForReview)}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
-                      returnRemarks.trim()
-                        ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
-                        : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                    }`}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Return to Officer for Revision</span>
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
+          )}
         </section>
 
         {/* Dedicated Edit Package Activity Details Modal */}
@@ -1225,15 +1226,14 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
-                        className={`text-xs font-extrabold ${
-                          plan.status === "Submitted to Director"
-                            ? "text-amber-800"
-                            : plan.status === "Committee Review"
-                              ? "text-blue-800"
-                              : plan.status === "Returned"
-                                ? "text-rose-800"
-                                : "text-slate-700"
-                        }`}
+                        className={`text-xs font-extrabold ${plan.status === "Submitted to Director"
+                          ? "text-amber-800"
+                          : plan.status === "Committee Review"
+                            ? "text-blue-800"
+                            : plan.status === "Returned"
+                              ? "text-rose-800"
+                              : "text-slate-700"
+                          }`}
                       >
                         {plan.status}
                       </span>
@@ -1278,7 +1278,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                   {pendingApprovePlan.planName}
                 </p>
                 <p className="text-[11px] font-mono text-slate-600">
-                  Project: {pendingApprovePlan.projectCode} • {pendingApprovePlan.budgetYear}
+                  Project: {pendingApprovePlan.projectCode} •{" "}
+                  {pendingApprovePlan.budgetYear}
                 </p>
               </div>
 
@@ -1295,7 +1296,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                   />
                 </div>
                 <div className="flex items-center gap-1.5 pt-1">
-                  <span className="text-[11px] font-semibold text-slate-500">Quick Presets:</span>
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    Quick Presets:
+                  </span>
                   {[3, 7, 14].map((days) => (
                     <button
                       key={days}
@@ -1316,7 +1319,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
                 <Clock className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                  Endorsement Committee members will receive an automated email notification with a direct link and voting instructions valid until <strong>{committeeDeadlineDate}</strong>.
+                  Endorsement Committee members will receive an automated email
+                  notification with a direct link and voting instructions valid
+                  until <strong>{committeeDeadlineDate}</strong>.
                 </p>
               </div>
             </div>
@@ -1346,4 +1351,3 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     </div>
   );
 }
-
