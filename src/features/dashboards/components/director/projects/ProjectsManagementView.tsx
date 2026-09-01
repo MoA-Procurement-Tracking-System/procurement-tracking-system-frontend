@@ -179,53 +179,67 @@ export function ProjectsManagementView() {
         // Create Project on backend
         let createdId = savedProject.id;
         try {
-          // Resolve sector ID & funding source ID from lookups or fallback
+          const [secLookupList, fundLookupList] = await Promise.all([
+            fetchLookups("SECTOR"),
+            fetchLookups("FUNDING_SOURCE"),
+          ]);
+
           const matchedSector =
-            sectors.find(
+            secLookupList.find(
               (s) =>
-                s.label.toLowerCase() === savedProject.sector.toLowerCase(),
-            ) || sectors[0];
+                s.label.toLowerCase() === savedProject.sector.toLowerCase() ||
+                s.code.toLowerCase() === savedProject.sector.toLowerCase(),
+            ) || secLookupList[0];
+
           const matchedFs =
-            fundingSources.find((f) =>
-              f.label
-                .toLowerCase()
-                .includes(savedProject.fundingSource.toLowerCase()),
-            ) || fundingSources[0];
+            fundLookupList.find(
+              (f) =>
+                f.label
+                  .toLowerCase()
+                  .includes(savedProject.fundingSource.toLowerCase()) ||
+                f.code
+                  .toLowerCase()
+                  .includes(savedProject.fundingSource.toLowerCase()),
+            ) || fundLookupList[0];
 
-          const result = await createProject({
-            code: savedProject.code,
-            name: savedProject.name,
-            sectorId: matchedSector?.id || "sec-default",
-            fundingSourceId: matchedFs?.id || "fs-default",
-            sapIdentificationNo: savedProject.sapNumber,
-            country: savedProject.countryOrg,
-            executingAgency: savedProject.executingAgency,
-            organization: savedProject.region,
-            fundingType: savedProject.fundingType,
-            loanGrantNumbers: savedProject.loanGrantNumbers,
-            components: savedProject.components,
-            subcomponents: savedProject.subcomponents,
-            baseCurrency: savedProject.currency,
-            projectStartDate: savedProject.startDate
-              ? new Date(savedProject.startDate).toISOString()
-              : undefined,
-            projectEndDate: savedProject.endDate
-              ? new Date(savedProject.endDate).toISOString()
-              : undefined,
-          });
+          const targetSectorId = matchedSector?.id;
+          const targetFsId = matchedFs?.id;
 
-          if (result && result.id) {
-            createdId = result.id;
-            // Assign officers to the created project on backend
-            if (
-              savedProject.assignedOfficers &&
-              savedProject.assignedOfficers.length > 0
-            ) {
-              for (const off of savedProject.assignedOfficers) {
-                try {
-                  await assignOfficerToProject(result.id, off.id);
-                } catch (assignErr) {
-                  console.warn("Assign officer note:", assignErr);
+          if (targetSectorId && targetFsId) {
+            const result = await createProject({
+              code: savedProject.code,
+              name: savedProject.name,
+              sectorId: targetSectorId,
+              fundingSourceId: targetFsId,
+              sapIdentificationNo: savedProject.sapNumber,
+              country: savedProject.countryOrg,
+              executingAgency: savedProject.executingAgency,
+              organization: savedProject.region,
+              fundingType: savedProject.fundingType,
+              loanGrantNumbers: savedProject.loanGrantNumbers,
+              components: savedProject.components,
+              subcomponents: savedProject.subcomponents,
+              baseCurrency: savedProject.currency,
+              projectStartDate: savedProject.startDate
+                ? new Date(savedProject.startDate).toISOString()
+                : undefined,
+              projectEndDate: savedProject.endDate
+                ? new Date(savedProject.endDate).toISOString()
+                : undefined,
+            });
+
+            if (result && result.id) {
+              createdId = result.id;
+              if (
+                savedProject.assignedOfficers &&
+                savedProject.assignedOfficers.length > 0
+              ) {
+                for (const off of savedProject.assignedOfficers) {
+                  try {
+                    await assignOfficerToProject(result.id, off.id);
+                  } catch (assignErr) {
+                    console.warn("Assign officer note:", assignErr);
+                  }
                 }
               }
             }

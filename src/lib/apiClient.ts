@@ -1,12 +1,3 @@
-/**
- * Direct Backend API Client
- *
- * Executes direct network calls from the browser to the backend service.
- * Base URL defaults to process.env.NEXT_PUBLIC_BACKEND_API_URL or http://localhost:8080/api.
- *
- * Integrates with authTokenManager to attach in-memory Bearer tokens
- * without persisting them to browser storage (protecting against XSS).
- */
 
 import { authTokenManager } from "./authTokenManager";
 
