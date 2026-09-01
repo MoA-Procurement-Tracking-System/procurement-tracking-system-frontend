@@ -21,10 +21,7 @@ import {
   Mail,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  INITIAL_PLANS,
-  type ProcurementPlan,
-} from "../plansData";
+import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
 import {
   fetchPlans,
   sendPlanToCommittee,
@@ -200,12 +197,12 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       const targetDate = deadlineDate || committeeDeadlineDate;
       const days = targetDate
         ? Math.max(
-          1,
-          Math.round(
-            (new Date(targetDate).getTime() - new Date().getTime()) /
-            (1000 * 60 * 60 * 24),
-          ),
-        )
+            1,
+            Math.round(
+              (new Date(targetDate).getTime() - new Date().getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
         : 7;
       await sendPlanToCommittee(plan.id, targetDate, days);
     } catch (err) {
@@ -281,27 +278,27 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         onApprovePlan={
           user.role === "DIRECTOR"
             ? (p) => {
-              handleApprovePlan(p);
-              setActivitiesPlan(null);
-            }
+                handleApprovePlan(p);
+                setActivitiesPlan(null);
+              }
             : undefined
         }
         onReturnPlan={
           user.role === "DIRECTOR"
             ? (p, remarks) => {
-              setReturnRemarks(remarks);
-              handleReturnPlan(p);
-              setActivitiesPlan(null);
-            }
+                setReturnRemarks(remarks);
+                handleReturnPlan(p);
+                setActivitiesPlan(null);
+              }
             : undefined
         }
         onCommitteeVote={
           user.role === "ENDORSING_COMMITTEE"
             ? (p, decision, remarks) => {
-              if (remarks) setReturnRemarks(remarks);
-              handleCommitteeVote(p, decision);
-              setActivitiesPlan(null);
-            }
+                if (remarks) setReturnRemarks(remarks);
+                handleCommitteeVote(p, decision);
+                setActivitiesPlan(null);
+              }
             : undefined
         }
       />
@@ -771,10 +768,11 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 onClick={() =>
                   handleCommitteeVote(selectedPlanForReview, "REJECT")
                 }
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${returnRemarks.trim()
-                  ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
-                  : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                  }`}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                  returnRemarks.trim()
+                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                }`}
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Vote: Reject / Return Plan</span>
@@ -831,10 +829,11 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                   type="button"
                   disabled={!returnRemarks.trim()}
                   onClick={() => handleReturnPlan(selectedPlanForReview)}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${returnRemarks.trim()
-                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
-                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                    }`}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
+                    returnRemarks.trim()
+                      ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Return to Officer for Revision</span>
@@ -1226,14 +1225,15 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
-                        className={`text-xs font-extrabold ${plan.status === "Submitted to Director"
-                          ? "text-amber-800"
-                          : plan.status === "Committee Review"
-                            ? "text-blue-800"
-                            : plan.status === "Returned"
-                              ? "text-rose-800"
-                              : "text-slate-700"
-                          }`}
+                        className={`text-xs font-extrabold ${
+                          plan.status === "Submitted to Director"
+                            ? "text-amber-800"
+                            : plan.status === "Committee Review"
+                              ? "text-blue-800"
+                              : plan.status === "Returned"
+                                ? "text-rose-800"
+                                : "text-slate-700"
+                        }`}
                       >
                         {plan.status}
                       </span>
