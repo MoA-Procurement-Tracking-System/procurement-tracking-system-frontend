@@ -160,28 +160,28 @@ function RoadmapSection({
   title: string;
 }) {
   return (
-    <section className="overflow-visible rounded-lg border border-slate-300 bg-white shadow-sm">
-      <h2 className="border-b border-slate-300 bg-[#f5f6fb] px-4 py-3 text-[10px] font-extrabold text-[#16243a]">
+    <section className="overflow-visible rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+      <h2 className="border-b border-slate-200 bg-[#edf5f1] px-4 py-2.5 text-[11px] font-extrabold text-[#16243a]">
         {title}
       </h2>
       <div className="overflow-visible">
         <table className="w-full table-fixed border-collapse text-left">
           <thead>
-            <tr className="border-b border-slate-200 bg-[#fbfcfe] text-[8px] font-semibold text-slate-500">
-              <th className="w-[35%] px-3 py-2" scope="col">
+            <tr className="bg-[#0A3C2F] text-white text-[10px] font-extrabold uppercase tracking-wider">
+              <th className="w-[35%] px-3 py-2.5" scope="col">
                 Stage
               </th>
-              <th className="w-[38%] px-3 py-2" scope="col">
+              <th className="w-[38%] px-3 py-2.5" scope="col">
                 Original Planned Date
-                <span className="ml-1 text-[7px] font-normal">(GC / EC)</span>
+                <span className="ml-1 text-[8px] font-normal text-slate-200">(GC / EC)</span>
               </th>
-              <th className="w-[11%] px-2 py-2 text-center" scope="col">
+              <th className="w-[11%] px-2 py-2.5 text-center" scope="col">
                 Duration
               </th>
-              <th className="w-[10%] px-2 py-2 text-center" scope="col">
+              <th className="w-[10%] px-2 py-2.5 text-center" scope="col">
                 Type
               </th>
-              <th className="w-[6%] px-2 py-2 text-center" scope="col">
+              <th className="w-[6%] px-2 py-2.5 text-center" scope="col">
                 N/A
               </th>
             </tr>
@@ -318,7 +318,7 @@ function RoadmapDateCell({
       </button>
 
       {editing ? (
-        <div className="relative z-40 mt-2 w-[28rem] max-w-[70vw] rounded-md border border-slate-300 bg-white p-3 shadow-xl">
+        <div className="relative z-40 mt-2 w-md max-w-[70vw] rounded-md border border-slate-300 bg-white p-3 shadow-xl">
           <DualCalendarField
             errorMessage={error ? "Review this milestone date." : undefined}
             ethiopianValue={ethiopianValue}

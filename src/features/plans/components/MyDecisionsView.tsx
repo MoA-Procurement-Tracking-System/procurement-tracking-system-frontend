@@ -63,10 +63,22 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
       }
     }
     loadPlans();
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   const [selectedDecision, setSelectedDecision] =
     useState<DecisionRecord | null>(null);
+
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/my-decisions") {
+        setSelectedDecision(null);
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
 
   const decisions: DecisionRecord[] = plans
     .filter((p) => p.committeeDecision !== undefined)
@@ -237,7 +249,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Search & Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="relative flex-1 min-w-[240px]">
+            <div className="relative flex-1 min-w-60">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -280,7 +292,7 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
           {/* Tabular Decisions Directory */}
           <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[800px] text-xs">
+              <table className="w-full text-left border-collapse min-w-200 text-xs">
                 <thead>
                   <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                     <th className="py-3 px-4">Plan</th>
@@ -320,14 +332,14 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                         key={dec.id}
                         className="hover:bg-slate-50/70 transition-colors"
                       >
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          {dec.planName}
-                          <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                        <td className="py-3.5 px-4 font-bold text-slate-900 max-w-xs wrap-break-word">
+                          <span className="wrap-break-word line-clamp-2">{dec.planName}</span>
+                          <div className="text-[10px] text-slate-400 font-normal mt-0.5 wrap-break-word line-clamp-2">
                             {dec.subtitle}
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 font-semibold text-slate-800">
+                        <td className="py-3.5 px-4 font-semibold text-slate-800 wrap-break-word max-w-44">
                           {dec.project}
                         </td>
 

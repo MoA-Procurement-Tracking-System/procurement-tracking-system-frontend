@@ -289,3 +289,39 @@ export async function signOut(): Promise<void> {
     // Ignore logout errors
   }
 }
+
+export function getClientSession(): AuthSession | null {
+  if (typeof document === "undefined") return null;
+  const cookies = document.cookie.split(";").map((c) => c.trim());
+  const targetNames = [FRONTEND_SESSION_COOKIE, "moa_session"];
+  for (const name of targetNames) {
+    const match = cookies.find((c) => c.startsWith(`${name}=`));
+    if (match) {
+      const val = match.slice(name.length + 1);
+      try {
+        const decoded = decodeURIComponent(escape(atob(val)));
+        const parsed = JSON.parse(decoded);
+        if (parsed && parsed.user) return parsed;
+      } catch {}
+      try {
+        const decoded = atob(val);
+        const parsed = JSON.parse(decoded);
+        if (parsed && parsed.user) return parsed;
+      } catch {}
+      try {
+        const parsed = JSON.parse(decodeURIComponent(val));
+        if (parsed && parsed.user) return parsed;
+      } catch {}
+      try {
+        const parsed = JSON.parse(val);
+        if (parsed && parsed.user) return parsed;
+      } catch {}
+    }
+  }
+  return null;
+}
+
+export function getCurrentUser(): AuthUser | null {
+  return getClientSession()?.user ?? null;
+}
+

@@ -729,8 +729,8 @@ export function ActivitiesListView({
                           <td className="py-2 px-3 text-center font-bold text-slate-400">
                             {idx + 1}
                           </td>
-                          <td className="py-2 px-3 font-semibold text-slate-900">
-                            {stage.stageName}
+                          <td className="py-2 px-3 font-semibold text-slate-900 max-w-xs wrap-break-word">
+                            <p className="wrap-break-word line-clamp-2">{stage.stageName}</p>
                           </td>
                           <td className="py-2 px-3 font-mono text-slate-600">
                             {stage.notApplicable ||
@@ -1020,8 +1020,8 @@ export function ActivitiesListView({
                             {act.activityRefNo}
                           </td>
 
-                          <td className="py-2 px-3 max-w-xs">
-                            <p className="font-bold text-slate-900 text-xs leading-snug">
+                          <td className="py-2 px-3 max-w-xs wrap-break-word">
+                            <p className="font-bold text-slate-900 text-xs leading-snug wrap-break-word line-clamp-2">
                               {act.description}
                             </p>
                           </td>

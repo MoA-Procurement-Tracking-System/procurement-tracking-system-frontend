@@ -175,6 +175,18 @@ export function DirectorActivityTrackerView() {
     return () => window.clearTimeout(loadRecords);
   }, []);
 
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/activity-tracker") {
+        setSelectedActivity(null);
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
+
   const effectiveActivityRecords = useMemo(() => {
     const map = new Map<string, SavedOfficerActivityRecord>();
     backendActivities.forEach((rec) => {
@@ -182,8 +194,15 @@ export function DirectorActivityTrackerView() {
         `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
       map.set(key, rec);
     });
+    savedActivityRecords.forEach((rec) => {
+      const key =
+        `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, rec);
+      }
+    });
     return Array.from(map.values());
-  }, [backendActivities]);
+  }, [backendActivities, savedActivityRecords]);
 
   const allProjects = useMemo(() => backendProjects, [backendProjects]);
 
@@ -779,7 +798,7 @@ function DirectorActivityTrackerList({
         {/* Row 1: Search, Project, Category, Method, Officer, More Filters */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[260px]">
+          <div className="relative flex-1 min-w-65">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="search"
@@ -791,7 +810,7 @@ function DirectorActivityTrackerList({
           </div>
 
           {/* Project Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={projectCode}
               onChange={(e) => setProjectCode(e.target.value)}
@@ -808,7 +827,7 @@ function DirectorActivityTrackerList({
           </div>
 
           {/* Category Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -825,7 +844,7 @@ function DirectorActivityTrackerList({
           </div>
 
           {/* Method Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
@@ -1039,23 +1058,23 @@ function DirectorActivityTrackerList({
       {/* 5. Main Standard Table Container (Matching Projects Directory & Other Views) */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1150px]">
+          <table className="w-full text-left border-collapse min-w-287.5">
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-4 text-center w-12">#</th>
-                <th className="py-3.5 px-4 min-w-[160px]">Reference No</th>
-                <th className="py-3.5 px-4 min-w-[260px] w-[26%]">
+                <th className="py-3.5 px-4 min-w-40">Reference No</th>
+                <th className="py-3.5 px-4 min-w-65 w-[26%]">
                   Activity Name & Milestone
                 </th>
-                <th className="py-3.5 px-4 min-w-[160px]">Project / FY</th>
-                <th className="py-3.5 px-4 min-w-[140px]">Category & Method</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Current Stage</th>
-                <th className="py-3.5 px-4 min-w-[130px]">Target Date</th>
-                <th className="py-3.5 px-4 text-center min-w-[130px]">
+                <th className="py-3.5 px-4 min-w-40">Project / FY</th>
+                <th className="py-3.5 px-4 min-w-35">Category & Method</th>
+                <th className="py-3.5 px-4 min-w-50">Current Stage</th>
+                <th className="py-3.5 px-4 min-w-32.5">Target Date</th>
+                <th className="py-3.5 px-4 text-center min-w-32.5">
                   Delay Status
                 </th>
-                <th className="py-3.5 px-4 min-w-[150px]">Assigned Officer</th>
-                <th className="py-3.5 px-4 text-center min-w-[100px]">
+                <th className="py-3.5 px-4 min-w-37.5">Assigned Officer</th>
+                <th className="py-3.5 px-4 text-center min-w-25">
                   Action
                 </th>
               </tr>
@@ -1082,14 +1101,14 @@ function DirectorActivityTrackerList({
                           {item.activity.reference}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 max-w-sm wrap-break-word">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onViewActivity(item);
                           }}
-                          className="font-bold text-slate-900 hover:text-[#0A3C2F] text-left transition-colors cursor-pointer line-clamp-2 leading-snug"
+                          className="font-bold text-slate-900 hover:text-[#0A3C2F] text-left transition-colors cursor-pointer line-clamp-2 leading-snug wrap-break-word"
                         >
                           {item.activity.description}
                         </button>
@@ -1556,23 +1575,23 @@ function DirectorActivityDetailView({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[850px]">
+            <table className="w-full text-left border-collapse min-w-212.5">
               <thead>
                 <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4 text-center w-12">#</th>
-                  <th className="py-3.5 px-4 min-w-[220px]">Stage Name</th>
-                  <th className="py-3.5 px-4 min-w-[140px]">
+                  <th className="py-3.5 px-4 min-w-55">Stage Name</th>
+                  <th className="py-3.5 px-4 min-w-35">
                     Original Planned Target
                   </th>
-                  <th className="py-3.5 px-4 min-w-[140px]">
+                  <th className="py-3.5 px-4 min-w-35">
                     Effective Target
                   </th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Actual Date</th>
-                  <th className="py-3.5 px-4 min-w-[120px]">Status</th>
-                  <th className="py-3.5 px-4 text-center min-w-[100px]">
+                  <th className="py-3.5 px-4 min-w-32.5">Actual Date</th>
+                  <th className="py-3.5 px-4 min-w-30">Status</th>
+                  <th className="py-3.5 px-4 text-center min-w-25">
                     Delay
                   </th>
-                  <th className="py-3.5 px-4 min-w-[200px]">Officer Remarks</th>
+                  <th className="py-3.5 px-4 min-w-50">Officer Remarks</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -1594,8 +1613,10 @@ function DirectorActivityDetailView({
                       <td className="py-3.5 px-4 text-center font-bold text-slate-400">
                         {i + 1}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-900">{stg.name}</p>
+                      <td className="py-3.5 px-4 min-w-44 max-w-xs break-words">
+                        <p className="font-bold text-slate-900 break-words">
+                          {stg.name}
+                        </p>
                         {tracking.revisions.length > 0 && (
                           <span className="mt-0.5 inline-block text-[10px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                             R{tracking.revisions.length} Revised
@@ -1637,7 +1658,7 @@ function DirectorActivityDetailView({
                           </p>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                      <td className="py-3.5 px-4 font-medium text-slate-800">
                         {isNotApp
                           ? "—"
                           : tracking.actualDate?.gregorian ||
@@ -1664,8 +1685,10 @@ function DirectorActivityDetailView({
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {tracking.remarks || "No officer notes recorded."}
+                      <td className="py-3.5 px-4 text-slate-600 max-w-xs break-words">
+                        <p className="break-words line-clamp-2">
+                          {tracking.remarks || "No officer notes recorded."}
+                        </p>
                       </td>
                     </tr>
                   );

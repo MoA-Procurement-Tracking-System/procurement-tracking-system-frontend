@@ -151,4 +151,60 @@ describe("officer plan draft persistence", () => {
     );
     expect(updated?.status).toBe("Submitted to Director");
   });
+
+  it("preserves advanced backend status when a stale draft record exists in storage", () => {
+    const project = {
+      ...mockProject,
+      plans: [
+        {
+          ...mockProject.plans[0],
+          status: "Committee Review" as const,
+        },
+      ],
+    };
+
+    const staleDraft = {
+      ...mockProject.plans[0],
+      status: "Draft" as const,
+    };
+
+    const projects = mergeSavedPlans([project], [
+      { plan: staleDraft, projectCode: project.code },
+    ]);
+
+    const updated = projects[0].plans.find(
+      (p) => p.reference === mockProject.plans[0].reference,
+    );
+    expect(updated?.status).toBe("Committee Review");
+  });
+
+  it("correctly preserves Returned status and rejection remarks", () => {
+    const project = {
+      ...mockProject,
+      plans: [
+        {
+          ...mockProject.plans[0],
+          status: "Returned" as const,
+          rejectionReason: "Director requested updated bill of quantities.",
+        },
+      ],
+    };
+
+    const staleDraft = {
+      ...mockProject.plans[0],
+      status: "Draft" as const,
+    };
+
+    const projects = mergeSavedPlans([project], [
+      { plan: staleDraft, projectCode: project.code },
+    ]);
+
+    const updated = projects[0].plans.find(
+      (p) => p.reference === mockProject.plans[0].reference,
+    );
+    expect(updated?.status).toBe("Returned");
+    expect(updated?.rejectionReason).toBe(
+      "Director requested updated bill of quantities.",
+    );
+  });
 });

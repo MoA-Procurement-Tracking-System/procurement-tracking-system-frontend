@@ -54,7 +54,10 @@ export default async function WorkspaceSectionPage({
     const fromTracker =
       query.from === "tracker" || query.from === "activity-tracker";
     const mode =
-      query.mode === "create-plan" || query.mode === "create-activity"
+      query.mode === "create-plan" ||
+      query.mode === "create-activity" ||
+      query.mode === "edit-plan" ||
+      query.mode === "edit-activity"
         ? query.mode
         : undefined;
 
@@ -90,7 +93,7 @@ export default async function WorkspaceSectionPage({
   }
 
   if (section === "user-management") {
-    return <UserManagementView />;
+    return <UserManagementView currentUser={session.user} />;
   }
 
   if (section === "projects" && session.user.role === "DIRECTOR") {

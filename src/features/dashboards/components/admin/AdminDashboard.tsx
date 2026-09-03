@@ -87,6 +87,15 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
   }, []);
 
   const handleToggleStatus = async (targetUser: ApiUser) => {
+    if (
+      targetUser.isActive &&
+      (targetUser.id === user.id ||
+        (targetUser.email &&
+          user.email &&
+          targetUser.email.toLowerCase() === user.email.toLowerCase()))
+    ) {
+      return;
+    }
     setTogglingId(targetUser.id);
     try {
       await updateUser(targetUser.id, { isActive: !targetUser.isActive });
@@ -203,6 +212,7 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
       {/* User Account Status & Access Controls Table (Director Theme, 5 items) */}
       <UserAccessTable
         users={users}
+        currentUser={user}
         isLoading={isUsersLoading}
         onToggleStatus={handleToggleStatus}
         togglingId={togglingId}

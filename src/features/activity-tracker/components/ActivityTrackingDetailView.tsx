@@ -680,28 +680,28 @@ function RoadmapTrackingSection({
           role="region"
           tabIndex={0}
         >
-          <table className="w-[76rem] min-w-[76rem] table-fixed border-collapse text-left">
+          <table className="w-304 min-w-304 table-fixed border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-300 bg-[#fafbfc] text-[9px] font-extrabold uppercase tracking-[0.05em] text-slate-600">
-                <th className="w-64 px-4 py-3" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-64 px-4 py-3.5" scope="col">
                   Stage
                 </th>
-                <th className="w-44 px-4 py-3" scope="col">
+                <th className="w-44 px-4 py-3.5" scope="col">
                   Original Planned Date
                 </th>
-                <th className="w-44 px-4 py-3" scope="col">
+                <th className="w-44 px-4 py-3.5" scope="col">
                   Current Target
                 </th>
-                <th className="w-44 px-4 py-3" scope="col">
+                <th className="w-44 px-4 py-3.5" scope="col">
                   Actual Date
                 </th>
-                <th className="w-36 px-4 py-3" scope="col">
+                <th className="w-36 px-4 py-3.5" scope="col">
                   Stage Status
                 </th>
-                <th className="w-24 px-4 py-3 text-center" scope="col">
+                <th className="w-24 px-4 py-3.5 text-center" scope="col">
                   Delay
                 </th>
-                <th className="w-24 px-4 py-3 text-center" scope="col">
+                <th className="w-24 px-4 py-3.5 text-center" scope="col">
                   Action
                 </th>
               </tr>

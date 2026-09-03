@@ -78,9 +78,18 @@ export function AppShell({
     event: MouseEvent<HTMLAnchorElement>,
   ) => {
     setIsMobileMenuOpen(false);
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pts:sidebar-reset", { detail: { href } }),
+      );
+    }
+
     if (pathname === href) {
-      event.preventDefault();
-      router.refresh();
+      if (typeof window !== "undefined" && window.location.search) {
+        event.preventDefault();
+        router.push(href);
+      }
     }
   };
 
@@ -96,7 +105,7 @@ export function AppShell({
               height={220}
               priority
               quality={100}
-              className="absolute w-[110px] h-auto max-w-none"
+              className="absolute w-27.5 h-auto max-w-none"
               style={{
                 left: "-33px",
                 top: "-4px",
@@ -254,7 +263,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[96rem] p-4 sm:p-6">
+        <main className="mx-auto w-full max-w-384 p-4 sm:p-6">
           {children}
         </main>
       </div>

@@ -67,32 +67,64 @@ const steps = [
 
 export function CreateProcurementActivityView({
   existingActivityCount,
+  initialActivity,
   onSaveActivity,
   plan,
   project,
 }: {
   existingActivityCount?: number;
+  initialActivity?: ProcurementActivitySummary;
   onSaveActivity?: (activity: ProcurementActivitySummary) => void;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
+  const isEditing = Boolean(initialActivity);
   const category = normalizeActivityCategory(plan.category);
   const [step, setStep] = useState<WizardStep>(1);
   const [attemptedStep, setAttemptedStep] = useState<WizardStep | null>(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<ActivityFormState>(() =>
-    createInitialForm(project, plan, category),
+    createInitialForm(project, plan, category, initialActivity),
   );
   const [financingAllocations, setFinancingAllocations] = useState<
     Allocation[]
-  >(() => createAllocations(project.financingNumbers ?? []));
+  >(() => {
+    if (initialActivity?.details?.financingAllocations?.length) {
+      return initialActivity.details.financingAllocations;
+    }
+    return createAllocations(project.financingNumbers ?? []);
+  });
   const [componentAllocations, setComponentAllocations] = useState<
     Allocation[]
-  >(() => createAllocations(project.components ?? []));
-  const [lots, setLots] = useState<LotEntry[]>([
-    { amount: "", description: "", id: 1, number: "1" },
-  ]);
-  const [roadmap, setRoadmap] = useState<RoadmapStage[]>([]);
+  >(() => {
+    if (initialActivity?.details?.componentAllocations?.length) {
+      return initialActivity.details.componentAllocations;
+    }
+    return createAllocations(project.components ?? []);
+  });
+  const [lots, setLots] = useState<LotEntry[]>(() => {
+    if (initialActivity?.details?.lots?.length) {
+      return initialActivity.details.lots;
+    }
+    return [{ amount: "", description: "", id: 1, number: "1" }];
+  });
+  const [roadmap, setRoadmap] = useState<RoadmapStage[]>(() => {
+    if (initialActivity?.details?.roadmap?.length) {
+      return initialActivity.details.roadmap;
+    }
+    if (initialActivity?.method) {
+      return roadmapForMethod(initialActivity.method).map((stage) => ({
+        allowNotApplicable: Boolean(stage.allowNotApplicable),
+        days: "",
+        ethiopianDate: "",
+        gregorianDate: "",
+        name: stage.name,
+        notApplicable: false,
+        remarks: "",
+      }));
+    }
+    return [];
+  });
   const methodOptions = useMemo(() => methodsForCategory(category), [category]);
   const selectedMethod = procurementMethodOptions.find(
     (method) => method.key === form.method,
@@ -102,13 +134,15 @@ export function CreateProcurementActivityView({
     encodeURIComponent(project.code) +
     "&plan=" +
     encodeURIComponent(plan.reference);
-  const activityReference = activityReferenceFor(
-    project,
-    plan,
-    category,
-    form.method,
-    existingActivityCount,
-  );
+  const activityReference = initialActivity
+    ? initialActivity.reference
+    : activityReferenceFor(
+        project,
+        plan,
+        category,
+        form.method,
+        existingActivityCount,
+      );
 
   const stepOneInvalid = !form.method;
   const stepTwoInvalid =
@@ -246,12 +280,26 @@ export function CreateProcurementActivityView({
 
   return (
     <div className="mx-auto w-full max-w-[74rem] pb-6">
-      <ActivityBreadcrumb plan={plan} planHref={planHref} project={project} />
+      <ActivityBreadcrumb
+        initialActivity={initialActivity}
+        plan={plan}
+        planHref={planHref}
+        project={project}
+      />
 
       <header className="mt-3 rounded-lg border border-slate-300 bg-white px-5 py-4 shadow-sm">
-        <h1 className="text-xl font-extrabold tracking-tight text-[#16243a]">
-          Add Procurement Activity
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-extrabold tracking-tight text-[#16243a]">
+            {isEditing
+              ? "Revise Procurement Activity"
+              : "Add Procurement Activity"}
+          </h1>
+          {isEditing && (
+            <span className="font-mono text-xs font-bold text-[#176c55] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              {activityReference}
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-[10px] leading-4 text-slate-500">
           Step {step}: {stepDescriptions[step]}
         </p>
@@ -327,7 +375,66 @@ function createInitialForm(
   project: OfficerProject,
   plan: ProcurementPlanSummary,
   category: ProcurementActivityCategory,
+  initialActivity?: ProcurementActivitySummary,
 ): ActivityFormState {
+  if (initialActivity) {
+    const d = initialActivity.details?.form;
+    const anyAct = initialActivity as any;
+    return {
+      activityDescription:
+        initialActivity.description || d?.activityDescription || "",
+      classificationCode: d?.classificationCode || "",
+      comments: d?.comments || "",
+      contractType:
+        anyAct.contractType || d?.contractType || "Lump Sum",
+      currency:
+        anyAct.currency || plan.currency || project.baseCurrency,
+      domesticPreference: d?.domesticPreference || "",
+      estimatedAmount: String(
+        initialActivity.estimatedAmount || d?.estimatedAmount || "",
+      ),
+      evaluationOptionCode: d?.evaluationOptionCode || "",
+      fundingSource:
+        anyAct.fundingSource ||
+        d?.fundingSource ||
+        project.fundingSource,
+      highRiskCode: d?.highRiskCode || "",
+      inProcess:
+        initialActivity.status === "In Progress" || Boolean(d?.inProcess),
+      invitationReference: d?.invitationReference || "",
+      latitude: d?.latitude || "",
+      location:
+        anyAct.location ||
+        d?.location ||
+        plan.organizationRegion ||
+        project.organizationRegion ||
+        "",
+      longitude: d?.longitude || "",
+      lotRequired: Boolean(
+        d?.lotRequired ||
+          (initialActivity.details?.lots &&
+            initialActivity.details.lots.length > 0),
+      ),
+      marketApproach:
+        anyAct.marketApproach || d?.marketApproach || "Open - National",
+      method: initialActivity.method || d?.method || "",
+      oversightClassification: d?.oversightClassification || "",
+      pricingBasis:
+        category === "Works" ? d?.pricingBasis || "" : "Not Applicable",
+      procurementDocumentType: d?.procurementDocumentType || "",
+      procurementProcess:
+        anyAct.procurementProcess ||
+        d?.procurementProcess ||
+        "1 Envelope (Single Stage 1 Env)",
+      qualificationApproach: d?.qualificationApproach || "",
+      requiresUnAgency: Boolean(d?.requiresUnAgency),
+      reviewType: anyAct.reviewType || d?.reviewType || "Post Review",
+      scopeNotes: d?.scopeNotes || "",
+      specificMethod: d?.specificMethod || "",
+      subcomponent: d?.subcomponent || "",
+    };
+  }
+
   return {
     activityDescription: "",
     classificationCode: "",
@@ -381,10 +488,12 @@ function allocationTotalIsValid(allocations: readonly Allocation[]) {
 }
 
 function ActivityBreadcrumb({
+  initialActivity,
   plan,
   planHref,
   project,
 }: {
+  initialActivity?: ProcurementActivitySummary;
   plan: ProcurementPlanSummary;
   planHref: string;
   project: OfficerProject;
@@ -425,7 +534,7 @@ function ActivityBreadcrumb({
         </li>
         <li aria-hidden="true">/</li>
         <li aria-current="page" className="font-semibold text-slate-800">
-          Add Activity
+          {initialActivity ? "Edit Activity" : "Add Activity"}
         </li>
       </ol>
     </nav>

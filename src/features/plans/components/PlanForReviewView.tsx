@@ -17,12 +17,11 @@ import {
   Eye,
   X,
   Calendar,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import {
   INITIAL_PLANS,
-  type PlanCategory,
-  type PlanStatus,
   type ProcurementPlan,
 } from "../plansData";
 import {
@@ -39,10 +38,21 @@ import {
 } from "../../dashboards/components/director/projects/projectsData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
+import { VersionHistoryModal } from "./VersionHistoryModal";
+import { DualCalendarField } from "@/features/projects/components/DualCalendarField";
+import {
+  getCurrentPlanVersionNumber,
+  recordPlanVersionEvent,
+} from "../data/planRevisions";
 import type {
   ProcurementActivity,
   ActivityStage,
 } from "../../activities/activitiesData";
+import {
+  OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+  parseSavedPlanRecords,
+} from "@/features/projects/data/officerPlanDrafts";
+import { OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY } from "@/features/projects/data/officerActivityDrafts";
 
 interface PlanForReviewViewProps {
   user: AuthUser;
@@ -53,6 +63,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [historyModalPlan, setHistoryModalPlan] =
+    useState<ProcurementPlan | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -68,8 +80,107 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       );
 
       const planMap = new Map<string, ProcurementPlan>();
-      INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-      mapped.forEach((p) => planMap.set(p.id, p));
+      if (rawPlans.length === 0) {
+        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
+      }
+
+      // Merge saved officer plans from localStorage
+      const draftList: ProcurementPlan[] = [];
+      try {
+        if (typeof window !== "undefined") {
+          const rawSaved = window.localStorage.getItem(
+            OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+          );
+          if (rawSaved) {
+            const parsed = parseSavedPlanRecords(rawSaved);
+            parsed.forEach((rec) => {
+              const p = rec.plan;
+              if (!p) return;
+              const planId = p.id || `officer-${rec.projectCode}-${p.reference}`;
+              const mappedDraft: ProcurementPlan = {
+                id: planId,
+                projectId: rec.projectCode,
+                projectName: `${rec.projectCode} Project`,
+                planName: p.name || p.reference,
+                projectCode: rec.projectCode,
+                category: p.category || "Goods",
+                budgetYear: p.budgetYear || "2018 EFY",
+                planPeriodFrom: p.planPeriod?.from?.gregorian || "2026-07-08",
+                planPeriodTo: p.planPeriod?.to?.gregorian || "2027-07-07",
+                generalNoticeDate:
+                  p.generalProcurementNoticeDate?.gregorian || "2026-07-08",
+                organizationRegion: p.organizationRegion || "Federal / FPCU",
+                status: (p.status as any) || "Submitted to Director",
+                description: p.description || "",
+                reference: p.reference,
+                rejectionReason: p.rejectionReason,
+                activities: (p.planActivities as any) || [],
+                activitiesCount:
+                  (p.planActivities as any)?.length || p.activities || 0,
+                assignedOfficer: "Procurement Officer",
+                createdBy: "Procurement Officer",
+                createdAt: new Date().toISOString(),
+                currency: p.currency || "ETB",
+                estimatedValue: p.estimatedValue || 0,
+              };
+              draftList.push(mappedDraft);
+            });
+          }
+        }
+      } catch (storageErr) {
+        console.warn("Storage read error in loadPlans:", storageErr);
+      }
+
+      for (const d of draftList) {
+        if (d.status !== "Draft") {
+          planMap.set(d.id, d);
+        }
+      }
+
+      mapped.forEach((p) => {
+        const matchingDraft = draftList.find(
+          (d) =>
+            d.id === p.id ||
+            (d.reference &&
+              (p as any).reference &&
+              d.reference.toLowerCase().trim() ===
+                (p as any).reference.toLowerCase().trim()) ||
+            (d.planName &&
+              p.planName &&
+              d.planName.toLowerCase().trim() ===
+                p.planName.toLowerCase().trim()) ||
+            (d.reference &&
+              p.planName &&
+              d.reference.toLowerCase().trim() ===
+                p.planName.toLowerCase().trim()),
+        );
+
+        if (matchingDraft) {
+          planMap.delete(matchingDraft.id);
+          const merged: ProcurementPlan = {
+            ...p,
+            projectCode:
+              matchingDraft.projectCode &&
+              matchingDraft.projectCode !== "BREFONS"
+                ? matchingDraft.projectCode
+                : p.projectCode,
+            reference: matchingDraft.reference || (p as any).reference,
+            rejectionReason:
+              p.rejectionReason || matchingDraft.rejectionReason,
+            activities:
+              p.activities && p.activities.length > 0
+                ? p.activities
+                : matchingDraft.activities || [],
+            activitiesCount:
+              p.activities && p.activities.length > 0
+                ? p.activities.length
+                : matchingDraft.activities?.length || 0,
+          };
+          planMap.set(p.id, merged);
+        } else {
+          planMap.set(p.id, p);
+        }
+      });
 
       setPlans(Array.from(planMap.values()));
     } catch (err) {
@@ -78,7 +189,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [user.id]);
+  }, [user.id, user.email]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -105,6 +216,21 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   );
   const [editingActivity, setEditingActivity] =
     useState<ProcurementActivity | null>(null);
+
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/plan-for-review") {
+        setSelectedPlanForReview(null);
+        setEditingPlan(null);
+        setActivitiesPlan(null);
+        setEditingActivity(null);
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
 
   // Auto-save feedback state
   const [isSaving, setIsSaving] = useState(false);
@@ -185,6 +311,114 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     );
   };
 
+  const updateLocalStoragePlanAndActivities = (
+    plan: ProcurementPlan,
+    newPlanStatus: string,
+    newActivityStatus?: string,
+    rejectionReason?: string,
+  ) => {
+    if (typeof window === "undefined") return;
+    try {
+      const rawPlanDrafts = window.localStorage.getItem(
+        OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+      );
+      if (rawPlanDrafts) {
+        const parsed = JSON.parse(rawPlanDrafts);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.map((item: any) => {
+            const itemRef = item.plan?.reference?.toLowerCase()?.trim();
+            const itemName = item.plan?.name?.toLowerCase()?.trim();
+            const itemId = item.plan?.id?.toLowerCase()?.trim();
+            const planRef = plan.reference?.toLowerCase()?.trim();
+            const planName = plan.planName?.toLowerCase()?.trim();
+            const planId = plan.id?.toLowerCase()?.trim();
+
+            const matches =
+              (itemId && (itemId === planId || itemId === planRef)) ||
+              (itemRef &&
+                (itemRef === planRef ||
+                  itemRef === planName ||
+                  itemRef === planId)) ||
+              (itemName &&
+                (itemName === planName ||
+                  itemName === planRef ||
+                  itemName === planId));
+
+            if (matches) {
+              const updatedPlanActivities =
+                newActivityStatus && item.plan?.planActivities
+                  ? item.plan.planActivities.map((act: any) => ({
+                      ...act,
+                      status: newActivityStatus,
+                    }))
+                  : item.plan?.planActivities;
+
+              return {
+                ...item,
+                plan: {
+                  ...item.plan,
+                  status: newPlanStatus,
+                  rejectionReason:
+                    rejectionReason !== undefined
+                      ? rejectionReason
+                      : item.plan.rejectionReason,
+                  planActivities: updatedPlanActivities,
+                },
+              };
+            }
+            return item;
+          });
+          window.localStorage.setItem(
+            OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+            JSON.stringify(updated),
+          );
+        }
+      }
+
+      if (newActivityStatus) {
+        const rawActDrafts = window.localStorage.getItem(
+          OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+        );
+        if (rawActDrafts) {
+          const parsedActs = JSON.parse(rawActDrafts);
+          if (Array.isArray(parsedActs)) {
+            const updatedActs = parsedActs.map((item: any) => {
+              const pRef = item.planReference?.toLowerCase()?.trim();
+              const planRef = plan.reference?.toLowerCase()?.trim();
+              const planName = plan.planName?.toLowerCase()?.trim();
+              const planId = plan.id?.toLowerCase()?.trim();
+
+              const matchesPlan =
+                (pRef &&
+                  (pRef === planId ||
+                    pRef === planRef ||
+                    pRef === planName)) ||
+                (item.projectCode?.toLowerCase()?.trim() ===
+                  plan.projectCode?.toLowerCase()?.trim());
+
+              if (matchesPlan) {
+                return {
+                  ...item,
+                  activity: {
+                    ...item.activity,
+                    status: newActivityStatus,
+                  },
+                };
+              }
+              return item;
+            });
+            window.localStorage.setItem(
+              OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+              JSON.stringify(updatedActs),
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Storage sync error:", err);
+    }
+  };
+
   // Director Decision 1: Approve & Send to Endorsement Committee
   const handleApprovePlan = async (plan: ProcurementPlan) => {
     try {
@@ -193,22 +427,64 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       console.warn("Backend sendPlanToCommittee note:", err);
     }
 
+    updateLocalStoragePlanAndActivities(
+      plan,
+      "Committee Review",
+      "Under Review",
+    );
+
+    recordPlanVersionEvent({
+      planId: plan.id,
+      planReference: plan.reference || plan.planName,
+      projectCode: plan.projectCode,
+      versionNumber: getCurrentPlanVersionNumber(plan.id),
+      action: "SENT_TO_COMMITTEE",
+      actionLabel: "Plan Endorsed & Sent to Committee",
+      changedBy: user.displayName || user.email || "Director",
+      changedByRole: "Director",
+      reason: "Approved and submitted for Endorsement Committee review.",
+    });
+
     await loadPlans();
     setSelectedPlanForReview(null);
+    setReturnRemarks("");
     showToast(
-      `Plan "${plan.planName}" approved and forwarded to Endorsement Committee!`,
+      `Plan "${plan.planName}" approved and sent to Endorsement Committee for review.`,
     );
   };
 
-  // Director Decision 2: Send Back to Officer for Revision
-  const handleReturnPlan = async (plan: ProcurementPlan) => {
+  // Director Decision 2: Return to Officer for Revision
+  const handleReturnPlan = async (
+    plan: ProcurementPlan,
+    customRemarks?: string,
+  ) => {
     const reasonText =
-      returnRemarks.trim() || "Returned by Director for revisions.";
+      (customRemarks !== undefined ? customRemarks : returnRemarks).trim() ||
+      "Returned by Director for revisions.";
     try {
       await rejectPlan(plan.id, reasonText);
     } catch (err) {
       console.warn("Backend rejectPlan note:", err);
     }
+
+    updateLocalStoragePlanAndActivities(
+      plan,
+      "Returned",
+      "Returned",
+      reasonText,
+    );
+
+    recordPlanVersionEvent({
+      planId: plan.id,
+      planReference: plan.reference || plan.planName,
+      projectCode: plan.projectCode,
+      versionNumber: getCurrentPlanVersionNumber(plan.id),
+      action: "RETURNED",
+      actionLabel: "Plan Returned by Director for Revision",
+      changedBy: user.displayName || user.email || "Director",
+      changedByRole: "Director",
+      reason: reasonText,
+    });
 
     await loadPlans();
     setSelectedPlanForReview(null);
@@ -229,6 +505,35 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     } catch (err) {
       console.warn("Backend submitVote note:", err);
     }
+
+    const nextStatus = decision === "APPROVE" ? "Finally Approved" : "Returned";
+    const nextActStatus = decision === "APPROVE" ? "In Progress" : undefined;
+
+    updateLocalStoragePlanAndActivities(
+      plan,
+      nextStatus,
+      nextActStatus,
+      decision === "REJECT" ? commentText : undefined,
+    );
+
+    recordPlanVersionEvent({
+      planId: plan.id,
+      planReference: plan.reference || plan.planName,
+      projectCode: plan.projectCode,
+      versionNumber: getCurrentPlanVersionNumber(plan.id),
+      action: decision === "APPROVE" ? "FINALLY_APPROVED" : "RETURNED",
+      actionLabel:
+        decision === "APPROVE"
+          ? "Plan Endorsed & Finally Approved"
+          : "Plan Rejected by Committee",
+      changedBy: user.displayName || user.email || "Endorsement Committee",
+      changedByRole: "Endorsement Committee",
+      reason:
+        commentText ||
+        (decision === "APPROVE"
+          ? "Endorsement vote recorded"
+          : "Rejected by committee"),
+    });
 
     await loadPlans();
     setSelectedPlanForReview(null);
@@ -270,7 +575,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           user.role === "DIRECTOR"
             ? (p, remarks) => {
                 setReturnRemarks(remarks);
-                handleReturnPlan(p);
+                handleReturnPlan(p, remarks);
                 setActivitiesPlan(null);
               }
             : undefined
@@ -368,7 +673,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         {/* Full Screen Header Banner */}
         <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-3 flex-1 min-w-[280px]">
+            <div className="space-y-3 flex-1 min-w-70">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedPlanForReview(null)}
@@ -446,9 +751,19 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               </div>
             </div>
 
-            <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-              {selectedPlanForReview.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#0A3C2F] hover:bg-[#edf5f1] hover:text-[#0A3C2F] transition cursor-pointer"
+                onClick={() => setHistoryModalPlan(selectedPlanForReview)}
+                type="button"
+              >
+                <History className="h-3.5 w-3.5 text-[#0A3C2F]" />
+                Version History (v{getCurrentPlanVersionNumber(selectedPlanForReview.id)})
+              </button>
+              <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                {selectedPlanForReview.status}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -527,26 +842,26 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
             {/* Clean View-First Package Activities Table (Click Row to Edit Activity) */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <table className="w-full text-left text-xs border-collapse min-w-[840px]">
+              <table className="w-full text-left text-xs border-collapse min-w-210">
                 <thead className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                   <tr>
                     <th className="py-3 px-3.5 w-8 text-center">#</th>
-                    <th className="py-3 px-3.5 min-w-[170px] w-[180px]">
+                    <th className="py-3 px-3.5 min-w-42.5 w-45">
                       Ref No & Method
                     </th>
-                    <th className="py-3 px-3.5 min-w-[240px]">
+                    <th className="py-3 px-3.5 min-w-60">
                       Activity Description
                     </th>
-                    <th className="py-3 px-3.5 min-w-[150px]">
+                    <th className="py-3 px-3.5 min-w-37.5">
                       Target Date (Roadmap)
                     </th>
-                    <th className="py-3 px-3.5 min-w-[150px]">
+                    <th className="py-3 px-3.5 min-w-37.5">
                       Clarifications
                     </th>
-                    <th className="py-3 px-3.5 min-w-[150px]">
+                    <th className="py-3 px-3.5 min-w-37.5">
                       Technical Notes
                     </th>
-                    <th className="py-3 px-3.5 text-center min-w-[90px]">
+                    <th className="py-3 px-3.5 text-center min-w-22.5">
                       Action
                     </th>
                   </tr>
@@ -809,34 +1124,28 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 </div>
 
                 {/* Target Date in Roadmap */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-[#0A3C2F]" />
-                    Target Planned Date (Roadmap Milestone)
-                  </label>
-                  <input
-                    type="date"
-                    value={
-                      editingActivity.roadmap.find(
-                        (s: ActivityStage) =>
-                          s.revisedTargetDate || s.originalPlannedDate,
-                      )?.revisedTargetDate ||
-                      editingActivity.roadmap[0]?.originalPlannedDate ||
-                      ""
-                    }
-                    onChange={(e) => {
-                      const newDate = e.target.value;
-                      const updatedRoadmap = editingActivity.roadmap.map(
-                        (s: ActivityStage, sIdx: number) =>
-                          sIdx === 0 ? { ...s, revisedTargetDate: newDate } : s,
-                      );
-                      setEditingActivity((prev: ProcurementActivity | null) =>
-                        prev ? { ...prev, roadmap: updatedRoadmap } : null,
-                      );
-                    }}
-                    className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 outline-none focus:border-[#0A3C2F] focus:bg-white focus:ring-2 focus:ring-[#0A3C2F]/10 transition-all cursor-pointer"
-                  />
-                </div>
+                <DualCalendarField
+                  id="review-target-planned-date"
+                  label="Target Planned Date (Roadmap Milestone)"
+                  gregorianValue={
+                    editingActivity.roadmap.find(
+                      (s: ActivityStage) =>
+                        s.revisedTargetDate || s.originalPlannedDate,
+                    )?.revisedTargetDate ||
+                    editingActivity.roadmap[0]?.originalPlannedDate ||
+                    ""
+                  }
+                  onChange={(newDate) => {
+                    const updatedRoadmap = editingActivity.roadmap.map(
+                      (s: ActivityStage, sIdx: number) =>
+                        sIdx === 0 ? { ...s, revisedTargetDate: newDate } : s,
+                    );
+                    setEditingActivity((prev: ProcurementActivity | null) =>
+                      prev ? { ...prev, roadmap: updatedRoadmap } : null,
+                    );
+                  }}
+                  required={false}
+                />
 
                 {/* Clarifications */}
                 <div className="space-y-1.5">
@@ -969,7 +1278,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
       {/* Search & Filter Bar (Single Horizontal Row Line) */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-50 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -1037,20 +1346,20 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       {/* Tabular Plans Pending Review */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[960px]">
+          <table className="w-full text-left border-collapse min-w-[1080px]">
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3 px-3 text-center w-10">#</th>
-                <th className="py-3 px-3 min-w-[120px]">Project Code</th>
-                <th className="py-3 px-3 min-w-[180px] max-w-[220px]">
+                <th className="py-3.5 px-3.5 text-center w-12">#</th>
+                <th className="py-3.5 px-3.5 w-36">Project Code</th>
+                <th className="py-3.5 px-3.5 min-w-64 max-w-80">
                   Plan Name
                 </th>
-                <th className="py-3 px-3 min-w-[120px]">Category</th>
-                <th className="py-3 px-3 min-w-[110px]">Budget Year</th>
-                <th className="py-3 px-3 min-w-[140px]">Coverage Period</th>
-                <th className="py-3 px-3 min-w-[120px]">Region / Unit</th>
-                <th className="py-3 px-3 min-w-[140px]">Responsible Officer</th>
-                <th className="py-3 px-3 text-center min-w-[110px]">Status</th>
+                <th className="py-3.5 px-3.5 w-36">Category</th>
+                <th className="py-3.5 px-3.5 w-28">Budget Year</th>
+                <th className="py-3.5 px-3.5 w-44">Coverage Period</th>
+                <th className="py-3.5 px-3.5 w-36">Region / Unit</th>
+                <th className="py-3.5 px-3.5 w-40">Responsible Officer</th>
+                <th className="py-3.5 px-3.5 text-center w-36">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -1083,70 +1392,74 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     onClick={() => setActivitiesPlan(plan)}
                     className="hover:bg-emerald-50/50 transition-colors cursor-pointer group"
                   >
-                    <td className="py-2.5 px-3 font-mono text-slate-400 font-semibold text-center">
+                    <td className="py-3 px-3.5 font-mono text-slate-400 font-semibold text-center">
                       {index + 1}
                     </td>
 
-                    <td className="py-2.5 px-3">
-                      <span className="font-mono font-extrabold text-[#0A3C2F] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-xs">
+                    <td className="py-3 px-3.5">
+                      <span className="font-mono font-extrabold text-[#0A3C2F] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-xs inline-block max-w-32 truncate">
                         {plan.projectCode}
                       </span>
                     </td>
 
-                    <td className="py-2.5 px-3 min-w-[180px] max-w-[220px]">
-                      <p className="font-bold text-slate-900 text-xs leading-snug group-hover:text-[#0A3C2F]">
+                    <td className="py-3 px-3.5 min-w-64 max-w-80 wrap-break-word">
+                      <p className="font-bold text-slate-900 text-xs leading-snug group-hover:text-[#0A3C2F] wrap-break-word">
                         {plan.planName}
                       </p>
                       {plan.description && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-snug wrap-break-word line-clamp-2">
                           {plan.description}
                         </p>
                       )}
                     </td>
 
-                    <td className="py-2.5 px-3 font-bold text-slate-800">
+                    <td className="py-3 px-3.5 font-bold text-slate-800">
                       {plan.category}
                     </td>
 
-                    <td className="py-2.5 px-3 font-semibold text-slate-800">
+                    <td className="py-3 px-3.5 font-semibold text-slate-800">
                       {plan.budgetYear}
                     </td>
 
-                    <td className="py-2.5 px-3 text-slate-600 text-xs">
-                      <div>
-                        From:{" "}
-                        <span className="font-semibold text-slate-900">
-                          {plan.planPeriodFrom}
-                        </span>
-                      </div>
-                      <div>
-                        To:{" "}
-                        <span className="font-semibold text-slate-900">
-                          {plan.planPeriodTo}
-                        </span>
+                    <td className="py-3 px-3.5 text-slate-600 text-xs whitespace-nowrap">
+                      <div className="flex flex-col gap-0.5">
+                        <div>
+                          <span className="text-slate-400 font-medium">
+                            From:
+                          </span>{" "}
+                          <span className="font-semibold text-slate-800">
+                            {plan.planPeriodFrom || "—"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 font-medium">To:</span>{" "}
+                          <span className="font-semibold text-slate-800">
+                            {plan.planPeriodTo || "—"}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
-                    <td className="py-2.5 px-3 font-semibold text-slate-800">
+                    <td className="py-3 px-3.5 font-semibold text-slate-800">
                       {plan.organizationRegion}
                     </td>
 
-                    <td className="py-2.5 px-3 font-semibold text-slate-900 text-xs">
+                    <td className="py-3 px-3.5 font-semibold text-slate-900 text-xs">
                       {plan.assignedOfficer ||
                         plan.createdBy ||
-                        "Assigned Officer"}
+                        "Procurement Officer"}
                     </td>
 
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <td className="py-3 px-3.5 text-center whitespace-nowrap">
                       <span
-                        className={`text-xs font-extrabold ${
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
                           plan.status === "Submitted to Director"
-                            ? "text-amber-800"
+                            ? "bg-amber-50 text-amber-800 border border-amber-200"
                             : plan.status === "Committee Review"
-                              ? "text-blue-800"
+                              ? "bg-blue-50 text-blue-800 border border-blue-200"
                               : plan.status === "Returned"
-                                ? "text-rose-800"
-                                : "text-slate-700"
+                                ? "bg-rose-50 text-rose-800 border border-rose-200"
+                                : "bg-slate-100 text-slate-700"
                         }`}
                       >
                         {plan.status}
@@ -1159,6 +1472,17 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
           </table>
         </div>
       </div>
+
+      {historyModalPlan && (
+        <VersionHistoryModal
+          currentStatus={historyModalPlan.status}
+          isOpen={Boolean(historyModalPlan)}
+          onClose={() => setHistoryModalPlan(null)}
+          planId={historyModalPlan.id}
+          planName={historyModalPlan.planName}
+          projectCode={historyModalPlan.projectCode}
+        />
+      )}
     </div>
   );
 }

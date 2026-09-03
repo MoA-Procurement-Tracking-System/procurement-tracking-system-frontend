@@ -117,6 +117,71 @@ export interface ReplanStageInput {
 
 import { apiClient } from "./apiClient";
 
+// ── Procurement Method Lookup Cache ────────────────────────────────
+export interface ProcurementMethodLookup {
+  id: string;
+  type: string;
+  code: string;
+  label: string;
+}
+
+let _methodsCache: ProcurementMethodLookup[] | null = null;
+
+export async function fetchProcurementMethods(): Promise<
+  ProcurementMethodLookup[]
+> {
+  if (_methodsCache) return _methodsCache;
+  try {
+    const res = await apiClient.get<any>("/lookups", {
+      params: { type: "PROCUREMENT_METHOD" },
+    });
+    const list = res?.data || (Array.isArray(res) ? res : []);
+    _methodsCache = Array.isArray(list) ? list : [];
+    return _methodsCache;
+  } catch (err) {
+    console.warn("fetchProcurementMethods error:", err);
+    return [];
+  }
+}
+
+/**
+ * Resolve a method code or label (e.g. "RFB_NAT", "RFB - National")
+ * to its backend UUID. Returns the original string if no match found.
+ */
+export async function resolveProcurementMethodId(
+  codeOrLabel: string,
+): Promise<string> {
+  const methods = await fetchProcurementMethods();
+  if (methods.length === 0) return codeOrLabel;
+
+  const needle = codeOrLabel.toLowerCase().trim();
+
+  // 1. Exact match by id (already a UUID)
+  const byId = methods.find((m) => m.id.toLowerCase() === needle);
+  if (byId) return byId.id;
+
+  // 2. Exact match by code
+  const byCode = methods.find((m) => m.code.toLowerCase() === needle);
+  if (byCode) return byCode.id;
+
+  // 3. Exact match by label
+  const byLabel = methods.find((m) => m.label.toLowerCase() === needle);
+  if (byLabel) return byLabel.id;
+
+  // 4. Partial match by code or label
+  const byPartial = methods.find(
+    (m) =>
+      m.code.toLowerCase().includes(needle) ||
+      needle.includes(m.code.toLowerCase()) ||
+      m.label.toLowerCase().includes(needle) ||
+      needle.includes(m.label.toLowerCase()),
+  );
+  if (byPartial) return byPartial.id;
+
+  // 5. Fallback: return first method as a safe default
+  return methods[0]?.id || codeOrLabel;
+}
+
 export async function fetchActivities(
   planId?: string,
 ): Promise<BackendActivity[]> {

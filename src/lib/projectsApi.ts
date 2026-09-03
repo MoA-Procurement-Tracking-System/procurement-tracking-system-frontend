@@ -169,6 +169,7 @@ export function mapBackendProjectToOfficerProject(
     .filter(Boolean);
 
   return {
+    id: bp.id,
     code: bp.code,
     name: bp.name,
     shortName: bp.code,

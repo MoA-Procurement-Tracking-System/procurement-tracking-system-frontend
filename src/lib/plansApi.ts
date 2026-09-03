@@ -101,6 +101,7 @@ export interface BackendPlan {
   description?: string | null;
   gpnDate?: string | null;
   approvalDate?: string | null;
+  rejectionReason?: string | null;
   createdBy?: string;
   creator?: { id: string; name: string; displayName?: string; email?: string };
   createdAt: string;
@@ -263,7 +264,8 @@ export function mapBackendPlanToFrontend(
   // Look for current member's decision in this plan (if provided)
   let committeeDecision: "Approved" | "Rejected" | undefined = undefined;
   let decisionRecordedDate: string | undefined = undefined;
-  let rejectionReason: string | undefined = undefined;
+  let rejectionReason: string | undefined =
+    backendPlan.rejectionReason || undefined;
 
   if (currentMemberId || currentMemberEmail) {
     const cleanId = (currentMemberId || "").toLowerCase();
@@ -625,10 +627,12 @@ export function mapBackendPlanToOfficerPlanSummary(
 
   return {
     reference: backendPlan.id,
+    id: backendPlan.id,
     name: backendPlan.title || "Untitled Plan",
     budgetYear: backendPlan.budgetYear || "2018 EFY",
     category,
     status,
+    rejectionReason: backendPlan.rejectionReason || undefined,
     activities: activities.length,
     completedActivities: activities.filter((a) => a.status === "COMPLETED")
       .length,

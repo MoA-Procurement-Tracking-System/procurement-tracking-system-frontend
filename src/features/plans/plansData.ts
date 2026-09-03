@@ -27,6 +27,9 @@ export interface ProcurementPlan {
   assignedOfficer?: string;
   createdAt: string;
   activitiesCount: number;
+  reference?: string;
+  currency?: string;
+  estimatedValue?: number;
   // Extended fields for Committee Dashboards & decisions integration
   estimatedTotal?: string;
   isPriority?: boolean;
