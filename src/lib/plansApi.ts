@@ -185,9 +185,18 @@ export async function submitPlanForReview(id: string): Promise<BackendPlan> {
 }
 
 /** Director approves plan and forwards to Endorsing Committee */
-export async function sendPlanToCommittee(id: string): Promise<BackendPlan> {
+export async function sendPlanToCommittee(
+  id: string,
+  deadlineDate?: string,
+  deadlineDays?: number,
+): Promise<BackendPlan> {
   const res = await apiClient.post<any>(
     `/plans/${encodeURIComponent(id)}/send-to-committee`,
+    {
+      deadlineDate,
+      committeeVoteDeadline: deadlineDate,
+      deadlineDays,
+    },
   );
   return res.data || res;
 }

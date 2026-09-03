@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export interface CommitteeMemberVote {
   id: string;
@@ -215,6 +216,21 @@ export function CommitteeProgressView() {
   // Selected item for Detailed Decision Inspector
   const [selectedPlan, setSelectedPlan] =
     useState<CommitteeProgressItem | null>(null);
+
+  const searchParams = useSearchParams();
+  const planIdFromQuery = searchParams ? searchParams.get("planId") : null;
+
+  useEffect(() => {
+    if (planIdFromQuery && items.length > 0) {
+      const target = items.find((it) => it.id === planIdFromQuery);
+      if (target) {
+        const timer = window.setTimeout(() => {
+          setSelectedPlan(target);
+        }, 0);
+        return () => window.clearTimeout(timer);
+      }
+    }
+  }, [planIdFromQuery, items]);
 
   // In-page revision comment state for returning rejected plan to officer
   const [resendComment, setResendComment] = useState("");

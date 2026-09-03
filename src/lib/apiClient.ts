@@ -1,13 +1,3 @@
-/**
- * Direct Backend API Client
- *
- * Executes direct network calls from the browser to the backend service.
- * Base URL defaults to process.env.NEXT_PUBLIC_BACKEND_API_URL or http://localhost:8080/api.
- *
- * Integrates with authTokenManager to attach in-memory Bearer tokens
- * without persisting them to browser storage (protecting against XSS).
- */
-
 import { authTokenManager } from "./authTokenManager";
 
 export const BACKEND_API_URL =
@@ -70,12 +60,21 @@ export async function directApiFetch<T>(
     }
   }
 
-  const response = await fetch(url.toString(), {
-    ...fetchOptions,
-    headers,
-    credentials: "include",
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      ...fetchOptions,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch (err: unknown) {
+    const errorMsg =
+      err instanceof Error
+        ? err.message
+        : "Network error: Unable to connect to backend server.";
+    throw new ApiClientError(errorMsg, 0, null);
+  }
 
   // Parse response
   let responseData: any = null;
