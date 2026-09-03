@@ -21,6 +21,7 @@ import {
   type PlanStatus,
   type ProcurementPlan,
 } from "../plansData";
+import { DualCalendarField } from "@/features/projects/components/DualCalendarField";
 
 interface CreatePlanFormProps {
   project: ProjectItem;
@@ -76,9 +77,11 @@ export function CreatePlanForm({
   const [planPeriodFrom, setPlanPeriodFrom] = useState(
     initialData?.planPeriodFrom || "2025-07-08",
   );
+  const [planPeriodFromEthiopian, setPlanPeriodFromEthiopian] = useState("");
   const [planPeriodTo, setPlanPeriodTo] = useState(
     initialData?.planPeriodTo || "2026-07-07",
   );
+  const [planPeriodToEthiopian, setPlanPeriodToEthiopian] = useState("");
   const [organizationRegion, setOrganizationRegion] = useState(
     initialData?.organizationRegion || project.region || "FPCU / Federal",
   );
@@ -88,6 +91,8 @@ export function CreatePlanForm({
   const [generalNoticeDate, setGeneralNoticeDate] = useState(
     initialData?.generalNoticeDate || "",
   );
+  const [generalNoticeDateEthiopian, setGeneralNoticeDateEthiopian] =
+    useState("");
   const [status, setStatus] = useState<PlanStatus>(
     initialData?.status || "Draft",
   );
@@ -400,59 +405,48 @@ export function CreatePlanForm({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">
-                  Plan Period From (Start Date)
-                </label>
-                <input
-                  type="date"
-                  value={planPeriodFrom}
-                  onChange={(e) => setPlanPeriodFrom(e.target.value)}
-                  disabled={readOnly || isDraftPlanForDirector}
-                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                    readOnly
-                      ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
-                      : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                  }`}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">
-                  Plan Period To (End Date)
-                </label>
-                <input
-                  type="date"
-                  value={planPeriodTo}
-                  onChange={(e) => setPlanPeriodTo(e.target.value)}
-                  disabled={readOnly || isDraftPlanForDirector}
-                  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                    readOnly
-                      ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
-                      : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                  }`}
-                  required
-                />
-              </div>
+              <DualCalendarField
+                id="create-plan-period-from"
+                label="Plan Period From (Start Date)"
+                gregorianValue={planPeriodFrom}
+                ethiopianValue={planPeriodFromEthiopian}
+                onChange={(greg, eth) => {
+                  setPlanPeriodFrom(greg);
+                  setPlanPeriodFromEthiopian(eth);
+                }}
+                disabled={readOnly || isDraftPlanForDirector}
+                required={true}
+              />
+
+              <DualCalendarField
+                id="create-plan-period-to"
+                label="Plan Period To (End Date)"
+                gregorianValue={planPeriodTo}
+                ethiopianValue={planPeriodToEthiopian}
+                onChange={(greg, eth) => {
+                  setPlanPeriodTo(greg);
+                  setPlanPeriodToEthiopian(eth);
+                }}
+                disabled={readOnly || isDraftPlanForDirector}
+                required={true}
+              />
             </div>
           </div>
 
           {/* General Notice Date & Workflow Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
-                General Procurement Notice Date (Optional)
-              </label>
-              <input
-                type="date"
-                value={generalNoticeDate}
-                onChange={(e) => setGeneralNoticeDate(e.target.value)}
+              <DualCalendarField
+                id="create-plan-general-notice-date"
+                label="General Procurement Notice Date (Optional)"
+                gregorianValue={generalNoticeDate}
+                ethiopianValue={generalNoticeDateEthiopian}
+                onChange={(greg, eth) => {
+                  setGeneralNoticeDate(greg);
+                  setGeneralNoticeDateEthiopian(eth);
+                }}
                 disabled={readOnly || isDirector || isDraftPlanForDirector}
-                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
-                  readOnly || isDirector
-                    ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
-                    : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+                required={false}
               />
             </div>
 

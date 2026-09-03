@@ -261,9 +261,11 @@ export function SystemLogsView() {
                             {formatTimestamp(log.createdAt)}
                           </td>
 
-                          <td className="py-4 px-4 font-bold text-[#0f172a] align-middle">
+                          <td className="py-4 px-4 font-bold text-[#0f172a] align-middle max-w-xs wrap-break-word">
                             <div>
-                              <span>{log.user?.name ?? "System"}</span>
+                              <span className="wrap-break-word line-clamp-2">
+                                {log.user?.name ?? "System"}
+                              </span>
                             </div>
                           </td>
 
@@ -273,7 +275,7 @@ export function SystemLogsView() {
                             </span>
                           </td>
 
-                          <td className="py-4 px-4 text-[#334155] font-medium leading-relaxed align-middle break-words">
+                          <td className="py-4 px-4 text-[#334155] font-medium leading-relaxed align-middle wrap-break-word">
                             {formatChanges(log.changes, log.action)}
                           </td>
                         </tr>

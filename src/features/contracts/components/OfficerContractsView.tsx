@@ -382,65 +382,65 @@ export function OfficerContractsView({
       </section>
 
       <section
-        className="flex w-full min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        className="flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
         style={{ minHeight: "max(36rem, calc(100dvh - 9rem))" }}
       >
         <h2 className="sr-only">Contract register</h2>
         <div
           aria-label="Contract register table"
-          className="max-w-full min-w-0 flex-1 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55]"
+          className="max-w-full min-w-0 flex-1 overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
           role="region"
           tabIndex={0}
         >
-          <table className="w-[146rem] min-w-[146rem] table-fixed border-collapse text-left">
+          <table className="w-584 min-w-584 table-fixed border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-300 bg-[#edf5f1] text-[11px] font-extrabold uppercase tracking-[0.05em] text-slate-600">
-                <th className="w-10 px-3 py-2.5 text-center" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-10 px-3 py-3 text-center" scope="col">
                   <input
                     aria-label="Select all visible contracts"
                     checked={allVisibleSelected}
-                    className="h-4 w-4 accent-[#176c55]"
+                    className="h-4 w-4 accent-emerald-500"
                     onChange={toggleAllVisible}
                     type="checkbox"
                   />
                 </th>
-                <th className="w-44 px-3 py-2.5" scope="col">
+                <th className="w-44 px-3 py-3" scope="col">
                   Contract number
                 </th>
-                <th className="w-64 px-3 py-2.5" scope="col">
+                <th className="w-64 px-3 py-3" scope="col">
                   Procurement activity
                 </th>
-                <th className="w-24 px-3 py-2.5" scope="col">
+                <th className="w-24 px-3 py-3" scope="col">
                   Project
                 </th>
-                <th className="w-52 px-3 py-2.5" scope="col">
+                <th className="w-52 px-3 py-3" scope="col">
                   Supplier/contractor
                 </th>
-                <th className="w-40 px-3 py-2.5 text-right" scope="col">
+                <th className="w-40 px-3 py-3 text-right" scope="col">
                   Original amount
                 </th>
-                <th className="w-40 px-3 py-2.5 text-right" scope="col">
+                <th className="w-40 px-3 py-3 text-right" scope="col">
                   Current amount
                 </th>
-                <th className="w-16 px-3 py-2.5 text-center" scope="col">
+                <th className="w-16 px-3 py-3 text-center" scope="col">
                   Curr
                 </th>
-                <th className="w-36 px-3 py-2.5 text-right" scope="col">
+                <th className="w-36 px-3 py-3 text-right" scope="col">
                   Total paid
                 </th>
-                <th className="w-44 px-3 py-2.5 text-right" scope="col">
+                <th className="w-44 px-3 py-3 text-right" scope="col">
                   Remaining balance
                 </th>
-                <th className="w-44 px-3 py-2.5" scope="col">
+                <th className="w-44 px-3 py-3" scope="col">
                   Signing date (GC/EC)
                 </th>
-                <th className="w-44 px-3 py-2.5" scope="col">
+                <th className="w-44 px-3 py-3" scope="col">
                   Completion date
                 </th>
-                <th className="w-64 px-3 py-2.5" scope="col">
+                <th className="w-64 px-3 py-3" scope="col">
                   Status
                 </th>
-                <th className="w-36 px-3 py-2.5 text-center" scope="col">
+                <th className="w-28 px-3 py-3 text-right" scope="col">
                   Actions
                 </th>
               </tr>
@@ -467,16 +467,16 @@ export function OfficerContractsView({
                       <td className="whitespace-nowrap px-3 py-2.5 align-top text-sm font-bold text-slate-800">
                         {contract.contractNumber}
                       </td>
-                      <td className="px-3 py-2.5 align-top text-sm leading-5 text-slate-700">
-                        <span style={wrappingCellStyle}>
+                      <td className="px-3 py-2.5 align-top text-sm leading-5 text-slate-700 wrap-break-word">
+                        <span className="wrap-break-word line-clamp-2 block">
                           {contract.procurementActivity}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 align-top text-sm font-semibold text-slate-500">
                         {contract.project}
                       </td>
-                      <td className="px-3 py-2.5 align-top text-sm leading-5 text-slate-700">
-                        <span style={wrappingCellStyle}>
+                      <td className="px-3 py-2.5 align-top text-sm leading-5 text-slate-700 wrap-break-word">
+                        <span className="wrap-break-word line-clamp-2 block">
                           {contract.supplier}
                         </span>
                       </td>

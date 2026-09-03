@@ -47,7 +47,7 @@ describe("CreateProcurementPlanView", () => {
     );
 
     expect(markup).toContain("Procurement Category");
-    expect(markup).toContain("Select a procurement category");
+    expect(markup).toContain("Select category...");
     expect(markup).toContain("Goods");
     expect(markup).toContain("Works");
     expect(markup).toContain("Non-Consulting Services");
@@ -84,9 +84,7 @@ describe("CreateProcurementPlanView", () => {
 
     expect(markup).toContain("Inherited Project Information");
     expect(markup).toContain("Plan Identification &amp; Classification");
-    expect(markup).toContain(
-      "Plan Timeline (Dual Calendar: Gregorian &amp; Ethiopian)",
-    );
+    expect(markup).toContain("Plan Schedule &amp; Coverage Period");
     expect(markup).toContain("Save Draft");
     expect(markup).toContain("Save &amp; Add Procurement Activity");
   });

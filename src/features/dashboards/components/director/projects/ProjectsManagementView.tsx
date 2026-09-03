@@ -30,6 +30,12 @@ import {
   mapBackendPlanToFrontend,
 } from "@/lib/plansApi";
 import { fetchLookups, fetchOfficers, type LookupItem } from "@/lib/lookupsApi";
+import { OFFICER_PLAN_DRAFTS_STORAGE_KEY } from "@/features/projects/data/officerPlanDrafts";
+import { OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY } from "@/features/projects/data/officerActivityDrafts";
+import {
+  getCurrentPlanVersionNumber,
+  recordPlanVersionEvent,
+} from "@/features/plans/data/planRevisions";
 
 type ViewMode =
   "list" | "project-form" | "plans-list" | "plan-form" | "activities-list";
@@ -109,6 +115,25 @@ export function ProjectsManagementView() {
 
     return () => window.clearTimeout(timeoutId);
   }, [loadData]);
+
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/projects"
+      ) {
+        setViewMode("list");
+        setSelectedProject(null);
+        setSelectedPlanForActivities(null);
+        setEditingProject(null);
+        setEditingPlan(null);
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
 
   // Open Project Create Form
   const handleCreateProjectClick = () => {
@@ -265,6 +290,101 @@ export function ProjectsManagementView() {
     setViewMode("plan-form");
   };
 
+  const updateLocalStoragePlanAndActivities = (
+    plan: ProcurementPlan,
+    newPlanStatus: string,
+    newActivityStatus?: string,
+    rejectionReason?: string,
+  ) => {
+    if (typeof window === "undefined") return;
+    try {
+      const rawPlanDrafts = window.localStorage.getItem(
+        OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+      );
+      if (rawPlanDrafts) {
+        const parsed = JSON.parse(rawPlanDrafts);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.map((item: any) => {
+            const itemRef = item.plan?.reference?.toLowerCase()?.trim();
+            const itemName = item.plan?.name?.toLowerCase()?.trim();
+            const itemId = item.plan?.id?.toLowerCase()?.trim();
+            const planRef = plan.reference?.toLowerCase()?.trim();
+            const planName = plan.planName?.toLowerCase()?.trim();
+            const planId = plan.id?.toLowerCase()?.trim();
+
+            const matches =
+              (itemId && (itemId === planId || itemId === planRef)) ||
+              (itemRef &&
+                (itemRef === planRef ||
+                  itemRef === planName ||
+                  itemRef === planId)) ||
+              (itemName &&
+                (itemName === planName ||
+                  itemName === planRef ||
+                  itemName === planId));
+
+            if (matches) {
+              return {
+                ...item,
+                plan: {
+                  ...item.plan,
+                  status: newPlanStatus,
+                  rejectionReason:
+                    rejectionReason !== undefined
+                      ? rejectionReason
+                      : item.plan.rejectionReason,
+                },
+              };
+            }
+            return item;
+          });
+          window.localStorage.setItem(
+            OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+            JSON.stringify(updated),
+          );
+        }
+      }
+
+      if (newActivityStatus) {
+        const rawActDrafts = window.localStorage.getItem(
+          OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+        );
+        if (rawActDrafts) {
+          const parsedActs = JSON.parse(rawActDrafts);
+          if (Array.isArray(parsedActs)) {
+            const updatedActs = parsedActs.map((item: any) => {
+              const pRef = item.planReference?.toLowerCase()?.trim();
+              const planRef = plan.reference?.toLowerCase()?.trim();
+              const planName = plan.planName?.toLowerCase()?.trim();
+              const planId = plan.id?.toLowerCase()?.trim();
+
+              const matchesPlan =
+                pRef &&
+                (pRef === planId || pRef === planRef || pRef === planName);
+
+              if (matchesPlan) {
+                return {
+                  ...item,
+                  activity: {
+                    ...item.activity,
+                    status: newActivityStatus,
+                  },
+                };
+              }
+              return item;
+            });
+            window.localStorage.setItem(
+              OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+              JSON.stringify(updatedActs),
+            );
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Storage sync error:", err);
+    }
+  };
+
   // Save Plan Handler (Director Review -> Approve & Forward to Committee or Return to Officer)
   const handleSavePlan = async (savedPlan: ProcurementPlan) => {
     try {
@@ -274,6 +394,23 @@ export function ProjectsManagementView() {
         } catch (err) {
           console.warn("Backend sendToCommittee note:", err);
         }
+        updateLocalStoragePlanAndActivities(
+          savedPlan,
+          "Committee Review",
+          "Not Started",
+        );
+        recordPlanVersionEvent({
+          planId: savedPlan.id,
+          planReference: savedPlan.reference || savedPlan.planName,
+          projectCode: savedPlan.projectCode,
+          versionNumber: getCurrentPlanVersionNumber(savedPlan.id),
+          action: "APPROVED_DIRECTOR",
+          actionLabel: "Plan Approved by Director & Sent to Committee",
+          changedBy: "Director",
+          changedByRole: "Director",
+          reason:
+            "Plan approved by Director and forwarded to Endorsement Committee.",
+        });
         showToast(
           `Plan "${savedPlan.planName}" approved by Director and forwarded to Endorsing Committee!`,
         );
@@ -286,6 +423,24 @@ export function ProjectsManagementView() {
         } catch (err) {
           console.warn("Backend rejectPlan note:", err);
         }
+        updateLocalStoragePlanAndActivities(
+          savedPlan,
+          "Returned",
+          undefined,
+          savedPlan.rejectionReason || "Returned by Director for revisions.",
+        );
+        recordPlanVersionEvent({
+          planId: savedPlan.id,
+          planReference: savedPlan.reference || savedPlan.planName,
+          projectCode: savedPlan.projectCode,
+          versionNumber: getCurrentPlanVersionNumber(savedPlan.id),
+          action: "RETURNED",
+          actionLabel: "Plan Returned by Director for Revision",
+          changedBy: "Director",
+          changedByRole: "Director",
+          reason:
+            savedPlan.rejectionReason || "Returned by Director for revisions.",
+        });
         showToast(
           `Plan "${savedPlan.planName}" returned to Procurement Officer with feedback.`,
         );
@@ -379,7 +534,71 @@ export function ProjectsManagementView() {
             plan={selectedPlanForActivities}
             project={selectedProject}
             parentSection="projects"
+            userRole="DIRECTOR"
             onBackClick={() => {
+              setSelectedPlanForActivities(null);
+              setViewMode("plans-list");
+            }}
+            onApprovePlan={async (p) => {
+              try {
+                await sendPlanToCommittee(p.id);
+              } catch (err) {
+                console.warn("Backend sendToCommittee note:", err);
+              }
+              updateLocalStoragePlanAndActivities(
+                p,
+                "Committee Review",
+                "Not Started",
+              );
+              recordPlanVersionEvent({
+                planId: p.id,
+                planReference: p.reference || p.planName,
+                projectCode: p.projectCode,
+                versionNumber: getCurrentPlanVersionNumber(p.id),
+                action: "APPROVED_DIRECTOR",
+                actionLabel: "Plan Approved by Director & Sent to Committee",
+                changedBy: "Director",
+                changedByRole: "Director",
+                reason:
+                  "Plan approved by Director and forwarded to Endorsement Committee.",
+              });
+              showToast(
+                `Plan "${p.planName}" approved by Director and forwarded to Endorsing Committee!`,
+              );
+              await loadData();
+              setSelectedPlanForActivities(null);
+              setViewMode("plans-list");
+            }}
+            onReturnPlan={async (p, remarks) => {
+              try {
+                await rejectPlan(
+                  p.id,
+                  remarks || "Returned by Director for revisions.",
+                );
+              } catch (err) {
+                console.warn("Backend rejectPlan note:", err);
+              }
+              updateLocalStoragePlanAndActivities(
+                p,
+                "Returned",
+                undefined,
+                remarks || "Returned by Director for revisions.",
+              );
+              recordPlanVersionEvent({
+                planId: p.id,
+                planReference: p.reference || p.planName,
+                projectCode: p.projectCode,
+                versionNumber: getCurrentPlanVersionNumber(p.id),
+                action: "RETURNED",
+                actionLabel: "Plan Returned by Director for Revision",
+                changedBy: "Director",
+                changedByRole: "Director",
+                reason: remarks || "Returned by Director for revisions.",
+              });
+              showToast(
+                `Plan "${p.planName}" returned to Procurement Officer for revision.`,
+              );
+              await loadData();
               setSelectedPlanForActivities(null);
               setViewMode("plans-list");
             }}

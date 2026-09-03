@@ -11,5 +11,5 @@ export default async function UserManagementPage() {
     redirect("/access-denied");
   }
 
-  return <UserManagementView />;
+  return <UserManagementView currentUser={session.user} />;
 }

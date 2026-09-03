@@ -97,7 +97,15 @@ export function ProjectPlansView({
   };
 
   // Filter plans under this project
-  const projectPlans = plans.filter((p) => p.projectId === project.id);
+  const projectPlans = plans.filter(
+    (p) =>
+      p.projectId === project.id ||
+      p.projectCode === project.code ||
+      p.projectId === project.code ||
+      (p.projectCode &&
+        project.id &&
+        p.projectCode.toLowerCase() === project.id.toLowerCase()),
+  );
 
   const filteredPlans = projectPlans.filter((plan) => {
     const q = searchQuery.toLowerCase();
@@ -377,8 +385,10 @@ export function ProjectPlansView({
         >
           Projects Directory
         </button>
-        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-        <span className="font-bold text-[#0A3C2F]">{project.code} Plans</span>
+        <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+        <span className="font-bold text-[#0A3C2F] max-w-xs truncate">
+          {project.code} Plans
+        </span>
       </nav>
 
       {/* 2. Page Title Header Section */}
@@ -395,7 +405,7 @@ export function ProjectPlansView({
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-950 tracking-tight leading-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-950 tracking-tight leading-tight wrap-break-word">
           {project.name}
         </h1>
 
@@ -469,20 +479,18 @@ export function ProjectPlansView({
       {/* 4. Tabular View of Procurement Plans */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[960px]">
+          <table className="w-full text-left border-collapse min-w-[1080px]">
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3 px-3 text-center w-10">#</th>
-                <th className="py-3 px-3 min-w-[180px] max-w-[220px]">
-                  Plan Name
-                </th>
-                <th className="py-3 px-3 min-w-[130px]">Category</th>
-                <th className="py-3 px-3 min-w-[140px]">Budget Year</th>
-                <th className="py-3 px-3 min-w-[150px]">Coverage Period</th>
-                <th className="py-3 px-3 min-w-[120px]">Region / Unit</th>
-                <th className="py-3 px-3 min-w-[130px]">Notice / Approval</th>
-                <th className="py-3 px-3 text-center min-w-[110px]">Status</th>
-                <th className="py-3 px-3 text-center min-w-[90px]">Actions</th>
+                <th className="py-3.5 px-3.5 text-center w-12">#</th>
+                <th className="py-3.5 px-3.5 min-w-64 max-w-80">Plan Name</th>
+                <th className="py-3.5 px-3.5 w-36">Category</th>
+                <th className="py-3.5 px-3.5 w-28">Budget Year</th>
+                <th className="py-3.5 px-3.5 w-44">Coverage Period</th>
+                <th className="py-3.5 px-3.5 w-36">Region / Unit</th>
+                <th className="py-3.5 px-3.5 w-40">Notice / Approval</th>
+                <th className="py-3.5 px-3.5 text-center w-36">Status</th>
+                <th className="py-3.5 px-3.5 text-center w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -513,59 +521,65 @@ export function ProjectPlansView({
                       className="hover:bg-emerald-50/50 transition-colors cursor-pointer group"
                     >
                       {/* Index */}
-                      <td className="py-2.5 px-3 font-mono text-slate-400 font-semibold text-center">
+                      <td className="py-3 px-3.5 font-mono text-slate-400 font-semibold text-center">
                         {index + 1}
                       </td>
 
                       {/* Plan Name */}
-                      <td className="py-2.5 px-3 min-w-[180px] max-w-[220px]">
-                        <p className="font-bold text-slate-900 text-xs leading-snug group-hover:text-[#0A3C2F]">
+                      <td className="py-3 px-3.5 min-w-64 max-w-80 wrap-break-word">
+                        <p className="font-bold text-slate-900 text-xs leading-snug group-hover:text-[#0A3C2F] wrap-break-word">
                           {plan.planName}
                         </p>
                         {plan.description && (
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug wrap-break-word line-clamp-2">
                             {plan.description}
                           </p>
                         )}
                       </td>
 
                       {/* Category Badge */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-3.5">
                         <span
-                          className={`inline-block px-2 py-0.5 text-[11px] font-extrabold ${catStyle.text}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold ${catStyle.bg} ${catStyle.text} border ${catStyle.border}`}
                         >
                           {plan.category}
                         </span>
                       </td>
 
                       {/* Budget Year */}
-                      <td className="py-2.5 px-3 font-semibold text-slate-800 text-xs">
+                      <td className="py-3 px-3.5 font-semibold text-slate-800 text-xs">
                         {plan.budgetYear}
                       </td>
 
                       {/* Coverage Period */}
-                      <td className="py-2.5 px-3 text-slate-600 font-medium text-xs">
-                        <div>
-                          From:{" "}
-                          <span className="font-semibold text-slate-900">
-                            {plan.planPeriodFrom}
-                          </span>
-                        </div>
-                        <div>
-                          To:{" "}
-                          <span className="font-semibold text-slate-900">
-                            {plan.planPeriodTo}
-                          </span>
+                      <td className="py-3 px-3.5 text-slate-600 text-xs whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <div>
+                            <span className="text-slate-400 font-medium">
+                              From:
+                            </span>{" "}
+                            <span className="font-semibold text-slate-800">
+                              {plan.planPeriodFrom || "—"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-medium">
+                              To:
+                            </span>{" "}
+                            <span className="font-semibold text-slate-800">
+                              {plan.planPeriodTo || "—"}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
                       {/* Organization / Region */}
-                      <td className="py-2.5 px-3 font-semibold text-slate-800 text-xs">
+                      <td className="py-3 px-3.5 font-semibold text-slate-800 text-xs">
                         {plan.organizationRegion}
                       </td>
 
                       {/* Notice / Approval Dates */}
-                      <td className="py-2.5 px-3 text-slate-500">
+                      <td className="py-3 px-3.5 text-slate-500 text-xs whitespace-nowrap">
                         {plan.approvalDate ? (
                           <p className="text-emerald-700 font-semibold text-[11px]">
                             Approved: {plan.approvalDate}
@@ -583,16 +597,26 @@ export function ProjectPlansView({
                       </td>
 
                       {/* Status */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 text-[10px] font-extrabold ${statusStyle.text}`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
+                            plan.status === "Submitted to Director"
+                              ? "bg-amber-50 text-amber-800 border border-amber-200"
+                              : plan.status === "Committee Review"
+                                ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                : plan.status === "Returned"
+                                  ? "bg-rose-50 text-rose-800 border border-rose-200"
+                                  : plan.status === "Finally Approved"
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-700"
+                          }`}
                         >
                           {plan.status}
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
                         {/* View Read-Only Plan Details Page Button */}
                         <button
                           type="button"

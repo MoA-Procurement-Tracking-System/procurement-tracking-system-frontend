@@ -31,6 +31,7 @@ import {
 } from "@/features/projects/data/officerProjects";
 import {
   createPlan,
+  updatePlan,
   submitPlanForReview,
   fetchPlans,
   mapBackendPlanToOfficerPlanSummary,
@@ -39,12 +40,18 @@ import {
 import {
   createActivity,
   fetchActivities,
+  resolveProcurementMethodId,
   type BackendActivity,
 } from "@/lib/activitiesApi";
 import {
+  calculateFieldDiffs,
+  PLAN_FIELD_LABELS,
+  ACTIVITY_FIELD_LABELS,
+  recordPlanVersionEvent,
+} from "@/features/plans/data/planRevisions";
+import {
   fetchProjects,
   mapBackendProjectToOfficerProject,
-  type BackendProject,
 } from "@/lib/projectsApi";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
@@ -59,7 +66,7 @@ export function OfficerProjectsView({
   selectedProjectCode,
 }: {
   fromTracker?: boolean;
-  mode?: "create-activity" | "create-plan";
+  mode?: "create-activity" | "create-plan" | "edit-activity" | "edit-plan";
   selectedActivityReference?: string;
   selectedPlanReference?: string;
   selectedProjectCode?: string;
@@ -148,13 +155,18 @@ export function OfficerProjectsView({
 
   const effectiveSavedActivityRecords = useMemo(() => {
     const map = new Map<string, SavedOfficerActivityRecord>();
+    savedActivityRecords.forEach((rec) => {
+      const key =
+        `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
+      map.set(key, rec);
+    });
     backendActivities.forEach((rec) => {
       const key =
         `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
       map.set(key, rec);
     });
     return Array.from(map.values());
-  }, [backendActivities]);
+  }, [backendActivities, savedActivityRecords]);
 
   const allProjects = useMemo(() => {
     // Merge backend plans into each project
@@ -164,6 +176,8 @@ export function OfficerProjectsView({
           (bp) =>
             bp.project?.code === proj.code ||
             bp.projectId === proj.code ||
+            (Boolean(proj.id) && bp.projectId === proj.id) ||
+            (Boolean(proj.id) && bp.project?.id === proj.id) ||
             (bp.project && bp.project.name === proj.name),
         )
         .map(mapBackendPlanToOfficerPlanSummary);
@@ -171,10 +185,15 @@ export function OfficerProjectsView({
       if (matchingBackendPlans.length === 0) return proj;
 
       const existingPlanRefs = new Set(
-        matchingBackendPlans.map((p) => p.reference),
+        matchingBackendPlans.map((p) => p.reference.toLowerCase()),
+      );
+      const existingPlanNames = new Set(
+        matchingBackendPlans.map((p) => p.name.toLowerCase()),
       );
       const remainingBaselinePlans = proj.plans.filter(
-        (p) => !existingPlanRefs.has(p.reference),
+        (p) =>
+          !existingPlanRefs.has(p.reference.toLowerCase()) &&
+          !existingPlanNames.has(p.name.toLowerCase()),
       );
 
       return {
@@ -191,10 +210,30 @@ export function OfficerProjectsView({
     [allProjects, savedPlanRecords],
   );
   const selectedProject = projects.find(
-    (project) => project.code === selectedProjectCode,
+    (project) =>
+      project.code === selectedProjectCode ||
+      (selectedProjectCode &&
+        (project.code.toLowerCase() ===
+          selectedProjectCode.trim().toLowerCase() ||
+          project.name.toLowerCase() ===
+            selectedProjectCode.trim().toLowerCase() ||
+          project.shortName?.toLowerCase() ===
+            selectedProjectCode.trim().toLowerCase() ||
+          (Boolean(project.id) &&
+            project.id?.toLowerCase() ===
+              selectedProjectCode.trim().toLowerCase()))),
   );
   const selectedPlan = selectedProject?.plans.find(
-    (plan) => plan.reference === selectedPlanReference,
+    (plan) =>
+      plan.reference === selectedPlanReference ||
+      (selectedPlanReference &&
+        (plan.reference.toLowerCase() ===
+          selectedPlanReference.trim().toLowerCase() ||
+          plan.name.toLowerCase() ===
+            selectedPlanReference.trim().toLowerCase() ||
+          (Boolean(plan.id) &&
+            plan.id?.toLowerCase() ===
+              selectedPlanReference.trim().toLowerCase()))),
   );
 
   const selectedPlanActivities = useMemo(() => {
@@ -202,9 +241,10 @@ export function OfficerProjectsView({
 
     const matchingBackendPlan = backendPlans.find(
       (bp) =>
-        bp.id === (selectedPlan as any).id ||
-        bp.title === selectedPlan.reference ||
-        bp.title === selectedPlan.name,
+        bp.id === selectedPlan.reference ||
+        (Boolean(selectedPlan.id) && bp.id === selectedPlan.id) ||
+        bp.title.toLowerCase() === selectedPlan.reference.toLowerCase() ||
+        bp.title.toLowerCase() === selectedPlan.name.toLowerCase(),
     );
 
     const directBackendActivities = (matchingBackendPlan?.activities || []).map(
@@ -217,14 +257,19 @@ export function OfficerProjectsView({
           (record.projectCode?.toLowerCase() ===
             selectedProject.code?.toLowerCase() ||
             record.projectCode?.toLowerCase() ===
-              selectedProject.shortName?.toLowerCase()) &&
+              selectedProject.shortName?.toLowerCase() ||
+            (Boolean(selectedProject.id) &&
+              record.projectCode?.toLowerCase() ===
+                selectedProject.id?.toLowerCase())) &&
           (record.planReference?.toLowerCase() ===
             selectedPlan.reference?.toLowerCase() ||
             record.planReference?.toLowerCase() ===
               selectedPlan.name?.toLowerCase() ||
             (matchingBackendPlan &&
-              record.planReference?.toLowerCase() ===
-                matchingBackendPlan.id.toLowerCase())),
+              (record.planReference?.toLowerCase() ===
+                matchingBackendPlan.id.toLowerCase() ||
+                record.planReference?.toLowerCase() ===
+                  matchingBackendPlan.title.toLowerCase()))),
       )
       .map((record) => record.activity);
 
@@ -234,7 +279,27 @@ export function OfficerProjectsView({
     );
     matchingSaved.forEach((a) => combinedMap.set(a.reference.toLowerCase(), a));
 
-    return Array.from(combinedMap.values());
+    if (selectedPlan.planActivities && selectedPlan.planActivities.length > 0) {
+      selectedPlan.planActivities.forEach((a) => {
+        if (!combinedMap.has(a.reference.toLowerCase())) {
+          combinedMap.set(a.reference.toLowerCase(), a);
+        }
+      });
+    }
+
+    const activitiesList = Array.from(combinedMap.values()).map((act) => {
+      if (
+        selectedPlan.status === "Returned" &&
+        (act.status === "Submitted to Director" ||
+          (act as any).status === "Under Review" ||
+          !act.status)
+      ) {
+        return { ...act, status: "Returned" as const };
+      }
+      return act;
+    });
+
+    return activitiesList;
   }, [
     selectedPlan,
     selectedProject,
@@ -251,8 +316,136 @@ export function OfficerProjectsView({
   async function savePlan(
     input: ProcurementPlanDraftInput,
     action: "activity" | "draft",
+    revisionReason?: string,
   ) {
     if (!selectedProject) return;
+
+    if (mode === "edit-plan" && selectedPlan) {
+      // Calculate field diffs between previous and new values
+      const beforeValues = {
+        name: selectedPlan.name,
+        budgetYear: selectedPlan.budgetYear,
+        category: selectedPlan.category,
+        organizationRegion: selectedPlan.organizationRegion,
+        periodFrom: selectedPlan.planPeriod?.from?.gregorian,
+        periodTo: selectedPlan.planPeriod?.to?.gregorian,
+        description: selectedPlan.description,
+      };
+
+      const afterValues = {
+        name: input.planName.trim(),
+        budgetYear: `${input.budgetYear} EFY`,
+        category: input.category,
+        organizationRegion: input.organizationRegion,
+        periodFrom: input.periodFrom,
+        periodTo: input.periodTo,
+        description: input.remarks,
+      };
+
+      const diffs = calculateFieldDiffs(
+        beforeValues,
+        afterValues,
+        PLAN_FIELD_LABELS,
+      );
+
+      const updatedPlan: ProcurementPlanSummary = {
+        ...selectedPlan,
+        name: input.planName.trim(),
+        budgetYear: `${input.budgetYear} EFY`,
+        category: input.category,
+        organizationRegion: input.organizationRegion,
+        description: input.remarks || selectedPlan.description,
+        planPeriod: {
+          from: {
+            gregorian: input.periodFrom,
+            ethiopian: input.periodFromEthiopian,
+          },
+          to: {
+            gregorian: input.periodTo,
+            ethiopian: input.periodToEthiopian,
+          },
+        },
+        generalProcurementNoticeDate: input.generalProcurementNoticeDate
+          ? {
+              gregorian: input.generalProcurementNoticeDate,
+              ethiopian: input.generalProcurementNoticeDateEthiopian,
+            }
+          : selectedPlan.generalProcurementNoticeDate,
+      };
+
+      // Record audit version event
+      recordPlanVersionEvent({
+        planId: selectedPlan.id || selectedPlan.reference,
+        planReference: selectedPlan.reference,
+        projectCode: selectedProject.code,
+        versionNumber: selectedPlan.version || 1,
+        action: "PLAN_REVISED",
+        actionLabel: `Plan Updated by Officer (v${selectedPlan.version || 1})`,
+        changedBy: "Procurement Officer",
+        changedByRole: "Procurement Officer",
+        changes: diffs.length > 0 ? diffs : undefined,
+        reason: revisionReason || "Updated plan parameters",
+      });
+
+      // Update backend if valid UUID id exists
+      if (selectedPlan.id && selectedPlan.id.includes("-")) {
+        try {
+          let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+            "GOODS";
+          if (input.category === "Works") catEnum = "WORKS";
+          else if (input.category === "Consultancy Services")
+            catEnum = "CONSULTANCY";
+          else if (input.category === "Non-Consulting Services")
+            catEnum = "NON_CONSULTING";
+
+          await updatePlan(selectedPlan.id, {
+            title: input.planName.trim(),
+            budgetYear: `${input.budgetYear} EFY`,
+            procurementCategory: catEnum,
+            organization: input.organizationRegion,
+            description: input.remarks || undefined,
+            periodStart: new Date(
+              input.periodFrom || "2025-07-08",
+            ).toISOString(),
+            periodEnd: new Date(input.periodTo || "2026-07-07").toISOString(),
+          });
+        } catch (e) {
+          console.warn("Backend updatePlan note:", e);
+        }
+      }
+
+      const nextRecords = upsertSavedPlanRecord(savedPlanRecords, {
+        plan: updatedPlan,
+        projectCode: selectedProject.code,
+      });
+
+      setSavedPlanRecords(nextRecords);
+      window.localStorage.setItem(
+        OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+        JSON.stringify(nextRecords),
+      );
+
+      await loadData();
+
+      if (action === "activity") {
+        router.push(
+          "/workspace/projects?project=" +
+            encodeURIComponent(selectedProject.code) +
+            "&plan=" +
+            encodeURIComponent(selectedPlan.reference) +
+            "&mode=create-activity",
+        );
+        return;
+      }
+
+      router.push(
+        "/workspace/projects?project=" +
+          encodeURIComponent(selectedProject.code) +
+          "&plan=" +
+          encodeURIComponent(selectedPlan.reference),
+      );
+      return;
+    }
 
     const existingPlan = selectedProject.plans.find(
       (plan) =>
@@ -275,9 +468,21 @@ export function OfficerProjectsView({
       else if (input.category === "Non-Consulting Services")
         catEnum = "NON_CONSULTING";
 
+      const targetProjectId =
+        selectedProject.id && selectedProject.id.length > 20
+          ? selectedProject.id
+          : backendProjects.find(
+              (bp) =>
+                bp.code === selectedProject.code ||
+                bp.id === selectedProject.id ||
+                bp.name === selectedProject.name,
+            )?.id ||
+            selectedProject.id ||
+            selectedProject.code;
+
       try {
         const created = await createPlan({
-          projectId: selectedProject.code,
+          projectId: targetProjectId,
           title: input.planName.trim(),
           budgetYear: `${input.budgetYear} EFY`,
           procurementCategory: catEnum,
@@ -288,6 +493,7 @@ export function OfficerProjectsView({
         });
         if (created && created.id) {
           planForNavigation.reference = created.id;
+          planForNavigation.id = created.id;
         }
       } catch (err) {
         console.warn("Backend createPlan note:", err);
@@ -326,9 +532,64 @@ export function OfficerProjectsView({
   async function saveActivity(activity: ProcurementActivitySummary) {
     if (!selectedProject || !selectedPlan) return;
 
+    const planRef = selectedPlan.reference;
+
+    // Check if this was an edit to an existing activity
+    const existing = selectedPlanActivities.find(
+      (a) => a.reference.toLowerCase() === activity.reference.toLowerCase(),
+    );
+    if (existing) {
+      const existingAny = existing as any;
+      const activityAny = activity as any;
+      const diffs = calculateFieldDiffs(
+        {
+          description: existing.description,
+          estimatedAmount: `${existing.estimatedAmount?.toLocaleString()} ${selectedPlan.currency || "ETB"}`,
+          method: existing.method,
+          marketApproach:
+            existingAny.marketApproach ||
+            existing.details?.form?.marketApproach ||
+            "Open - National",
+          reviewType:
+            existingAny.reviewType ||
+            existing.details?.form?.reviewType ||
+            "Post Review",
+        },
+        {
+          description: activity.description,
+          estimatedAmount: `${activity.estimatedAmount?.toLocaleString()} ${selectedPlan.currency || "ETB"}`,
+          method: activity.method,
+          marketApproach:
+            activityAny.marketApproach ||
+            activity.details?.form?.marketApproach ||
+            "Open - National",
+          reviewType:
+            activityAny.reviewType ||
+            activity.details?.form?.reviewType ||
+            "Post Review",
+        },
+        ACTIVITY_FIELD_LABELS,
+      );
+
+      if (diffs.length > 0) {
+        recordPlanVersionEvent({
+          planId: selectedPlan.id || selectedPlan.reference,
+          planReference: selectedPlan.reference,
+          projectCode: selectedProject.code,
+          versionNumber: selectedPlan.version || 1,
+          action: "ACTIVITY_REVISED",
+          actionLabel: `Activity ${activity.reference} Revised (v${selectedPlan.version || 1})`,
+          changedBy: "Procurement Officer",
+          changedByRole: "Procurement Officer",
+          changes: diffs,
+          reason: "Updated activity parameters per revision",
+        });
+      }
+    }
+
     const nextRecords = addSavedActivityRecord(savedActivityRecords, {
       activity,
-      planReference: selectedPlan.reference,
+      planReference: planRef,
       projectCode: selectedProject.code,
     });
     setSavedActivityRecords(nextRecords);
@@ -337,67 +598,158 @@ export function OfficerProjectsView({
       JSON.stringify(nextRecords),
     );
 
+    // Update the saved plan record to also reflect the incremented activity count and embedded activities
+    const currentPlanActivities = selectedPlanActivities.filter(
+      (a) => a.reference.toLowerCase() !== activity.reference.toLowerCase(),
+    );
+    const updatedActivities = [...currentPlanActivities, activity];
+
+    const updatedPlan: ProcurementPlanSummary = {
+      ...selectedPlan,
+      activities: updatedActivities.length,
+      planActivities: updatedActivities,
+    };
+
+    const nextPlanRecords = upsertSavedPlanRecord(savedPlanRecords, {
+      plan: updatedPlan,
+      projectCode: selectedProject.code,
+    });
+    setSavedPlanRecords(nextPlanRecords);
+    window.localStorage.setItem(
+      OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+      JSON.stringify(nextPlanRecords),
+    );
+
     // Async backend activity creation
-    try {
-      const methodLabel = activity.method || "RFB - National";
-      const methodCode = methodLabel.includes("International")
-        ? "RFB_INT"
-        : methodLabel.includes("National") || methodLabel.includes("NCB")
-          ? "RFB_NAT"
-          : methodLabel.includes("Shopping") || methodLabel.includes("RFQ")
-            ? "STEP_RFQ"
-            : methodLabel.includes("Direct")
-              ? "DIR"
-              : methodLabel.includes("QCBS")
-                ? "QCBS"
-                : methodLabel.includes("FBS")
-                  ? "FBS"
-                  : methodLabel.includes("LCS")
-                    ? "LCS"
-                    : methodLabel.includes("CQS")
-                      ? "CQS"
-                      : methodLabel.includes("INDV")
-                        ? "INDV"
-                        : "RFB_NAT";
+    const matchingBackendPlan = backendPlans.find(
+      (bp) =>
+        bp.id === selectedPlan.id ||
+        bp.id === selectedPlan.reference ||
+        bp.title.toLowerCase().trim() ===
+          selectedPlan.name.toLowerCase().trim() ||
+        bp.title.toLowerCase().trim() ===
+          selectedPlan.reference.toLowerCase().trim(),
+    );
 
-      const customStages = (
-        activity.details?.roadmap ||
-        (activity as any).roadmap ||
-        []
-      ).map((st: any, sIdx: number) => ({
-        name: st.name || st.stageName,
-        sequence: sIdx + 1,
-        plannedStartDate: st.gregorianDate || st.plannedStartDate || undefined,
-        gregorianDate: st.gregorianDate || undefined,
-        ethiopianDate: st.ethiopianDate || undefined,
-        isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
-        notApplicable: Boolean(st.notApplicable || st.isNotApplicable),
-        remarks: st.remarks || undefined,
-      }));
+    let targetBackendPlanId =
+      matchingBackendPlan?.id ||
+      (selectedPlan.id &&
+      selectedPlan.id.includes("-") &&
+      selectedPlan.id.length > 20
+        ? selectedPlan.id
+        : undefined);
 
-      await createActivity({
-        planId: selectedPlan.reference,
-        procurementMethodId: methodCode,
-        description: activity.description || "Activity description",
-        estimatedBudget: Number(activity.estimatedAmount) || 500000,
-        currency: selectedPlan.currency || "ETB",
-        stages: customStages.length > 0 ? customStages : undefined,
-        fundings: [
-          {
-            fundingSource:
-              selectedProject.fundingSource ||
-              "African Development Bank (AfDB)",
-            loanGrantNumber: selectedProject.financingNumbers?.[0] || undefined,
-            allocationPct: 100,
-          },
-        ],
-      });
-    } catch (err) {
-      console.warn("Backend createActivity note:", err);
+    if (!targetBackendPlanId) {
+      const targetProjectId =
+        selectedProject.id && selectedProject.id.length > 20
+          ? selectedProject.id
+          : backendProjects.find(
+              (bp) =>
+                bp.code === selectedProject.code ||
+                bp.id === selectedProject.id ||
+                bp.name === selectedProject.name,
+            )?.id ||
+            selectedProject.id ||
+            selectedProject.code;
+
+      try {
+        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+          "GOODS";
+        if (selectedPlan.category === "Works") catEnum = "WORKS";
+        else if (selectedPlan.category === "Consultancy Services")
+          catEnum = "CONSULTANCY";
+        else if (selectedPlan.category === "Non-Consulting Services")
+          catEnum = "NON_CONSULTING";
+
+        const created = await createPlan({
+          projectId: targetProjectId,
+          title: selectedPlan.name.trim(),
+          budgetYear: selectedPlan.budgetYear,
+          procurementCategory: catEnum,
+          organization: selectedPlan.organizationRegion || "Federal / FPCU",
+          description: selectedPlan.description || undefined,
+          periodStart: selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
+          periodEnd: selectedPlan.planPeriod?.to?.gregorian || "2026-07-07",
+        });
+        if (created && created.id) {
+          targetBackendPlanId = created.id;
+        }
+      } catch (err) {
+        console.warn("Backend createPlan in saveActivity note:", err);
+      }
+    }
+
+    if (targetBackendPlanId) {
+      try {
+        const methodLabel = activity.method || "RFB - National";
+        const resolvedMethodId = await resolveProcurementMethodId(methodLabel);
+
+        const customStages = (
+          activity.details?.roadmap ||
+          (activity as any).roadmap ||
+          []
+        ).map((st: any, sIdx: number) => ({
+          name: st.name || st.stageName,
+          sequence: sIdx + 1,
+          plannedStartDate:
+            st.gregorianDate || st.plannedStartDate || undefined,
+          gregorianDate: st.gregorianDate || undefined,
+          ethiopianDate: st.ethiopianDate || undefined,
+          isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+          notApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+          remarks: st.remarks || undefined,
+        }));
+
+        try {
+          await createActivity({
+            planId: targetBackendPlanId,
+            procurementMethodId: resolvedMethodId,
+            description: activity.description || "Activity description",
+            estimatedBudget: Number(activity.estimatedAmount) || 500000,
+            currency: selectedPlan.currency || "ETB",
+            stages: customStages.length > 0 ? customStages : undefined,
+            fundings: [
+              {
+                fundingSource:
+                  selectedProject.fundingSource ||
+                  "African Development Bank (AfDB)",
+                loanGrantNumber:
+                  selectedProject.financingNumbers?.[0] || undefined,
+                allocationPct: 100,
+              },
+            ],
+          });
+        } catch (firstErr) {
+          console.warn(
+            "First createActivity attempt failed, attempting fallback without custom stages:",
+            firstErr,
+          );
+          await createActivity({
+            planId: targetBackendPlanId,
+            procurementMethodId: resolvedMethodId,
+            description: activity.description || "Activity description",
+            estimatedBudget: Number(activity.estimatedAmount) || 500000,
+            currency: selectedPlan.currency || "ETB",
+            fundings: [
+              {
+                fundingSource:
+                  selectedProject.fundingSource ||
+                  "African Development Bank (AfDB)",
+                loanGrantNumber:
+                  selectedProject.financingNumbers?.[0] || undefined,
+                allocationPct: 100,
+              },
+            ],
+          });
+        }
+      } catch (err) {
+        console.warn("Backend createActivity note:", err);
+      }
     }
 
     await loadData();
 
+    // Navigate back to plan detail
     router.push(
       "/workspace/projects?project=" +
         encodeURIComponent(selectedProject.code) +
@@ -409,17 +761,174 @@ export function OfficerProjectsView({
   async function submitPlanToDirector() {
     if (!selectedProject || !selectedPlan) return;
 
-    // 1. Submit on backend
+    // 1. Resolve matching backend plan UUID
+    const matchingBackendPlan = backendPlans.find(
+      (bp) =>
+        bp.id === selectedPlan.id ||
+        bp.id === selectedPlan.reference ||
+        bp.title.toLowerCase().trim() ===
+          selectedPlan.name.toLowerCase().trim() ||
+        bp.title.toLowerCase().trim() ===
+          selectedPlan.reference.toLowerCase().trim(),
+    );
+
+    let planIdToSubmit =
+      matchingBackendPlan?.id ||
+      (selectedPlan.id &&
+      selectedPlan.id.includes("-") &&
+      selectedPlan.id.length > 20
+        ? selectedPlan.id
+        : undefined);
+
+    if (!planIdToSubmit) {
+      const targetProjectId =
+        selectedProject.id && selectedProject.id.length > 20
+          ? selectedProject.id
+          : backendProjects.find(
+              (bp) =>
+                bp.code === selectedProject.code ||
+                bp.id === selectedProject.id ||
+                bp.name === selectedProject.name,
+            )?.id ||
+            selectedProject.id ||
+            selectedProject.code;
+
+      try {
+        let catEnum: "GOODS" | "WORKS" | "CONSULTANCY" | "NON_CONSULTING" =
+          "GOODS";
+        if (selectedPlan.category === "Works") catEnum = "WORKS";
+        else if (selectedPlan.category === "Consultancy Services")
+          catEnum = "CONSULTANCY";
+        else if (selectedPlan.category === "Non-Consulting Services")
+          catEnum = "NON_CONSULTING";
+
+        const created = await createPlan({
+          projectId: targetProjectId,
+          title: selectedPlan.name.trim(),
+          budgetYear: selectedPlan.budgetYear,
+          procurementCategory: catEnum,
+          organization: selectedPlan.organizationRegion || "Federal / FPCU",
+          description: selectedPlan.description || undefined,
+          periodStart: selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
+          periodEnd: selectedPlan.planPeriod?.to?.gregorian || "2026-07-07",
+        });
+        if (created && created.id) {
+          planIdToSubmit = created.id;
+        }
+      } catch (err) {
+        console.warn("Backend createPlan in submitPlanToDirector note:", err);
+      }
+    }
+
+    if (!planIdToSubmit) {
+      planIdToSubmit = selectedPlan.id || selectedPlan.reference;
+    }
+
+    // 2. Sync all local activities to the backend before submitting
+    // This ensures the Director can see activities via the API across any browser
     try {
-      await submitPlanForReview(selectedPlan.reference);
+      const existingBackendActs = await fetchActivities(planIdToSubmit).catch(
+        () => [],
+      );
+      const existingRefs = new Set(
+        existingBackendActs.map((a) => (a.reference || "").toLowerCase()),
+      );
+      const existingDescs = new Set(
+        existingBackendActs.map((a) => (a.description || "").toLowerCase()),
+      );
+
+      for (const act of selectedPlanActivities) {
+        if (
+          existingRefs.has((act.reference || "").toLowerCase()) ||
+          existingDescs.has((act.description || "").toLowerCase())
+        ) {
+          continue;
+        }
+
+        try {
+          const methodLabel = act.method || "RFB - National";
+          const resolvedMethodId =
+            await resolveProcurementMethodId(methodLabel);
+
+          const customStages = (
+            act.details?.roadmap ||
+            (act as any).roadmap ||
+            []
+          ).map((st: any, sIdx: number) => ({
+            name: st.name || st.stageName,
+            sequence: sIdx + 1,
+            plannedStartDate:
+              st.gregorianDate || st.plannedStartDate || undefined,
+            gregorianDate: st.gregorianDate || undefined,
+            ethiopianDate: st.ethiopianDate || undefined,
+            isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+            notApplicable: Boolean(st.notApplicable || st.isNotApplicable),
+            remarks: st.remarks || undefined,
+          }));
+
+          try {
+            await createActivity({
+              planId: planIdToSubmit,
+              procurementMethodId: resolvedMethodId,
+              description: act.description || "Activity description",
+              estimatedBudget: Number(act.estimatedAmount) || 500000,
+              currency: selectedPlan.currency || "ETB",
+              stages: customStages.length > 0 ? customStages : undefined,
+              fundings: [
+                {
+                  fundingSource:
+                    selectedProject.fundingSource ||
+                    "African Development Bank (AfDB)",
+                  loanGrantNumber:
+                    selectedProject.financingNumbers?.[0] || undefined,
+                  allocationPct: 100,
+                },
+              ],
+            });
+          } catch (firstErr) {
+            console.warn(
+              "First submit sync createActivity attempt failed, attempting fallback without custom stages:",
+              firstErr,
+            );
+            await createActivity({
+              planId: planIdToSubmit,
+              procurementMethodId: resolvedMethodId,
+              description: act.description || "Activity description",
+              estimatedBudget: Number(act.estimatedAmount) || 500000,
+              currency: selectedPlan.currency || "ETB",
+              fundings: [
+                {
+                  fundingSource:
+                    selectedProject.fundingSource ||
+                    "African Development Bank (AfDB)",
+                  loanGrantNumber:
+                    selectedProject.financingNumbers?.[0] || undefined,
+                  allocationPct: 100,
+                },
+              ],
+            });
+          }
+        } catch (actErr) {
+          console.warn("Backend activity sync on submit note:", actErr);
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Activity sync before submit note:", syncErr);
+    }
+
+    // 3. Submit on backend
+    try {
+      await submitPlanForReview(planIdToSubmit);
     } catch (err) {
       console.warn("Backend submitPlanForReview note:", err);
     }
 
-    // 2. Update local state
+    // 3. Update local state
     const updatedPlan: ProcurementPlanSummary = {
       ...selectedPlan,
       status: "Submitted to Director",
+      activities: selectedPlanActivities.length || selectedPlan.activities,
+      planActivities: selectedPlanActivities,
     };
 
     const nextRecords = upsertSavedPlanRecord(savedPlanRecords, {
@@ -433,23 +942,70 @@ export function OfficerProjectsView({
       JSON.stringify(nextRecords),
     );
 
+    // Optimistically update backendPlans state
+    setBackendPlans((prev) =>
+      prev.map((bp) => {
+        if (
+          bp.id === selectedPlan.reference ||
+          bp.id === selectedPlan.id ||
+          bp.title === selectedPlan.reference ||
+          bp.title === selectedPlan.name
+        ) {
+          return {
+            ...bp,
+            status: "SUBMITTED",
+          };
+        }
+        return bp;
+      }),
+    );
+
     await loadData();
   }
 
-  if (selectedProject && mode === "create-plan") {
+  function handlePlanUpdated(updatedPlan: ProcurementPlanSummary) {
+    if (!selectedProject) return;
+
+    const nextRecords = upsertSavedPlanRecord(savedPlanRecords, {
+      plan: updatedPlan,
+      projectCode: selectedProject.code,
+    });
+
+    setSavedPlanRecords(nextRecords);
+    window.localStorage.setItem(
+      OFFICER_PLAN_DRAFTS_STORAGE_KEY,
+      JSON.stringify(nextRecords),
+    );
+
+    void loadData();
+  }
+
+  function handleActivityUpdated(updatedActivity: ProcurementActivitySummary) {
+    saveActivity(updatedActivity);
+  }
+
+  if (selectedProject && (mode === "create-plan" || mode === "edit-plan")) {
     return (
       <CreateProcurementPlanView
+        initialPlan={mode === "edit-plan" ? selectedPlan : undefined}
         onSavePlan={savePlan}
         project={selectedProject}
       />
     );
   }
 
-  if (selectedProject && selectedPlan && mode === "create-activity") {
+  if (
+    selectedProject &&
+    selectedPlan &&
+    (mode === "create-activity" || mode === "edit-activity")
+  ) {
     return (
       <CreateProcurementActivityView
         existingActivityCount={
           selectedPlan.activities + selectedPlanActivities.length
+        }
+        initialActivity={
+          mode === "edit-activity" ? selectedActivity : undefined
         }
         onSaveActivity={saveActivity}
         plan={selectedPlan}
@@ -463,6 +1019,7 @@ export function OfficerProjectsView({
       <OfficerProcurementActivityDetailView
         activity={selectedActivity}
         fromTracker={fromTracker}
+        onUpdateActivity={handleActivityUpdated}
         plan={selectedPlan}
         project={selectedProject}
       />
@@ -473,6 +1030,8 @@ export function OfficerProjectsView({
     return (
       <OfficerProcurementPlanDetailView
         onSubmitToDirector={submitPlanToDirector}
+        onUpdateActivity={handleActivityUpdated}
+        onUpdatePlan={handlePlanUpdated}
         plan={selectedPlan}
         project={selectedProject}
         savedActivities={selectedPlanActivities}
@@ -564,7 +1123,7 @@ function OfficerProjectsList({
         className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <label className="block md:min-w-0 md:max-w-[25rem] md:flex-1">
+          <label className="block md:min-w-0 md:max-w-100 md:flex-1">
             <span className="sr-only">Search projects</span>
             <span
               className="flex h-11 cursor-text items-center gap-3 rounded-lg border border-slate-300 bg-[#fbfcfd] px-3.5 focus-within:border-[#348267] focus-within:bg-white focus-within:ring-3 focus-within:ring-[#348267]/15"
@@ -663,42 +1222,42 @@ function OfficerProjectsList({
 
       <section
         aria-labelledby="projects-table-title"
-        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+        className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
       >
         <h2 className="sr-only" id="projects-table-title">
           Assigned projects
         </h2>
         <div
           aria-label="Assigned projects table"
-          className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55]"
+          className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
           role="region"
           tabIndex={0}
         >
-          <table className="w-full min-w-[78rem] border-collapse text-left">
+          <table className="w-full min-w-312 border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#edf5f1] text-[11px] font-extrabold uppercase tracking-[0.06em] text-[#24364d]">
-                <th className="w-[31%] px-4 py-4" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-[31%] px-4 py-3.5" scope="col">
                   Project name
                 </th>
-                <th className="w-[9%] px-4 py-4" scope="col">
+                <th className="w-[9%] px-4 py-3.5" scope="col">
                   Code
                 </th>
-                <th className="w-[12%] px-4 py-4" scope="col">
+                <th className="w-[12%] px-4 py-3.5" scope="col">
                   Funding source
                 </th>
-                <th className="w-[12%] px-4 py-4" scope="col">
+                <th className="w-[12%] px-4 py-3.5" scope="col">
                   Organization / region
                 </th>
-                <th className="w-[15%] px-4 py-4" scope="col">
+                <th className="w-[15%] px-4 py-3.5" scope="col">
                   Assignment start
                 </th>
-                <th className="w-[8%] px-4 py-4 text-center" scope="col">
+                <th className="w-[8%] px-4 py-3.5 text-center" scope="col">
                   Active plans
                 </th>
-                <th className="w-[6%] px-4 py-4" scope="col">
+                <th className="w-[6%] px-4 py-3.5" scope="col">
                   Status
                 </th>
-                <th className="w-[5%] px-4 py-4 text-right" scope="col">
+                <th className="w-[5%] px-4 py-3.5 text-right" scope="col">
                   Action
                 </th>
               </tr>

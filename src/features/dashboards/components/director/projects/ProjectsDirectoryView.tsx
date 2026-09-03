@@ -206,14 +206,14 @@ export function ProjectsDirectoryView({
                     {/* Code & SAP ID */}
                     <td className="py-4 px-4 whitespace-nowrap">
                       <p
-                        className="font-mono font-extrabold text-slate-900 text-xs"
+                        className="font-mono font-extrabold text-slate-900 text-xs max-w-36 truncate"
                         title={`Project Code: ${project.code}`}
                       >
                         {project.code}
                       </p>
                       {project.sapNumber && (
                         <p
-                          className="font-mono text-[10px] text-slate-500 mt-0.5"
+                          className="font-mono text-[10px] text-slate-500 mt-0.5 max-w-36 truncate"
                           title={`SAP Identification No: ${project.sapNumber}`}
                         >
                           SAP: {project.sapNumber}
@@ -223,10 +223,10 @@ export function ProjectsDirectoryView({
 
                     {/* Project Name (Expanded width & 3-line wrap + hover tooltip) */}
                     <td
-                      className="py-4 px-4 font-bold text-slate-900 min-w-[300px] max-w-[380px]"
+                      className="py-4 px-4 font-bold text-slate-900 min-w-[300px] max-w-[380px] wrap-break-word"
                       title={project.name}
                     >
-                      <div className="leading-snug line-clamp-3">
+                      <div className="leading-snug line-clamp-3 wrap-break-word">
                         {project.name}
                       </div>
                     </td>

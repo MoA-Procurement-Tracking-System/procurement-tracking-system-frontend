@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Send,
   Loader2,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProcurementPlan } from "../../plans/plansData";
@@ -36,6 +37,8 @@ import {
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
 } from "@/features/projects/data/officerActivityDrafts";
 import type { ProcurementPlanSummary } from "@/features/projects/data/officerProjects";
+import { VersionHistoryModal } from "@/features/plans/components/VersionHistoryModal";
+import { getCurrentPlanVersionNumber } from "@/features/plans/data/planRevisions";
 
 function mapBackendActivityToProcurementActivity(
   bAct: BackendActivity | any,
@@ -276,6 +279,10 @@ export function DirectorActivitiesListView({
 }: DirectorActivitiesListViewProps) {
   const isCommittee = userRole === "ENDORSING_COMMITTEE";
   const isEditable = parentSection === "plan-for-review" && !isCommittee;
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const planVersion = getCurrentPlanVersionNumber(
+    plan.id || (plan as any).reference || "",
+  );
 
   const [activities, setActivities] = useState<ProcurementActivity[]>(() => {
     if (plan.activities && plan.activities.length > 0) {
@@ -298,21 +305,237 @@ export function DirectorActivitiesListView({
     try {
       let loadedActs: ProcurementActivity[] = [];
 
-      // 1. Primary Source: Fetch live backend activities by planId from Database API
+      // Collect target identifiers for matching
+      const targetPlanIds = new Set<string>();
+      if (plan.id) targetPlanIds.add(plan.id.toLowerCase().trim());
+      if ((plan as any).reference)
+        targetPlanIds.add((plan as any).reference.toLowerCase().trim());
+      if (plan.planName) targetPlanIds.add(plan.planName.toLowerCase().trim());
+
+      const targetProjectCodes = new Set<string>();
+      if (plan.projectCode)
+        targetProjectCodes.add(plan.projectCode.toLowerCase().trim());
+      if (project?.code)
+        targetProjectCodes.add(project.code.toLowerCase().trim());
+      if (project?.id) targetProjectCodes.add(project.id.toLowerCase().trim());
+      if ((project as any)?.shortName)
+        targetProjectCodes.add((project as any).shortName.toLowerCase().trim());
+      if (plan.projectId)
+        targetProjectCodes.add(plan.projectId.toLowerCase().trim());
+
+      // 0. Directly passed plan.activities
+      if (plan.activities && plan.activities.length > 0) {
+        for (const act of plan.activities) {
+          const mapped = mapBackendActivityToProcurementActivity(act, plan);
+          if (
+            !loadedActs.some(
+              (x) =>
+                x.id === mapped.id ||
+                x.activityRefNo?.toLowerCase() ===
+                  mapped.activityRefNo?.toLowerCase(),
+            )
+          ) {
+            loadedActs.push(mapped);
+          }
+        }
+      }
+
+      // 1. Saved Plan Drafts in localStorage (moa-pts:officer-plan-drafts:v2)
+      try {
+        if (typeof window !== "undefined") {
+          const rawPlanDrafts = window.localStorage.getItem(
+            "moa-pts:officer-plan-drafts:v2",
+          );
+          if (rawPlanDrafts) {
+            const parsedPlans = JSON.parse(rawPlanDrafts);
+            if (Array.isArray(parsedPlans)) {
+              for (const item of parsedPlans) {
+                const p = item.plan;
+                if (!p) continue;
+                const pRef = (p.reference || "").toLowerCase().trim();
+                const pName = (p.name || "").toLowerCase().trim();
+                const pId = (p.id || "").toLowerCase().trim();
+                const pProj = (item.projectCode || p.projectCode || "")
+                  .toLowerCase()
+                  .trim();
+
+                const isPlanMatch =
+                  (pRef &&
+                    Array.from(targetPlanIds).some(
+                      (t) => t === pRef || t.includes(pRef) || pRef.includes(t),
+                    )) ||
+                  (pName &&
+                    Array.from(targetPlanIds).some(
+                      (t) =>
+                        t === pName || t.includes(pName) || pName.includes(t),
+                    )) ||
+                  (pId &&
+                    Array.from(targetPlanIds).some(
+                      (t) => t === pId || t.includes(pId) || pId.includes(t),
+                    ));
+
+                const isProjMatch =
+                  targetProjectCodes.size === 0 ||
+                  Array.from(targetProjectCodes).some(
+                    (tc) =>
+                      tc === pProj || tc.includes(pProj) || pProj.includes(tc),
+                  );
+
+                if (isPlanMatch || isProjMatch) {
+                  if (pRef) targetPlanIds.add(pRef);
+                  if (pName) targetPlanIds.add(pName);
+                  if (pProj) targetProjectCodes.add(pProj);
+
+                  if (
+                    p.planActivities &&
+                    Array.isArray(p.planActivities) &&
+                    p.planActivities.length > 0
+                  ) {
+                    for (const act of p.planActivities) {
+                      const mapped = mapBackendActivityToProcurementActivity(
+                        act,
+                        plan,
+                      );
+                      if (
+                        !loadedActs.some(
+                          (x) =>
+                            x.id === mapped.id ||
+                            x.activityRefNo?.toLowerCase() ===
+                              mapped.activityRefNo?.toLowerCase(),
+                        )
+                      ) {
+                        loadedActs.push(mapped);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (planStorageErr) {
+        console.warn("localStorage plan drafts note:", planStorageErr);
+      }
+
+      // 2. Saved Activity Drafts in localStorage (OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY)
+      try {
+        if (typeof window !== "undefined") {
+          const rawDrafts = window.localStorage.getItem(
+            OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
+          );
+          if (rawDrafts) {
+            const parsed = parseSavedActivityRecords(rawDrafts);
+            for (const draft of parsed) {
+              const draftPlanRef = (draft.planReference || "")
+                .toLowerCase()
+                .trim();
+              const draftProjCode = (draft.projectCode || "")
+                .toLowerCase()
+                .trim();
+
+              const matches =
+                (draftPlanRef &&
+                  Array.from(targetPlanIds).some(
+                    (t) =>
+                      t === draftPlanRef ||
+                      t.includes(draftPlanRef) ||
+                      draftPlanRef.includes(t),
+                  )) ||
+                (draftProjCode &&
+                  Array.from(targetProjectCodes).some(
+                    (tc) =>
+                      tc === draftProjCode ||
+                      tc.includes(draftProjCode) ||
+                      draftProjCode.includes(tc),
+                  ));
+
+              if (matches) {
+                const mapped = mapBackendActivityToProcurementActivity(
+                  draft.activity,
+                  plan,
+                );
+                if (
+                  !loadedActs.some(
+                    (x) =>
+                      x.id === mapped.id ||
+                      x.activityRefNo?.toLowerCase() ===
+                        mapped.activityRefNo?.toLowerCase(),
+                  )
+                ) {
+                  loadedActs.push(mapped);
+                }
+              }
+            }
+          }
+        }
+      } catch (storageErr) {
+        console.warn("localStorage activity drafts note:", storageErr);
+      }
+
+      // 3. Live backend activities
       try {
         const cleanPlanId = plan.id.startsWith("officer-")
           ? plan.id.replace(`officer-${plan.projectCode}-`, "")
           : plan.id;
-        const backendActs = await fetchActivities(cleanPlanId);
 
-        if (backendActs && backendActs.length > 0) {
-          for (const ba of backendActs) {
+        const [planBackendActs, allBackendActs] = await Promise.all([
+          fetchActivities(cleanPlanId).catch(() => []),
+          fetchActivities().catch(() => []),
+        ]);
+
+        const combinedBackend = [...planBackendActs];
+        for (const ba of allBackendActs) {
+          const baPlanId = (ba.planId || ba.plan?.id || "")
+            .toLowerCase()
+            .trim();
+          const baPlanTitle = (
+            ba.plan?.title ||
+            (ba as any).planReference ||
+            ""
+          )
+            .toLowerCase()
+            .trim();
+          const baProjCode = (ba.plan?.project?.code || "")
+            .toLowerCase()
+            .trim();
+
+          const matchesPlan =
+            (baPlanId &&
+              Array.from(targetPlanIds).some(
+                (t) =>
+                  t === baPlanId ||
+                  t.includes(baPlanId) ||
+                  baPlanId.includes(t),
+              )) ||
+            (baPlanTitle &&
+              Array.from(targetPlanIds).some(
+                (t) =>
+                  t === baPlanTitle ||
+                  t.includes(baPlanTitle) ||
+                  baPlanTitle.includes(t),
+              )) ||
+            (baProjCode &&
+              Array.from(targetProjectCodes).some(
+                (tc) =>
+                  tc === baProjCode ||
+                  tc.includes(baProjCode) ||
+                  baProjCode.includes(tc),
+              ));
+
+          if (matchesPlan && !combinedBackend.some((x) => x.id === ba.id)) {
+            combinedBackend.push(ba);
+          }
+        }
+
+        if (combinedBackend.length > 0) {
+          for (const ba of combinedBackend) {
             const mapped = mapBackendActivityToProcurementActivity(ba, plan);
             if (
               !loadedActs.some(
                 (x) =>
                   x.id === mapped.id ||
-                  x.activityRefNo === mapped.activityRefNo,
+                  x.activityRefNo?.toLowerCase() ===
+                    mapped.activityRefNo?.toLowerCase(),
               )
             ) {
               loadedActs.push(mapped);
@@ -323,16 +546,24 @@ export function DirectorActivitiesListView({
         console.warn("Backend fetchActivities note:", backendErr);
       }
 
-      // 2. If plan already has mapped activities passed in its props
-      if (
-        loadedActs.length === 0 &&
-        plan.activities &&
-        plan.activities.length > 0
-      ) {
-        loadedActs = plan.activities.map((a) =>
-          mapBackendActivityToProcurementActivity(a, plan),
+      // 4. Fallback to INITIAL_ACTIVITIES if still empty
+      if (loadedActs.length === 0) {
+        const fallback = INITIAL_ACTIVITIES.filter(
+          (a) =>
+            Array.from(targetPlanIds).some(
+              (t) =>
+                t === a.planId?.toLowerCase() ||
+                t === a.planName?.toLowerCase(),
+            ) ||
+            Array.from(targetProjectCodes).some(
+              (tc) => tc === a.projectCode?.toLowerCase(),
+            ),
         );
+        if (fallback.length > 0) {
+          loadedActs = fallback;
+        }
       }
+
       setActivities(loadedActs);
     } catch (err) {
       console.warn("loadActivitiesData error:", err);
@@ -1178,17 +1409,31 @@ export function DirectorActivitiesListView({
         <div className="space-y-4">
           {/* Context Header Card */}
           <section className="rounded-xl border border-slate-200/80 bg-white p-4.5 shadow-2xs space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onBackClick}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back
+                </button>
+                <span className="text-slate-300">•</span>
+                <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  {project.code}
+                </span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 border border-slate-300">
+                  v{planVersion}
+                </span>
+              </div>
+
               <button
-                onClick={onBackClick}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#0A3C2F] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#0A3C2F] hover:bg-[#edf5f1] hover:text-[#0A3C2F] transition cursor-pointer"
+                onClick={() => setIsHistoryModalOpen(true)}
+                type="button"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back
+                <History className="h-3.5 w-3.5 text-[#0A3C2F]" />
+                Version History (v{planVersion})
               </button>
-              <span className="text-slate-300">•</span>
-              <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {project.code}
-              </span>
             </div>
 
             <div className="space-y-1">
@@ -1372,8 +1617,8 @@ export function DirectorActivitiesListView({
                             {act.activityRefNo}
                           </td>
 
-                          <td className="py-2 px-3 max-w-xs">
-                            <p className="font-bold text-slate-900 text-xs leading-snug">
+                          <td className="py-2 px-3 max-w-xs wrap-break-word">
+                            <p className="font-bold text-slate-900 text-xs leading-snug wrap-break-word line-clamp-2">
                               {act.description}
                             </p>
                           </td>
@@ -1553,6 +1798,15 @@ export function DirectorActivitiesListView({
           ) : null}
         </div>
       )}
+
+      <VersionHistoryModal
+        currentStatus={plan.status}
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        planId={plan.id}
+        planName={plan.planName}
+        projectCode={project.code}
+      />
     </div>
   );
 }

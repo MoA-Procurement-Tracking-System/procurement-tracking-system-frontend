@@ -35,11 +35,7 @@ import {
   fetchProjects,
   mapBackendProjectToOfficerProject,
 } from "@/lib/projectsApi";
-import {
-  fetchPlans,
-  mapBackendPlanToOfficerPlanSummary,
-  type BackendPlan,
-} from "@/lib/plansApi";
+import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
 import { fetchActivities, type BackendActivity } from "@/lib/activitiesApi";
 import {
   ArrowUpDown,
@@ -189,8 +185,15 @@ export function OfficerActivityTrackerView({
         `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
       map.set(key, rec);
     });
+    savedActivityRecords.forEach((rec) => {
+      const key =
+        `${rec.projectCode}-${rec.planReference}-${rec.activity.reference}`.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, rec);
+      }
+    });
     return Array.from(map.values());
-  }, [backendActivities]);
+  }, [backendActivities, savedActivityRecords]);
 
   const allProjects = useMemo(() => backendProjects, [backendProjects]);
 
@@ -762,13 +765,6 @@ function ActivityTrackerList({
     Number(Boolean(targetDateFrom)) +
     Number(Boolean(targetDateTo)) +
     Number(sortBy !== "attention");
-  const hasFilters =
-    Boolean(searchQuery.trim()) ||
-    projectCode !== "all" ||
-    category !== "all" ||
-    method !== "all" ||
-    quickFilter !== "all" ||
-    additionalFilterCount > 0;
 
   function resetFilters() {
     setCategory("all");
@@ -861,7 +857,7 @@ function ActivityTrackerList({
         {/* Row 1: Search, Project, Category, Method, More Filters */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[260px]">
+          <div className="relative flex-1 min-w-65">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="search"
@@ -873,7 +869,7 @@ function ActivityTrackerList({
           </div>
 
           {/* Project Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={projectCode}
               onChange={(e) => setProjectCode(e.target.value)}
@@ -890,7 +886,7 @@ function ActivityTrackerList({
           </div>
 
           {/* Category Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -907,7 +903,7 @@ function ActivityTrackerList({
           </div>
 
           {/* Method Dropdown */}
-          <div className="relative flex-1 min-w-[140px]">
+          <div className="relative flex-1 min-w-35">
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
@@ -1119,44 +1115,44 @@ function ActivityTrackerList({
         )}
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
         <div
           aria-label="Tracked procurement activities"
           className="max-w-full overflow-x-auto"
           role="region"
           tabIndex={0}
         >
-          <table className="w-full min-w-[92rem] table-fixed border-collapse text-left">
+          <table className="w-full min-w-368 table-fixed border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-300 bg-[#edf5f1] text-[10px] font-extrabold uppercase tracking-[0.05em] text-slate-600">
-                <th className="w-48 px-4 py-3" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-48 px-4 py-3.5" scope="col">
                   Reference No.
                 </th>
-                <th className="w-72 px-4 py-3" scope="col">
+                <th className="w-72 px-4 py-3.5" scope="col">
                   Activity
                 </th>
-                <th className="w-36 px-4 py-3" scope="col">
+                <th className="w-36 px-4 py-3.5" scope="col">
                   Project
                 </th>
-                <th className="w-44 px-4 py-3" scope="col">
+                <th className="w-44 px-4 py-3.5" scope="col">
                   Category
                 </th>
-                <th className="w-28 px-4 py-3" scope="col">
+                <th className="w-28 px-4 py-3.5" scope="col">
                   Method
                 </th>
-                <th className="w-56 px-4 py-3" scope="col">
+                <th className="w-56 px-4 py-3.5" scope="col">
                   Current Stage
                 </th>
-                <th className="w-44 px-4 py-3" scope="col">
+                <th className="w-44 px-4 py-3.5" scope="col">
                   Effective Target
                 </th>
-                <th className="w-32 px-4 py-3" scope="col">
+                <th className="w-32 px-4 py-3.5" scope="col">
                   Delay
                 </th>
-                <th className="w-36 px-4 py-3" scope="col">
+                <th className="w-36 px-4 py-3.5" scope="col">
                   Overall Status
                 </th>
-                <th className="w-28 px-4 py-3 text-right" scope="col">
+                <th className="w-28 px-4 py-3.5 text-right" scope="col">
                   Action
                 </th>
               </tr>
@@ -1253,17 +1249,17 @@ function TrackerRow({
 
   return (
     <tr className="align-middle text-xs text-slate-700 transition hover:bg-slate-50/70">
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3.5 whitespace-nowrap">
         <Link
-          className="font-mono text-[10px] font-bold text-[#1261a8] hover:text-[#07523f] hover:underline"
+          className="font-mono text-[10px] font-bold text-[#1261a8] hover:text-[#07523f] hover:underline max-w-40 truncate block"
           href={href}
         >
           {item.activity.reference}
         </Link>
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3.5 wrap-break-word">
         <Link
-          className="font-bold leading-5 text-[#10243f] hover:text-[#07523f] hover:underline"
+          className="font-bold leading-5 text-[#10243f] hover:text-[#07523f] hover:underline wrap-break-word line-clamp-2 block"
           href={href}
         >
           {item.activity.description}
@@ -1286,8 +1282,10 @@ function TrackerRow({
       <td className="px-4 py-3.5 font-semibold text-slate-700">
         {item.activity.method}
       </td>
-      <td className="px-4 py-3.5">
-        <p className="font-semibold leading-5 text-slate-700">{stage.name}</p>
+      <td className="px-4 py-3.5 wrap-break-word">
+        <p className="font-semibold leading-5 text-slate-700 wrap-break-word line-clamp-2">
+          {stage.name}
+        </p>
         <p className="mt-1 text-[10px] text-slate-500">{stage.status}</p>
       </td>
       <td className="px-4 py-3.5">
@@ -1345,79 +1343,6 @@ function QuickFilterButton({
     >
       {label} <span className="font-semibold text-slate-400">{count}</span>
     </button>
-  );
-}
-
-function CompactDateInput({
-  label,
-  max,
-  min,
-  onChange,
-  value,
-}: {
-  label: string;
-  max?: string;
-  min?: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <label className="relative block min-w-0">
-      <span className="sr-only">{label}</span>
-      <CalendarDays
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
-      />
-      <input
-        aria-label={label}
-        className="h-10 w-full cursor-pointer rounded-sm border border-slate-300 bg-[#fbfcfd] pr-2 pl-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15"
-        max={max}
-        min={min}
-        onChange={(event) => onChange(event.target.value)}
-        type="date"
-        value={value}
-      />
-    </label>
-  );
-}
-
-function CompactSelect({
-  icon,
-  label,
-  onChange,
-  options,
-  value,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  onChange: (value: string) => void;
-  options: readonly { label: string; value: string }[];
-  value: string;
-}) {
-  return (
-    <label className="relative block min-w-0">
-      <span className="sr-only">{label}</span>
-      {icon ? (
-        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500">
-          {icon}
-        </span>
-      ) : null}
-      <select
-        className={`h-10 w-full cursor-pointer appearance-none truncate rounded-sm border border-slate-300 bg-[#fbfcfd] py-2 pr-9 text-xs font-semibold text-slate-700 outline-none transition hover:border-[#9fb8ad] focus:border-[#176c55] focus:bg-white focus:ring-2 focus:ring-[#176c55]/15 ${icon ? "pl-9" : "pl-3"}`}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-500"
-      />
-    </label>
   );
 }
 

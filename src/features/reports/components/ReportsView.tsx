@@ -60,6 +60,22 @@ export function ReportsView() {
   const [isApplying, setIsApplying] = useState(false);
   const [appliedFeedback, setAppliedFeedback] = useState(false);
 
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/reports"
+      ) {
+        setActiveReport("annual-plan");
+        setFilters({ ...DEFAULT_FILTERS });
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
+
   // Switch report type & restore last used filters
   const handleSelectReport = (newReport: ReportType) => {
     setActiveReport(newReport);

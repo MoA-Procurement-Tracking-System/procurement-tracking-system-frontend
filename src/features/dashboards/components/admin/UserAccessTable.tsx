@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Loader2, RefreshCw } from "lucide-react";
-import { createInvitedUser } from "@/lib/authApi";
+import { createInvitedUser, getCurrentUser } from "@/lib/authApi";
 import type { ApiUser } from "@/lib/adminApi";
-import type { ProvisionableRole } from "@/lib/authTypes";
+import type { AuthUser, ProvisionableRole } from "@/lib/authTypes";
 
 interface UserAccessTableProps {
   users: ApiUser[];
+  currentUser?: AuthUser | null;
   isLoading?: boolean;
   onToggleStatus?: (user: ApiUser) => void;
   togglingId?: string | null;
@@ -46,14 +47,34 @@ function displayStatus(
   return user.isActive ? "Active" : "Inactive";
 }
 
+function isCurrentUser(u: ApiUser, current?: AuthUser | null): boolean {
+  if (!current) return false;
+  if (current.id && u.id && current.id === u.id) return true;
+  if (
+    current.email &&
+    u.email &&
+    current.email.toLowerCase().trim() === u.email.toLowerCase().trim()
+  )
+    return true;
+  if (
+    current.username &&
+    u.username &&
+    current.username.toLowerCase().trim() === u.username.toLowerCase().trim()
+  )
+    return true;
+  return false;
+}
+
 export function UserAccessTable({
   users,
+  currentUser,
   isLoading,
   onToggleStatus,
   togglingId,
   onRefresh,
 }: UserAccessTableProps) {
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const effectiveCurrentUser = currentUser ?? getCurrentUser();
 
   // Show recent 5 users on main dashboard
   const recentUsers = users.slice(0, 5);
@@ -134,6 +155,7 @@ export function UserAccessTable({
                   const isOddRow = index % 2 === 0;
                   const isWorking =
                     togglingId === user.id || resendingId === user.id;
+                  const isSelf = isCurrentUser(user, effectiveCurrentUser);
 
                   return (
                     <tr
@@ -143,8 +165,13 @@ export function UserAccessTable({
                       }`}
                     >
                       <td className="py-3.5 px-4 align-middle">
-                        <div className="font-bold text-[#0f172a] text-xs">
-                          {user.displayName || user.name}
+                        <div className="font-bold text-[#0f172a] text-xs flex items-center gap-1.5">
+                          <span>{user.displayName || user.name}</span>
+                          {isSelf && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-300">
+                              You
+                            </span>
+                          )}
                         </div>
                         {user.username && (
                           <div className="text-[10px] text-slate-400 font-medium mt-0.5">
@@ -191,6 +218,15 @@ export function UserAccessTable({
                             <span>
                               {isWorking ? "Resending…" : "Resend Invitation"}
                             </span>
+                          </button>
+                        ) : isSelf && isActive ? (
+                          <button
+                            type="button"
+                            disabled={true}
+                            title="You cannot deactivate your own administrator account."
+                            className="px-3.5 py-1 text-xs font-bold rounded-full border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60 shadow-none inline-flex items-center gap-1"
+                          >
+                            Deactivate
                           </button>
                         ) : (
                           <button

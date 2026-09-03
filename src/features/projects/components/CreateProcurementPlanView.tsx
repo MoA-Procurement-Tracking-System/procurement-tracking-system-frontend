@@ -3,6 +3,7 @@
 import type {
   OfficerProject,
   ProcurementCategory,
+  ProcurementPlanSummary,
 } from "../data/officerProjects";
 import type { ProcurementPlanDraftInput } from "../data/officerPlanDrafts";
 import {
@@ -15,6 +16,7 @@ import {
   parseEthiopianDate,
   type EthiopianDate,
 } from "../utils/ethiopianCalendar";
+import { DualCalendarField } from "./DualCalendarField";
 import {
   ArrowLeft,
   ArrowRightLeft,
@@ -27,6 +29,8 @@ import {
   Info,
   Lightbulb,
   LockKeyhole,
+  MessageSquare,
+  RotateCcw,
   Save,
   Settings,
   ShoppingCart,
@@ -71,12 +75,11 @@ export const procurementCategories = [
     value: "Non-Consulting Services" as const,
   },
   {
-    description:
-      "Intellectual and advisory services provided by firms or individuals.",
+    description: "Professional consulting firms, advisory, and study experts.",
     icon: Lightbulb,
     value: "Consultancy Services" as const,
   },
-];
+] as const;
 
 export function suggestedPlanName(
   project: OfficerProject,
@@ -87,35 +90,45 @@ export function suggestedPlanName(
 }
 
 export function CreateProcurementPlanView({
+  initialPlan,
   onSavePlan,
   project,
 }: {
+  initialPlan?: ProcurementPlanSummary;
   onSavePlan: (
     input: ProcurementPlanDraftInput,
     action: Exclude<SaveAction, null>,
+    revisionReason?: string,
   ) => void;
   project: OfficerProject;
 }) {
+  const isEditing = Boolean(initialPlan);
   const [selectedCategory, setSelectedCategory] =
-    useState<ProcurementCategory | null>(null);
-  const [planNameEdited, setPlanNameEdited] = useState(false);
+    useState<ProcurementCategory | null>(() => initialPlan?.category ?? null);
+  const [planNameEdited, setPlanNameEdited] = useState(() =>
+    Boolean(initialPlan),
+  );
+  const [revisionReason, setRevisionReason] = useState("");
   const [saveAction, setSaveAction] = useState<SaveAction>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
-  const [form, setForm] = useState<PlanFormState>({
-    budgetYear: "2017",
-    generalProcurementNoticeDate: "",
-    generalProcurementNoticeDateEthiopian: "",
+  const [form, setForm] = useState<PlanFormState>(() => ({
+    budgetYear: initialPlan?.budgetYear?.replace(/ EFY/i, "").trim() || "2017",
+    generalProcurementNoticeDate:
+      initialPlan?.generalProcurementNoticeDate?.gregorian || "",
+    generalProcurementNoticeDateEthiopian:
+      initialPlan?.generalProcurementNoticeDate?.ethiopian || "",
     organizationRegion:
-      project.availableOrganizationRegions?.[0] ??
-      project.organizationRegion ??
+      initialPlan?.organizationRegion ||
+      project.availableOrganizationRegions?.[0] ||
+      project.organizationRegion ||
       "",
-    periodFrom: "",
-    periodFromEthiopian: "",
-    periodTo: "",
-    periodToEthiopian: "",
-    planName: "",
-    remarks: "",
-  });
+    periodFrom: initialPlan?.planPeriod?.from?.gregorian || "",
+    periodFromEthiopian: initialPlan?.planPeriod?.from?.ethiopian || "",
+    periodTo: initialPlan?.planPeriod?.to?.gregorian || "",
+    periodToEthiopian: initialPlan?.planPeriod?.to?.ethiopian || "",
+    planName: initialPlan?.name || "",
+    remarks: initialPlan?.description || "",
+  }));
 
   const detailHref = `/workspace/projects?project=${encodeURIComponent(
     project.code,
@@ -206,7 +219,12 @@ export function CreateProcurementPlanView({
       return;
     }
 
-    onSavePlan({ ...form, category: selectedCategory }, action);
+    onSavePlan(
+      { ...form, category: selectedCategory },
+      action,
+      revisionReason.trim() ||
+        (isEditing ? "Updated plan parameters" : undefined),
+    );
     setSaveAction(action);
   }
 
@@ -214,18 +232,41 @@ export function CreateProcurementPlanView({
     project.availableOrganizationRegions ??
     (project.organizationRegion ? [project.organizationRegion] : []);
 
+  const planBackHref = initialPlan
+    ? `/workspace/projects?project=${encodeURIComponent(
+        project.code,
+      )}&plan=${encodeURIComponent(initialPlan.reference)}`
+    : detailHref;
+
   return (
     <div className="w-full pb-8">
       <div className="space-y-4">
-        <CreatePlanBreadcrumb detailHref={detailHref} project={project} />
+        <CreatePlanBreadcrumb
+          detailHref={detailHref}
+          initialPlan={initialPlan}
+          project={project}
+        />
 
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Create Procurement Plan
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                {isEditing
+                  ? initialPlan?.status === "Returned"
+                    ? "Revise Procurement Plan"
+                    : "Edit Procurement Plan"
+                  : "Create Procurement Plan"}
+              </h1>
+              {initialPlan && (
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-300">
+                  v{initialPlan.version || 1}
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-500">
-              Configure and register a new procurement plan under{" "}
+              {isEditing
+                ? `Update procurement plan configuration and parameters under `
+                : `Configure and register a new procurement plan under `}
               <strong className="font-semibold text-slate-700">
                 {project.name}
               </strong>
@@ -233,6 +274,19 @@ export function CreateProcurementPlanView({
             </p>
           </div>
         </div>
+
+        {/* Director Feedback Banner if Returned */}
+        {initialPlan?.rejectionReason && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-4 text-xs shadow-2xs">
+            <p className="font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+              <MessageSquare className="h-4 w-4 text-amber-700" />
+              Director Feedback &amp; Revision Instructions:
+            </p>
+            <p className="italic leading-relaxed text-amber-950">
+              &ldquo;{initialPlan.rejectionReason}&rdquo;
+            </p>
+          </div>
+        )}
 
         {saveAction ? (
           <div
@@ -245,8 +299,9 @@ export function CreateProcurementPlanView({
               className="mt-0.5 h-4 w-4 shrink-0 text-[#176c55]"
             />
             <span>
-              Plan draft saved successfully and added to this project&apos;s
-              Procurement Plans.
+              {isEditing
+                ? "Plan changes saved successfully."
+                : "Plan draft saved successfully and added to this project's Procurement Plans."}
             </span>
           </div>
         ) : null}
@@ -326,7 +381,11 @@ export function CreateProcurementPlanView({
               <div className="relative">
                 <select
                   aria-invalid={categoryError}
-                  className="h-11 w-full appearance-none rounded border border-slate-400 bg-white px-3 pr-10 text-sm font-medium text-slate-800 outline-none transition focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
+                  aria-required="true"
+                  className={`${compactFieldClasses} appearance-none pr-9`}
+                  disabled={isEditing}
+                  id="procurementCategory"
+                  name="procurementCategory"
                   onChange={(event) =>
                     handleCategoryChange(
                       event.target.value as ProcurementCategory,
@@ -335,11 +394,11 @@ export function CreateProcurementPlanView({
                   value={selectedCategory ?? ""}
                 >
                   <option disabled value="">
-                    Select a procurement category
+                    Select category...
                   </option>
-                  {procurementCategories.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.value}
+                  {procurementCategories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.value}
                     </option>
                   ))}
                 </select>
@@ -349,81 +408,65 @@ export function CreateProcurementPlanView({
                 />
               </div>
               {categoryError ? (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-red-600">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
                   <Info aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                  Select a procurement category.
-                </p>
-              ) : selectedCategory ? (
-                <p className="mt-1.5 text-[11px] text-[#176c55]">
-                  {
-                    procurementCategories.find(
-                      (c) => c.value === selectedCategory,
-                    )?.description
-                  }
+                  Please select a procurement category.
                 </p>
               ) : null}
             </fieldset>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="sm:col-span-2">
-                <CompactFormField
-                  errorMessage={
-                    nameError ? "Plan name is required." : undefined
-                  }
-                  htmlFor="plan-name"
-                  label="Plan Name"
-                  required
-                >
-                  <input
-                    aria-invalid={nameError}
-                    className={compactFieldClasses}
-                    id="plan-name"
-                    onChange={(event) =>
-                      updateField("planName", event.target.value)
-                    }
-                    placeholder="Enter plan name or select a category above"
-                    required
-                    value={form.planName}
-                  />
-                </CompactFormField>
-              </div>
+            {/* Plan Name */}
+            <CompactFormField
+              errorMessage={
+                nameError ? "Please enter a procurement plan name." : undefined
+              }
+              htmlFor="planName"
+              label="Procurement Plan Name"
+              required
+            >
+              <input
+                className={compactFieldClasses}
+                id="planName"
+                onChange={(event) =>
+                  updateField("planName", event.target.value)
+                }
+                placeholder="e.g. BREFONS - Goods Procurement Plan - 2018 EFY"
+                value={form.planName}
+              />
+            </CompactFormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <CompactFormField
                 errorMessage={
-                  budgetYearError ? "Fiscal year is required." : undefined
+                  budgetYearError ? "Budget year is required." : undefined
                 }
-                htmlFor="budget-year"
-                label="Ethiopian Fiscal Year (EFY)"
+                htmlFor="budgetYear"
+                label="Budget Year (EFY)"
                 required
               >
                 <input
-                  aria-invalid={budgetYearError}
                   className={compactFieldClasses}
-                  id="budget-year"
+                  id="budgetYear"
                   onChange={(event) =>
                     updateField("budgetYear", event.target.value)
                   }
                   placeholder="e.g. 2017"
-                  required
-                  type="text"
                   value={form.budgetYear}
                 />
               </CompactFormField>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              {organizationRegions.length > 1 ? (
-                <CompactFormField
-                  htmlFor="organization-region"
-                  label="Organization / Region"
-                  required
-                >
+              <CompactFormField
+                htmlFor="organizationRegion"
+                label="Organisation / Region"
+              >
+                <div className="relative">
                   <select
-                    className={compactFieldClasses}
-                    id="organization-region"
+                    className={`${compactFieldClasses} appearance-none pr-9`}
+                    id="organizationRegion"
+                    name="organizationRegion"
                     onChange={(event) =>
                       updateField("organizationRegion", event.target.value)
                     }
-                    required
                     value={form.organizationRegion}
                   >
                     {organizationRegions.map((region) => (
@@ -432,17 +475,12 @@ export function CreateProcurementPlanView({
                       </option>
                     ))}
                   </select>
-                </CompactFormField>
-              ) : organizationRegions.length === 1 ? (
-                <LockedInput
-                  label="Organization / Region"
-                  value={organizationRegions[0]}
-                />
-              ) : null}
-              <LockedInput
-                label="Plan Status"
-                value="Draft (system generated)"
-              />
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-500"
+                  />
+                </div>
+              </CompactFormField>
             </div>
           </div>
         </section>
@@ -451,52 +489,52 @@ export function CreateProcurementPlanView({
         <section className="overflow-hidden rounded border border-slate-300 bg-white shadow-xs">
           <div className="border-b border-slate-200 bg-[#edf5f1] px-5 py-3.5">
             <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-slate-800">
-              Plan Timeline (Dual Calendar: Gregorian & Ethiopian)
+              Plan Schedule &amp; Coverage Period
             </h2>
           </div>
           <div className="p-5 space-y-5">
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <DualCalendarField
                 errorMessage={
                   periodFromError ? "Start date is required." : undefined
                 }
                 ethiopianValue={form.periodFromEthiopian}
                 gregorianValue={form.periodFrom}
-                id="period-from"
-                label="Plan Period From"
+                id="periodFrom"
+                label="Plan Period From (Gregorian / Ethiopian)"
                 onChange={(gregorianValue, ethiopianValue) =>
                   updateDatePair("from", gregorianValue, ethiopianValue)
                 }
+                required
               />
+
               <DualCalendarField
                 errorMessage={
                   periodToError
-                    ? !form.periodTo
-                      ? "End date is required."
-                      : "End date cannot be earlier than start date."
+                    ? dateOrderError
+                      ? "End date must be after Start date."
+                      : "End date is required."
                     : undefined
                 }
                 ethiopianValue={form.periodToEthiopian}
                 gregorianValue={form.periodTo}
-                id="period-to"
-                label="Plan Period To"
+                id="periodTo"
+                label="Plan Period To (Gregorian / Ethiopian)"
                 onChange={(gregorianValue, ethiopianValue) =>
                   updateDatePair("to", gregorianValue, ethiopianValue)
                 }
+                required
               />
             </div>
 
-            <div
-              className={`grid gap-5 ${
-                project.supportsGeneralProcurementNotice ? "sm:grid-cols-2" : ""
-              }`}
-            >
-              {project.supportsGeneralProcurementNotice ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {form.generalProcurementNoticeDate ||
+              !form.generalProcurementNoticeDateEthiopian ? (
                 <DualCalendarField
                   ethiopianValue={form.generalProcurementNoticeDateEthiopian}
                   gregorianValue={form.generalProcurementNoticeDate}
-                  id="general-procurement-notice-date"
-                  label="General Procurement Notice Date"
+                  id="generalNoticeDate"
+                  label="General Procurement Notice (GPN) Publication Date"
                   onChange={(gregorianValue, ethiopianValue) =>
                     updateDatePair("notice", gregorianValue, ethiopianValue)
                   }
@@ -523,31 +561,53 @@ export function CreateProcurementPlanView({
           </div>
         </section>
 
-        {/* Section 4: Actions & Navigation Footer */}
+        {/* Section 4: Revision Justification (When in Returned / Revision status) */}
+        {initialPlan?.status === "Returned" && (
+          <section className="overflow-hidden rounded border border-amber-300 bg-amber-50/40 p-5 shadow-xs space-y-2.5">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-700" />
+              <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">
+                Revision Reason / Justification for Audit Trail
+              </h2>
+            </div>
+            <textarea
+              className="min-h-20 w-full resize-y rounded border border-amber-300 bg-white px-3 py-2 text-xs leading-5 text-slate-800 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
+              onChange={(e) => setRevisionReason(e.target.value)}
+              placeholder="Specify justification for this revision (e.g., Updated budget year and adjusted coverage schedule per Director feedback)..."
+              value={revisionReason}
+            />
+          </section>
+        )}
+
+        {/* Section 5: Actions & Navigation Footer */}
         <div className="flex flex-col-reverse gap-3 border-t border-slate-300 bg-white pt-5 sm:flex-row sm:items-center sm:justify-between">
           <Link
             className="inline-flex h-9 items-center gap-2 px-2 text-xs font-medium text-slate-600 hover:text-slate-900"
-            href={detailHref}
+            href={planBackHref}
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            Back to {project.shortName} Project
+            {isEditing
+              ? `Back to Plan (${initialPlan?.name || "Detail"})`
+              : `Back to ${project.shortName} Project`}
           </Link>
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-slate-300 bg-white px-4 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-slate-300 bg-white px-4 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
               onClick={() => handleSubmit(null, "draft")}
               type="button"
             >
-              Save Draft
+              {isEditing ? "Save Plan Changes" : "Save Draft"}
             </button>
             <button
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-[#125442] bg-[#176c55] px-4 text-xs font-medium text-white hover:bg-[#125f4c]"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-[#125442] bg-[#176c55] px-4 text-xs font-medium text-white hover:bg-[#125f4c] cursor-pointer"
               onClick={() => handleSubmit(null, "activity")}
               type="button"
             >
               <Save aria-hidden="true" className="h-3.5 w-3.5" />
-              Save & Add Procurement Activity
+              {isEditing
+                ? "Save & Go to Activities"
+                : "Save & Add Procurement Activity"}
             </button>
           </div>
         </div>
@@ -558,9 +618,11 @@ export function CreateProcurementPlanView({
 
 function CreatePlanBreadcrumb({
   detailHref,
+  initialPlan,
   project,
 }: {
   detailHref: string;
+  initialPlan?: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
   return (
@@ -584,251 +646,34 @@ function CreatePlanBreadcrumb({
           </Link>
         </li>
         <li aria-hidden="true">/</li>
-        <li aria-current="page" className="font-semibold text-slate-800">
-          Create Plan
-        </li>
+        {initialPlan ? (
+          <>
+            <li>
+              <Link
+                className="hover:text-[#176c55]"
+                href={`/workspace/projects?project=${encodeURIComponent(
+                  project.code,
+                )}&plan=${encodeURIComponent(initialPlan.reference)}`}
+              >
+                {initialPlan.name}
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="font-semibold text-slate-800">
+              {initialPlan.status === "Returned" ? "Revise Plan" : "Edit Plan"}
+            </li>
+          </>
+        ) : (
+          <li aria-current="page" className="font-semibold text-slate-800">
+            Create Plan
+          </li>
+        )}
       </ol>
     </nav>
   );
 }
 
-export function DualCalendarField({
-  errorMessage,
-  ethiopianValue,
-  gregorianValue,
-  id,
-  label,
-  onChange,
-  required = true,
-}: {
-  errorMessage?: string;
-  ethiopianValue: string;
-  gregorianValue: string;
-  id: string;
-  label: string;
-  onChange: (gregorianValue: string, ethiopianValue: string) => void;
-  required?: boolean;
-}) {
-  const error = Boolean(errorMessage);
-
-  function changeGregorian(value: string) {
-    if (!value) {
-      onChange("", "");
-      return;
-    }
-
-    const converted = gregorianToEthiopian(value);
-    onChange(value, converted ? formatEthiopianDate(converted) : "");
-  }
-
-  function changeEthiopian(value: EthiopianDate) {
-    onChange(
-      ethiopianToGregorian(value.year, value.month, value.day),
-      formatEthiopianDate(value),
-    );
-  }
-
-  return (
-    <div>
-      <label
-        className={`mb-2 block text-[11px] font-medium ${
-          error ? "text-red-600" : "text-slate-600"
-        }`}
-        htmlFor={`${id}-gregorian`}
-      >
-        {label}
-        {required ? <span className="ml-1 text-red-600">*</span> : null}
-      </label>
-      <div className="flex items-end gap-2 border border-slate-300 bg-[#f0f3ff] p-3">
-        <GregorianCalendarInput
-          id={`${id}-gregorian`}
-          onChange={changeGregorian}
-          value={gregorianValue}
-        />
-        <ArrowRightLeft
-          aria-hidden="true"
-          className="mb-2 h-4 w-4 text-slate-500"
-        />
-        <EthiopianCalendarInput
-          id={`${id}-ethiopian`}
-          onSelect={changeEthiopian}
-          value={ethiopianValue}
-        />
-      </div>
-      {errorMessage ? (
-        <p className="mt-2 flex items-center gap-1 text-xs text-red-600">
-          <Info aria-hidden="true" className="h-3.5 w-3.5" />
-          {errorMessage}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function GregorianCalendarInput({
-  id,
-  onChange,
-  value,
-}: {
-  id: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <div className="min-w-0 flex-1">
-      <label
-        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500"
-        htmlFor={id}
-      >
-        Gregorian
-      </label>
-      <input
-        className="h-9 w-full min-w-0 rounded-none border border-slate-400 bg-white px-2.5 text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        type="date"
-        value={value}
-      />
-    </div>
-  );
-}
-
-function EthiopianCalendarInput({
-  id,
-  onSelect,
-  value,
-}: {
-  id: string;
-  onSelect: (value: EthiopianDate) => void;
-  value: string;
-}) {
-  const parsedValue = parseEthiopianDate(value);
-  const today = gregorianToEthiopian(new Date().toISOString().slice(0, 10)) ?? {
-    day: 1,
-    month: 1,
-    year: 2017,
-  };
-  const [open, setOpen] = useState(false);
-  const [visibleMonth, setVisibleMonth] = useState(
-    parsedValue?.month ?? today.month,
-  );
-  const [visibleYear, setVisibleYear] = useState(
-    parsedValue?.year ?? today.year,
-  );
-
-  function toggleCalendar() {
-    if (!open) {
-      const current = parseEthiopianDate(value) ?? today;
-      setVisibleMonth(current.month);
-      setVisibleYear(current.year);
-    }
-    setOpen((current) => !current);
-  }
-
-  function moveMonth(offset: number) {
-    const monthIndex = visibleMonth - 1 + offset;
-    const yearOffset = Math.floor(monthIndex / 13);
-    setVisibleYear((current) => current + yearOffset);
-    setVisibleMonth((((monthIndex % 13) + 13) % 13) + 1);
-  }
-
-  const leadingDays = ethiopianWeekday(visibleYear, visibleMonth);
-  const monthDays = daysInEthiopianMonth(visibleYear, visibleMonth);
-
-  return (
-    <div className="relative min-w-0 flex-1">
-      <label
-        className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500"
-        htmlFor={id}
-      >
-        Ethiopian
-      </label>
-      <button
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-none border border-slate-400 bg-white px-2.5 text-left text-xs text-slate-700 outline-none focus:border-[#176c55] focus:ring-2 focus:ring-[#176c55]/15"
-        id={id}
-        onClick={toggleCalendar}
-        type="button"
-      >
-        <span className={value ? "truncate" : "truncate text-slate-400"}>
-          {value || "Select Ethiopian date"}
-        </span>
-        <CalendarDays aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-      </button>
-
-      {open ? (
-        <div
-          aria-label="Ethiopian calendar"
-          className="absolute top-full right-0 z-50 mt-1 w-64 rounded border border-slate-300 bg-white p-3 text-slate-700 shadow-xl"
-          role="dialog"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <button
-              aria-label="Previous Ethiopian month"
-              className="flex h-7 w-7 items-center justify-center rounded hover:bg-slate-100"
-              onClick={() => moveMonth(-1)}
-              type="button"
-            >
-              <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <p className="text-xs font-bold">
-              {ETHIOPIAN_MONTHS[visibleMonth - 1]} {visibleYear}
-            </p>
-            <button
-              aria-label="Next Ethiopian month"
-              className="flex h-7 w-7 items-center justify-center rounded hover:bg-slate-100"
-              onClick={() => moveMonth(1)}
-              type="button"
-            >
-              <ChevronRight aria-hidden="true" className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="mt-2 grid grid-cols-7 text-center text-[9px] font-semibold text-slate-400">
-            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-              <span className="py-1" key={day}>
-                {day}
-              </span>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-0.5 text-center text-[10px]">
-            {Array.from({ length: leadingDays }, (_, index) => (
-              <span aria-hidden="true" key={`empty-${index}`} />
-            ))}
-            {Array.from({ length: monthDays }, (_, index) => index + 1).map(
-              (day) => {
-                const selected =
-                  parsedValue?.year === visibleYear &&
-                  parsedValue.month === visibleMonth &&
-                  parsedValue.day === day;
-
-                return (
-                  <button
-                    aria-label={`${day} ${ETHIOPIAN_MONTHS[visibleMonth - 1]} ${visibleYear}`}
-                    className={`flex h-7 items-center justify-center rounded ${
-                      selected
-                        ? "bg-[#176c55] font-bold text-white"
-                        : "hover:bg-[#edf5f1] hover:text-[#176c55]"
-                    }`}
-                    key={day}
-                    onClick={() => {
-                      onSelect({ day, month: visibleMonth, year: visibleYear });
-                      setOpen(false);
-                    }}
-                    type="button"
-                  >
-                    {day}
-                  </button>
-                );
-              },
-            )}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+export { DualCalendarField } from "./DualCalendarField";
 
 function LockedInput({
   icon = false,

@@ -14,9 +14,13 @@ import {
   FolderOpen,
   MapPin,
   Route,
+  Edit3,
+  History,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { EditActivityModal } from "@/features/activities/components/EditActivityModal";
+import { VersionHistoryModal } from "@/features/plans/components/VersionHistoryModal";
 
 interface DetailValue {
   label: string;
@@ -24,16 +28,24 @@ interface DetailValue {
 }
 
 export function OfficerProcurementActivityDetailView({
-  activity,
+  activity: initialActivity,
   fromTracker,
+  onUpdateActivity,
   plan,
   project,
 }: {
   activity: ProcurementActivitySummary;
   fromTracker?: boolean;
+  onUpdateActivity?: (updated: ProcurementActivitySummary) => void;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
+  const [currentActivity, setCurrentActivity] =
+    useState<ProcurementActivitySummary>(initialActivity);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+  const activity = currentActivity;
   const trackerHref =
     "/workspace/activity-tracker?project=" +
     encodeURIComponent(project.code) +
@@ -176,13 +188,42 @@ export function OfficerProcurementActivityDetailView({
               <StatusText className="text-[10px]" label={activity.status} />
             </div>
           </div>
-          <Link
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#176c55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-            href={backHref}
-          >
-            <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            {backLabel}
-          </Link>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition cursor-pointer"
+              onClick={() => setIsHistoryModalOpen(true)}
+              type="button"
+            >
+              <History className="h-3.5 w-3.5 text-[#176c55]" />
+              Audit Trail
+            </button>
+
+            {(plan.status === "Draft" || plan.status === "Returned") && (
+              <Link
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition"
+                href={
+                  "/workspace/projects?project=" +
+                  encodeURIComponent(project.code) +
+                  "&plan=" +
+                  encodeURIComponent(plan.reference) +
+                  "&activity=" +
+                  encodeURIComponent(activity.reference) +
+                  "&mode=edit-activity"
+                }
+              >
+                <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                Revise Activity
+              </Link>
+            )}
+
+            <Link
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#176c55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              href={backHref}
+            >
+              <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+              {backLabel}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -301,6 +342,29 @@ export function OfficerProcurementActivityDetailView({
           </div>
         ) : null}
       </DetailCard>
+
+      <VersionHistoryModal
+        currentStatus={activity.status}
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        planId={plan.id || plan.reference}
+        planName={plan.name}
+        projectCode={project.code}
+      />
+
+      {isEditModalOpen && (
+        <EditActivityModal
+          activity={currentActivity}
+          isOpen={isEditModalOpen}
+          onActivityUpdated={(updated) => {
+            setCurrentActivity(updated);
+            onUpdateActivity?.(updated);
+          }}
+          onClose={() => setIsEditModalOpen(false)}
+          plan={plan}
+          projectCode={project.code}
+        />
+      )}
     </div>
   );
 }
@@ -435,7 +499,7 @@ function DetailItem({ label, value }: DetailValue) {
       <dt className="text-[9px] font-bold uppercase tracking-[0.07em] text-slate-500">
         {label}
       </dt>
-      <dd className="mt-1 break-words text-xs font-semibold leading-5 text-slate-800">
+      <dd className="mt-1 wrap-break-word text-xs font-semibold leading-5 text-slate-800">
         {value}
       </dd>
     </div>
@@ -458,7 +522,7 @@ function AllocationList({
             className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-[#fbfcfd] px-3 py-2"
             key={allocation.id}
           >
-            <span className="min-w-0 break-words text-[10px] font-semibold text-slate-700">
+            <span className="min-w-0 wrap-break-word text-[10px] font-semibold text-slate-700">
               {allocation.id}
             </span>
             <span className="shrink-0 rounded bg-[#e8f5ef] px-2 py-0.5 text-[10px] font-bold text-[#047857]">
@@ -481,20 +545,16 @@ function CompactTable({
   title: string;
 }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-md border border-slate-300">
-      <h3 className="border-b border-slate-300 bg-[#f6f7fb] px-3 py-2 text-[10px] font-extrabold text-slate-800">
+    <section className="mt-5 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+      <h3 className="border-b border-slate-200 bg-[#edf5f1] px-3.5 py-2.5 text-[11px] font-extrabold text-[#16253d]">
         {title}
       </h3>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[34rem] border-collapse text-left">
+        <table className="w-full min-w-136 border-collapse text-left">
           <thead>
-            <tr className="border-b border-slate-200 bg-[#fbfcfd]">
+            <tr className="bg-[#0A3C2F] text-white text-[10px] font-extrabold uppercase tracking-wider">
               {columns.map((column) => (
-                <th
-                  className="px-3 py-2 text-[9px] font-extrabold uppercase tracking-[0.04em] text-slate-500"
-                  key={column}
-                  scope="col"
-                >
+                <th className="px-3 py-2.5" key={column} scope="col">
                   {column}
                 </th>
               ))}
@@ -530,27 +590,27 @@ function RoadmapTable({
   title: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-md border border-slate-300">
-      <h3 className="border-b border-slate-300 bg-[#f6f7fb] px-3 py-2 text-[10px] font-extrabold text-slate-800">
+    <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+      <h3 className="border-b border-slate-200 bg-[#edf5f1] px-3.5 py-2.5 text-[11px] font-extrabold text-[#16253d]">
         {title}
       </h3>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[46rem] border-collapse text-left">
+        <table className="w-full min-w-184 border-collapse text-left">
           <thead>
-            <tr className="border-b border-slate-200 bg-[#fbfcfd]">
-              <th className="w-[34%] px-3 py-2" scope="col">
+            <tr className="bg-[#0A3C2F] text-white text-[10px] font-extrabold uppercase tracking-wider">
+              <th className="w-[34%] px-3 py-2.5" scope="col">
                 Stage
               </th>
-              <th className="w-[31%] px-3 py-2" scope="col">
+              <th className="w-[31%] px-3 py-2.5" scope="col">
                 Original Planned Date (GC / EC)
               </th>
-              <th className="w-[12%] px-3 py-2" scope="col">
+              <th className="w-[12%] px-3 py-2.5" scope="col">
                 Duration
               </th>
-              <th className="w-[13%] px-3 py-2" scope="col">
+              <th className="w-[13%] px-3 py-2.5" scope="col">
                 Type
               </th>
-              <th className="w-[10%] px-3 py-2" scope="col">
+              <th className="w-[10%] px-3 py-2.5" scope="col">
                 N/A
               </th>
             </tr>

@@ -21,9 +21,20 @@ import {
   Search,
   Send,
   Upload,
+  History,
+  Edit3,
+  RotateCcw,
+  MessageSquare,
+  AlertCircle,
+  FileCheck2,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import {
+  getCurrentPlanVersionNumber,
+  recordPlanVersionEvent,
+} from "@/features/plans/data/planRevisions";
+import { VersionHistoryModal } from "@/features/plans/components/VersionHistoryModal";
 
 type ActivityStatus = ProcurementActivityStatus;
 
@@ -31,22 +42,45 @@ type PlanActivity = ProcurementActivitySummary;
 
 export function OfficerProcurementPlanDetailView({
   onSubmitToDirector,
+  onUpdatePlan,
+  onUpdateActivity,
   plan,
   project,
   savedActivities = [],
 }: {
-  onSubmitToDirector?: (planReference: string) => void;
+  onSubmitToDirector?: (planReference: string, revisionReason?: string) => void;
+  onUpdatePlan?: (plan: ProcurementPlanSummary) => void;
+  onUpdateActivity?: (activity: ProcurementActivitySummary) => void;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
   savedActivities?: readonly ProcurementActivitySummary[];
 }) {
+  const [currentPlanOverride, setCurrentPlanOverride] =
+    useState<ProcurementPlanSummary | null>(null);
+  const [prevPlan, setPrevPlan] = useState(plan);
+
+  if (plan !== prevPlan) {
+    setPrevPlan(plan);
+    setCurrentPlanOverride(null);
+  }
+
+  const currentPlan = currentPlanOverride ?? plan;
+  const setCurrentPlan = setCurrentPlanOverride;
   const [submittedPlanReference, setSubmittedPlanReference] = useState<
     string | null
   >(null);
+
   const activePlanStatus =
-    submittedPlanReference === plan.reference
+    submittedPlanReference === currentPlan.reference
       ? "Submitted to Director"
-      : plan.status;
+      : currentPlan.status;
+
+  // Modals state
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
+  const [editingActivity, setEditingActivity] =
+    useState<ProcurementActivitySummary | null>(null);
+
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [methodFilter, setMethodFilter] = useState("All");
@@ -55,18 +89,24 @@ export function OfficerProcurementPlanDetailView({
     "All",
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const versionNumber = getCurrentPlanVersionNumber(
+    currentPlan.reference || currentPlan.id || "",
+  );
+
   const activities = useMemo(() => {
     const list = [...savedActivities];
-    if (plan.planActivities && plan.planActivities.length > 0) {
+    if (currentPlan.planActivities && currentPlan.planActivities.length > 0) {
       const existingRefs = new Set(list.map((a) => a.reference.toLowerCase()));
-      plan.planActivities.forEach((pa) => {
+      currentPlan.planActivities.forEach((pa) => {
         if (!existingRefs.has(pa.reference.toLowerCase())) {
           list.push(pa);
         }
       });
     }
     return list;
-  }, [savedActivities, plan.planActivities]);
+  }, [savedActivities, currentPlan.planActivities]);
+
   const categoryOptions = useMemo(
     () =>
       Array.from(new Set(activities.map((activity) => activity.category))).sort(
@@ -106,7 +146,7 @@ export function OfficerProcurementPlanDetailView({
     });
   }, [activities, categoryFilter, methodFilter, searchQuery, statusFilter]);
 
-  const pageSize = 4;
+  const pageSize = 5;
   const pageCount = Math.max(
     1,
     Math.ceil(filteredActivities.length / pageSize),
@@ -123,6 +163,55 @@ export function OfficerProcurementPlanDetailView({
   const projectHref = `/workspace/projects?project=${encodeURIComponent(
     project.code,
   )}`;
+
+  const handlePlanSaved = (updated: ProcurementPlanSummary) => {
+    setCurrentPlan(updated);
+    onUpdatePlan?.(updated);
+  };
+
+  const handleActivitySaved = (updatedAct: ProcurementActivitySummary) => {
+    onUpdateActivity?.(updatedAct);
+    // update local plan activities if present
+    if (currentPlan.planActivities) {
+      const nextActs = currentPlan.planActivities.map((a) =>
+        a.reference.toLowerCase() === updatedAct.reference.toLowerCase()
+          ? updatedAct
+          : a,
+      );
+      const nextPlan = { ...currentPlan, planActivities: nextActs };
+      setCurrentPlan(nextPlan);
+      onUpdatePlan?.(nextPlan);
+    }
+  };
+
+  const handleSubmitToDirector = (reason?: string) => {
+    setSubmittedPlanReference(currentPlan.reference);
+
+    const nextVer =
+      currentPlan.status === "Returned" ? versionNumber + 1 : versionNumber;
+
+    // Record audit revision
+    recordPlanVersionEvent({
+      planId: currentPlan.id || currentPlan.reference,
+      planReference: currentPlan.reference,
+      projectCode: project.code,
+      versionNumber: nextVer,
+      action: currentPlan.status === "Returned" ? "RESUBMITTED" : "SUBMITTED",
+      actionLabel:
+        currentPlan.status === "Returned"
+          ? `Plan Resubmitted (v${nextVer})`
+          : "Plan Submitted for Director Review",
+      changedBy: "Procurement Officer",
+      changedByRole: "Procurement Officer",
+      reason:
+        reason ||
+        (currentPlan.status === "Returned"
+          ? "Resubmitted with revisions addressing Director feedback."
+          : "Submitted for review."),
+    });
+
+    onSubmitToDirector?.(currentPlan.reference, reason);
+  };
 
   function exportActivities() {
     const headings = [
@@ -151,7 +240,7 @@ export function OfficerProcurementPlanDetailView({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${plan.reference}-activities.csv`;
+    link.download = `${currentPlan.reference}-activities.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -186,21 +275,26 @@ export function OfficerProcurementPlanDetailView({
               /
             </li>
             <li aria-current="page" className="font-semibold text-slate-900">
-              {plan.name}
+              {currentPlan.name}
             </li>
           </ol>
         </nav>
 
         <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#10243f]">
-              {plan.name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#10243f]">
+                {currentPlan.name}
+              </h1>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-slate-300">
+                v{versionNumber}
+              </span>
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
               <span>
                 Reference:{" "}
                 <strong className="font-semibold text-[#1261a8]">
-                  {plan.reference}
+                  {currentPlan.reference}
                 </strong>
               </span>
               <span aria-hidden="true" className="text-slate-300">
@@ -208,7 +302,7 @@ export function OfficerProcurementPlanDetailView({
               </span>
               <span className="inline-flex items-center gap-1">
                 <CalendarDays aria-hidden="true" className="h-3 w-3" />
-                {plan.budgetYear}
+                {currentPlan.budgetYear}
               </span>
               <span aria-hidden="true" className="text-slate-300">
                 •
@@ -222,45 +316,149 @@ export function OfficerProcurementPlanDetailView({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* Version History Button */}
             <button
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition cursor-pointer"
+              onClick={() => setIsVersionHistoryOpen(true)}
               type="button"
             >
-              <Upload
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-slate-500"
-              />
-              Import Activities
+              <History className="h-3.5 w-3.5 text-[#176c55]" />
+              Version History (v{versionNumber})
             </button>
+
+            {/* Edit Plan Details Button (ONLY visible when Returned) */}
+            {activePlanStatus === "Returned" && (
+              <Link
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#176c55] hover:bg-[#edf5f1] hover:text-[#176c55] transition cursor-pointer"
+                href={
+                  "/workspace/projects?project=" +
+                  encodeURIComponent(project.code) +
+                  "&plan=" +
+                  encodeURIComponent(currentPlan.reference) +
+                  "&mode=edit-plan"
+                }
+              >
+                <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                Edit Plan Info
+              </Link>
+            )}
+
             <button
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
               onClick={exportActivities}
               type="button"
             >
               <Download aria-hidden="true" className="h-3.5 w-3.5" />
               Export
             </button>
-            <Link
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white hover:bg-[#125f4c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-              href={
-                "/workspace/projects?project=" +
-                encodeURIComponent(project.code) +
-                "&plan=" +
-                encodeURIComponent(plan.reference) +
-                "&mode=create-activity"
-              }
-            >
-              <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-              New Activity
-            </Link>
+
+            {/* Add Activity Button (Enabled if Draft or Returned) */}
+            {(activePlanStatus === "Draft" ||
+              activePlanStatus === "Returned") && (
+              <Link
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white hover:bg-[#125f4c] shadow-xs transition"
+                href={
+                  "/workspace/projects?project=" +
+                  encodeURIComponent(project.code) +
+                  "&plan=" +
+                  encodeURIComponent(currentPlan.reference) +
+                  "&mode=create-activity"
+                }
+              >
+                <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                New Activity
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      {activePlanStatus !== "Submitted to Director" &&
-      activePlanStatus !== "Committee Review" &&
-      activePlanStatus !== "Approved" &&
-      activePlanStatus !== "Finally Approved" ? (
+      {/* ── RETURNED FEEDBACK ALERT BANNER ───────────────────────────── */}
+      {activePlanStatus === "Returned" && (
+        <section
+          aria-label="Plan returned feedback"
+          className="overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50/90 via-amber-50/40 to-white p-5 shadow-sm space-y-4"
+        >
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 border border-amber-300">
+              <RotateCcw className="h-5 w-5 text-amber-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-bold text-amber-950">
+                  Plan Returned by Director for Revision
+                </h2>
+                <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+                  Action Required
+                </span>
+              </div>
+              <div className="mt-2 rounded-xl border border-amber-200 bg-white/90 p-3.5 text-xs text-amber-950 shadow-2xs">
+                <p className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-amber-700" />
+                  Director Feedback &amp; Revision Instructions:
+                </p>
+                <p className="italic leading-relaxed text-slate-800">
+                  &ldquo;
+                  {currentPlan.rejectionReason ||
+                    "Please review the activity details, budget estimates, and milestone dates, then resubmit for approval."}
+                  &rdquo;
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-amber-200/60 pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                href={
+                  "/workspace/projects?project=" +
+                  encodeURIComponent(project.code) +
+                  "&plan=" +
+                  encodeURIComponent(currentPlan.reference) +
+                  "&mode=edit-plan"
+                }
+              >
+                <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                Edit Plan Information
+              </Link>
+              <Link
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+                href={
+                  "/workspace/projects?project=" +
+                  encodeURIComponent(project.code) +
+                  "&plan=" +
+                  encodeURIComponent(currentPlan.reference) +
+                  "&mode=create-activity"
+                }
+              >
+                <Plus className="h-3.5 w-3.5 text-[#176c55]" />
+                Add Activity
+              </Link>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                onClick={() => setIsVersionHistoryOpen(true)}
+                type="button"
+              >
+                <History className="h-3.5 w-3.5 text-[#176c55]" />
+                Audit Trail &amp; Diff
+              </button>
+            </div>
+
+            <button
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#176c55] px-5 text-xs font-bold text-white shadow-xs hover:bg-[#125f4c] transition cursor-pointer"
+              onClick={() => handleSubmitToDirector()}
+              type="button"
+            >
+              <span>Resubmit Revised Plan to Director</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ── DRAFT READY FOR INITIAL SUBMISSION ──────────────────────── */}
+      {activePlanStatus === "Draft" && (
         <section
           aria-label="Submit plan for review"
           className="flex flex-col gap-4 rounded-xl border border-[#c7d7d0] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -274,54 +472,60 @@ export function OfficerProcurementPlanDetailView({
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#10243f]">
-                {activePlanStatus === "Returned"
-                  ? "Plan revised and ready for resubmission"
-                  : "Plan is ready for review"}
+                Plan is ready for review
               </h2>
               <p className="text-xs text-slate-500">
-                {activePlanStatus === "Returned"
-                  ? "Modifications have been applied. Resubmit to the Director for approval."
-                  : "All activities have been drafted. Submit to the Director for final approval."}
+                All activities have been drafted. Submit to the Director for
+                final approval.
               </p>
             </div>
           </div>
           <button
             className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-[#125442] bg-[#176c55] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#125f4c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] transition cursor-pointer"
-            onClick={() => {
-              setSubmittedPlanReference(plan.reference);
-              onSubmitToDirector?.(plan.reference);
-            }}
+            onClick={() => handleSubmitToDirector()}
             type="button"
           >
-            {activePlanStatus === "Returned"
-              ? "Resubmit to Director"
-              : "Submit to Director"}
+            Submit to Director
             <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
           </button>
         </section>
-      ) : activePlanStatus === "Submitted to Director" ? (
+      )}
+
+      {/* ── SUBMITTED STATUS BANNER ─────────────────────────────────── */}
+      {activePlanStatus === "Submitted to Director" && (
         <section
           aria-label="Plan submission status"
-          className="flex items-center gap-3.5 rounded-xl border border-[#c7d7d0] bg-[#edf5f1] p-4 shadow-2xs"
+          className="flex items-center justify-between gap-3.5 rounded-xl border border-[#c7d7d0] bg-[#edf5f1] p-4 shadow-2xs"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d8e8e0] text-[#176c55]">
-            <Send aria-hidden="true" className="h-4.5 w-4.5" />
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d8e8e0] text-[#176c55]">
+              <Send aria-hidden="true" className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-[#10243f]">
+                Submitted to Director for Review (Version {versionNumber})
+              </h2>
+              <p className="text-[11px] text-[#176c55]">
+                This procurement plan and all its {activities.length} activities
+                are currently under review by the Director.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xs font-bold text-[#10243f]">
-              Submitted to Director for Review
-            </h2>
-            <p className="text-[11px] text-[#176c55]">
-              This procurement plan and all its {activities.length} activities
-              are currently under review by the Director.
-            </p>
-          </div>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+            onClick={() => setIsVersionHistoryOpen(true)}
+            type="button"
+          >
+            <History className="h-3.5 w-3.5 text-[#176c55]" />
+            Audit Trail
+          </button>
         </section>
-      ) : null}
+      )}
 
+      {/* ── ACTIVITIES TABLE ────────────────────────────────────────── */}
       <section
         aria-labelledby="activities-title"
-        className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm"
+        className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
         id="procurement-activities"
       >
         <h2 className="sr-only" id="activities-title">
@@ -425,31 +629,31 @@ export function OfficerProcurementPlanDetailView({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[46rem] table-fixed border-collapse text-left">
+          <table className="w-full min-w-184 table-fixed border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#fbfcfd] text-[9px] font-extrabold uppercase tracking-[0.04em] text-slate-500">
-                <th className="w-[13%] px-3 py-3" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-[14%] px-3 py-3.5" scope="col">
                   Ref
                 </th>
-                <th className="w-[25%] px-3 py-3" scope="col">
+                <th className="w-[26%] px-3 py-3.5" scope="col">
                   Description
                 </th>
-                <th className="w-[10%] px-3 py-3" scope="col">
+                <th className="w-[10%] px-3 py-3.5" scope="col">
                   Category
                 </th>
-                <th className="w-[8%] px-3 py-3" scope="col">
+                <th className="w-[10%] px-3 py-3.5" scope="col">
                   Method
                 </th>
-                <th className="w-[13%] px-3 py-3 text-right" scope="col">
-                  Est. Amount ({plan.currency})
+                <th className="w-[14%] px-3 py-3.5 text-right" scope="col">
+                  Est. Amount ({currentPlan.currency})
                 </th>
-                <th className="w-[14%] px-3 py-3" scope="col">
+                <th className="w-[12%] px-3 py-3.5" scope="col">
                   Current Stage
                 </th>
-                <th className="w-[11%] px-3 py-3" scope="col">
+                <th className="w-[9%] px-3 py-3.5" scope="col">
                   Status
                 </th>
-                <th className="w-[6%] px-3 py-3 text-right" scope="col">
+                <th className="w-[9%] px-3 py-3.5 text-right" scope="col">
                   Actions
                 </th>
               </tr>
@@ -458,16 +662,29 @@ export function OfficerProcurementPlanDetailView({
               {visibleActivities.length ? (
                 visibleActivities.map((activity) => (
                   <ActivityRow
+                    key={activity.reference}
                     activity={activity}
+                    canEdit={
+                      activePlanStatus === "Draft" ||
+                      activePlanStatus === "Returned"
+                    }
+                    editHref={
+                      "/workspace/projects?project=" +
+                      encodeURIComponent(project.code) +
+                      "&plan=" +
+                      encodeURIComponent(currentPlan.reference) +
+                      "&activity=" +
+                      encodeURIComponent(activity.reference) +
+                      "&mode=edit-activity"
+                    }
                     href={
                       "/workspace/projects?project=" +
                       encodeURIComponent(project.code) +
                       "&plan=" +
-                      encodeURIComponent(plan.reference) +
+                      encodeURIComponent(currentPlan.reference) +
                       "&activity=" +
                       encodeURIComponent(activity.reference)
                     }
-                    key={activity.reference}
                   />
                 ))
               ) : (
@@ -501,9 +718,9 @@ export function OfficerProcurementPlanDetailView({
             {Array.from({ length: pageCount }, (_, index) => index + 1).map(
               (page) => (
                 <PaginationButton
+                  key={page}
                   active={safePage === page}
                   ariaLabel={`Activity page ${page}`}
-                  key={page}
                   onClick={() => setCurrentPage(page)}
                 >
                   {page}
@@ -522,24 +739,38 @@ export function OfficerProcurementPlanDetailView({
           </div>
         </footer>
       </section>
+
+      {/* ── MODALS ─────────────────────────────────────────────────── */}
+      <VersionHistoryModal
+        currentStatus={activePlanStatus}
+        isOpen={isVersionHistoryOpen}
+        onClose={() => setIsVersionHistoryOpen(false)}
+        planId={currentPlan.id || currentPlan.reference}
+        planName={currentPlan.name}
+        projectCode={project.code}
+      />
     </div>
   );
 }
 
 function ActivityRow({
   activity,
+  canEdit = true,
+  editHref,
   href,
 }: {
   activity: PlanActivity;
+  canEdit?: boolean;
+  editHref: string;
   href: string;
 }) {
   return (
-    <tr className="even:bg-[#fbfcff] hover:bg-[#f7fbf9]">
-      <td className="px-3 py-2.5 align-top font-mono text-[10px] font-semibold text-[#1261a8]">
+    <tr className="even:bg-[#fbfcff] hover:bg-[#f7fbf9] transition-colors">
+      <td className="px-3 py-2.5 align-top font-mono text-[10px] font-semibold text-[#1261a8] max-w-28 truncate">
         {activity.reference}
       </td>
-      <td className="px-3 py-2.5 align-top text-[10px] font-medium leading-4 text-slate-700">
-        {activity.description}
+      <td className="px-3 py-2.5 align-top text-[10px] font-medium leading-4 text-slate-700 wrap-break-word">
+        <p className="wrap-break-word line-clamp-2">{activity.description}</p>
       </td>
       <td className="px-3 py-2.5 align-top text-[10px] text-slate-500">
         {activity.category}
@@ -556,14 +787,27 @@ function ActivityRow({
       <td className="px-3 py-2.5 align-top">
         <StatusText className="text-[9px]" label={activity.status} />
       </td>
-      <td className="px-3 py-2.5 text-right align-top">
-        <Link
-          aria-label={`Open activity ${activity.reference}`}
-          className="text-[10px] font-semibold text-[#1261a8] hover:text-[#07523f] hover:underline"
-          href={href}
-        >
-          Open
-        </Link>
+      <td className="px-3 py-2.5 text-right align-top whitespace-nowrap">
+        <div className="flex items-center justify-end gap-2">
+          {canEdit && (
+            <Link
+              aria-label={`Edit activity ${activity.reference}`}
+              className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 hover:bg-[#176c55] hover:text-white transition cursor-pointer"
+              href={editHref}
+              title="Edit / Revise Activity"
+            >
+              <Edit3 className="h-3 w-3" />
+              Edit
+            </Link>
+          )}
+          <Link
+            aria-label={`Open activity ${activity.reference}`}
+            className="text-[10px] font-semibold text-[#1261a8] hover:text-[#07523f] hover:underline"
+            href={href}
+          >
+            Open
+          </Link>
+        </div>
       </td>
     </tr>
   );

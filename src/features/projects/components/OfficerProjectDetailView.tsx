@@ -180,7 +180,7 @@ export function OfficerProjectDetailView({
         ) : null}
       </section>
 
-      <section className="min-h-[26rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="min-h-104 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-[#edf5f1] px-5 py-3.5">
           <div className="flex items-center gap-2">
             <FileText
@@ -195,22 +195,22 @@ export function OfficerProjectDetailView({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] border-collapse text-left">
+          <table className="w-full min-w-208 border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-[#fbfcfd] text-[11px] font-extrabold uppercase tracking-[0.06em] text-slate-600">
-                <th className="w-[38%] px-5 py-3" scope="col">
+              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="w-[38%] px-5 py-3.5" scope="col">
                   Plan name / reference
                 </th>
-                <th className="w-[12%] px-5 py-3" scope="col">
+                <th className="w-[12%] px-5 py-3.5" scope="col">
                   Fiscal year
                 </th>
-                <th className="w-[27%] px-5 py-3" scope="col">
+                <th className="w-[27%] px-5 py-3.5" scope="col">
                   Category
                 </th>
-                <th className="w-[10%] px-5 py-3 text-center" scope="col">
+                <th className="w-[10%] px-5 py-3.5 text-center" scope="col">
                   Activities
                 </th>
-                <th className="w-[13%] px-5 py-3" scope="col">
+                <th className="w-[13%] px-5 py-3.5" scope="col">
                   Status
                 </th>
               </tr>

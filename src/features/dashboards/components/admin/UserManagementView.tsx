@@ -15,17 +15,18 @@ import {
   CheckCircle2,
   X,
 } from "lucide-react";
-import { createInvitedUser } from "@/lib/authApi";
+import { createInvitedUser, getCurrentUser } from "@/lib/authApi";
 import {
   fetchUsers,
   updateUser,
   type ApiUser,
   type PaginatedResponse,
 } from "@/lib/adminApi";
-import type { ProvisionableRole } from "@/lib/authTypes";
+import type { AuthUser, ProvisionableRole } from "@/lib/authTypes";
 
 interface UserManagementViewProps {
   initialMode?: "list" | "invite";
+  currentUser?: AuthUser | null;
 }
 
 const AUTH_ROLE_LABELS: Record<string, string> = {
@@ -57,6 +58,24 @@ function displayStatus(
 ): "Active" | "Inactive" | "Pending Invitation" {
   if (user.status === "PENDING_INVITATION") return "Pending Invitation";
   return user.isActive ? "Active" : "Inactive";
+}
+
+function isCurrentUser(u: ApiUser, current?: AuthUser | null): boolean {
+  if (!current) return false;
+  if (current.id && u.id && current.id === u.id) return true;
+  if (
+    current.email &&
+    u.email &&
+    current.email.toLowerCase().trim() === u.email.toLowerCase().trim()
+  )
+    return true;
+  if (
+    current.username &&
+    u.username &&
+    current.username.toLowerCase().trim() === u.username.toLowerCase().trim()
+  )
+    return true;
+  return false;
 }
 
 function renderLastLogin(lastLoginAt: string | null, status: string) {
@@ -161,8 +180,13 @@ const DEFAULT_USERS_RESPONSE: PaginatedResponse<ApiUser> = {
 
 export function UserManagementView({
   initialMode = "list",
+  currentUser,
 }: UserManagementViewProps) {
   const [viewMode, setViewMode] = useState<"list" | "invite">(initialMode);
+  const [storedUser] = useState<AuthUser | null>(() =>
+    typeof window !== "undefined" ? getCurrentUser() : null,
+  );
+  const activeUser = currentUser ?? storedUser;
 
   // Data state
   const [usersResponse, setUsersResponse] =
@@ -190,6 +214,23 @@ export function UserManagementView({
 
   // Action state (toggling status or resending invitation)
   const [actionUserId, setActionUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/user-management"
+      ) {
+        setViewMode("list");
+        setInvitedInfo(null);
+        setErrorMessage(null);
+      }
+    };
+
+    window.addEventListener("pts:sidebar-reset", handleReset);
+    return () => window.removeEventListener("pts:sidebar-reset", handleReset);
+  }, []);
 
   // ─── Fetch Users ────────────────────────────────────────────────────────
   const loadUsers = useCallback(async () => {
@@ -293,6 +334,10 @@ export function UserManagementView({
 
   // ─── Toggle Active/Inactive ─────────────────────────────────────────────
   const handleToggleStatus = async (user: ApiUser) => {
+    if (user.isActive && isCurrentUser(user, activeUser)) {
+      setErrorMessage("You cannot deactivate your own administrator account.");
+      return;
+    }
     setActionUserId(user.id);
     try {
       await updateUser(user.id, { isActive: !user.isActive });
@@ -383,7 +428,7 @@ export function UserManagementView({
       {/* Premium Dismissable Success Notification Banner with Auto-Dismiss */}
       {invitedInfo && (
         <div className="animate-in fade-in slide-in-from-top-2">
-          <div className="relative overflow-hidden bg-gradient-to-r from-[#ecfdf5] via-[#f0fdf4] to-[#e6f4ea] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
+          <div className="relative overflow-hidden bg-linear-to-r from-[#ecfdf5] via-[#f0fdf4] to-[#e6f4ea] border border-[#a7f3d0] rounded-2xl p-5 sm:p-6 text-xs sm:text-sm shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3.5 min-w-0">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#044e3a] text-white shrink-0 shadow-2xs mt-0.5">
@@ -651,7 +696,7 @@ export function UserManagementView({
               <>
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[750px]">
+                    <table className="w-full text-left border-collapse min-w-187.5">
                       <thead>
                         <tr className="bg-[#04382c] text-white text-xs font-bold">
                           <th className="py-3.5 px-4 font-bold tracking-wide">
@@ -680,6 +725,7 @@ export function UserManagementView({
                           const isActive = status === "Active";
                           const isPending = status === "Pending Invitation";
                           const isOddRow = index % 2 === 0;
+                          const isSelf = isCurrentUser(user, activeUser);
 
                           return (
                             <tr
@@ -688,18 +734,23 @@ export function UserManagementView({
                                 isOddRow ? "bg-[#f8fafc]/60" : "bg-white"
                               }`}
                             >
-                              <td className="py-4 px-4 align-middle">
-                                <div className="font-bold text-[#0f172a] text-xs">
-                                  {user.displayName || user.name}
+                              <td className="py-4 px-4 align-middle max-w-xs wrap-break-word">
+                                <div className="font-bold text-[#0f172a] text-xs wrap-break-word line-clamp-2 flex items-center gap-1.5">
+                                  <span>{user.displayName || user.name}</span>
+                                  {isSelf && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-300">
+                                      You
+                                    </span>
+                                  )}
                                 </div>
                                 {user.username && (
-                                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                  <div className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
                                     @{user.username}
                                   </div>
                                 )}
                               </td>
 
-                              <td className="py-4 px-4 text-[#475569] font-normal align-middle">
+                              <td className="py-4 px-4 text-[#475569] font-normal align-middle max-w-xs truncate">
                                 {user.email}
                               </td>
 
@@ -744,6 +795,15 @@ export function UserManagementView({
                                         ? "Resending…"
                                         : "Resend Invitation"}
                                     </span>
+                                  </button>
+                                ) : isSelf && isActive ? (
+                                  <button
+                                    type="button"
+                                    disabled={true}
+                                    title="You cannot deactivate your own administrator account."
+                                    className="px-3.5 py-1 text-xs font-bold rounded-full border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60 shadow-none inline-flex items-center gap-1"
+                                  >
+                                    Deactivate
                                   </button>
                                 ) : (
                                   <button
@@ -815,7 +875,7 @@ export function UserManagementView({
                         >
                           <ChevronLeft className="w-4 h-4 text-slate-600" />
                         </button>
-                        <span className="text-xs font-bold text-slate-600 min-w-[60px] text-center">
+                        <span className="text-xs font-bold text-slate-600 min-w-15 text-center">
                           Page {meta.page} of {meta.totalPages}
                         </span>
                         <button

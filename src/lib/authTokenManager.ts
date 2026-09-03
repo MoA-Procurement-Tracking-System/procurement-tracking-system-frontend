@@ -22,6 +22,16 @@ export const authTokenManager = {
       return inMemoryAccessToken;
     }
 
+    if (typeof window !== "undefined") {
+      const stored =
+        window.sessionStorage.getItem("moa_auth_token") ||
+        window.localStorage.getItem("moa_auth_token");
+      if (stored) {
+        inMemoryAccessToken = stored;
+        return stored;
+      }
+    }
+
     if (typeof document !== "undefined") {
       const cookieNames = ["moa_user_session", "moa_session"];
       for (const name of cookieNames) {
@@ -50,8 +60,12 @@ export const authTokenManager = {
           }
 
           if (parsed && typeof parsed.accessToken === "string") {
-            inMemoryAccessToken = parsed.accessToken;
-            return inMemoryAccessToken;
+            const tokenStr: string = parsed.accessToken;
+            inMemoryAccessToken = tokenStr;
+            if (typeof window !== "undefined") {
+              window.sessionStorage.setItem("moa_auth_token", tokenStr);
+            }
+            return tokenStr;
           }
         }
       }
@@ -65,6 +79,15 @@ export const authTokenManager = {
    */
   setToken(token: string | null): void {
     inMemoryAccessToken = token;
+    if (typeof window !== "undefined") {
+      if (token) {
+        window.sessionStorage.setItem("moa_auth_token", token);
+        window.localStorage.setItem("moa_auth_token", token);
+      } else {
+        window.sessionStorage.removeItem("moa_auth_token");
+        window.localStorage.removeItem("moa_auth_token");
+      }
+    }
     listeners.forEach((listener) => {
       try {
         listener(token);

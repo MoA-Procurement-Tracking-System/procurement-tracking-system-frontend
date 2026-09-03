@@ -68,21 +68,87 @@ export function mergeSavedPlans(
 ): readonly OfficerProject[] {
   return projects.map((project) => {
     const projectRecords = records.filter(
-      (record) => record.projectCode === project.code,
+      (record) =>
+        record.projectCode === project.code ||
+        record.projectCode?.toLowerCase() === project.code.toLowerCase() ||
+        record.projectCode?.toLowerCase() ===
+          project.shortName?.toLowerCase() ||
+        (Boolean((project as any).id) &&
+          record.projectCode?.toLowerCase() ===
+            String((project as any).id).toLowerCase()),
     );
     if (projectRecords.length === 0) return project;
 
-    const recordByRef = new Map(
-      projectRecords.map((record) => [record.plan.reference, record.plan]),
+    const recordByRef = new Map<string, ProcurementPlanSummary>();
+    const recordByName = new Map<string, ProcurementPlanSummary>();
+    projectRecords.forEach((record) => {
+      recordByRef.set(record.plan.reference.toLowerCase(), record.plan);
+      recordByName.set(record.plan.name.toLowerCase(), record.plan);
+    });
+
+    const mergedPlans = project.plans.map((plan) => {
+      const saved =
+        recordByRef.get(plan.reference.toLowerCase()) ??
+        recordByName.get(plan.name.toLowerCase());
+
+      if (!saved) return plan;
+
+      // Backend status is authoritative if plan is not in local Draft state,
+      // or if the backend returned a new workflow status like Returned / Committee Review / Finally Approved
+      const isBackendAuthoritative =
+        plan.status === "Returned" ||
+        plan.status === "Committee Review" ||
+        plan.status === "Finally Approved" ||
+        (saved.status === "Draft" && plan.status !== "Draft");
+
+      const resolvedStatus = isBackendAuthoritative
+        ? plan.status
+        : saved.status || plan.status;
+      const resolvedReason = plan.rejectionReason || saved.rejectionReason;
+
+      const rawActivities =
+        plan.planActivities && plan.planActivities.length > 0
+          ? plan.planActivities
+          : saved.planActivities || [];
+
+      const resolvedActivities = rawActivities.map((act: any) => ({
+        ...act,
+        status:
+          resolvedStatus === "Returned" &&
+          (act.status === "Submitted to Director" ||
+            act.status === "Under Review")
+            ? "Returned"
+            : act.status,
+      }));
+
+      return {
+        ...saved,
+        ...plan,
+        status: resolvedStatus,
+        rejectionReason: resolvedReason,
+        activities: Math.max(
+          saved.activities || 0,
+          plan.activities || 0,
+          resolvedActivities.length,
+        ),
+        planActivities: resolvedActivities,
+      };
+    });
+
+    const existingRefs = new Set(
+      mergedPlans.map((plan) => plan.reference.toLowerCase()),
+    );
+    const existingNames = new Set(
+      mergedPlans.map((plan) => plan.name.toLowerCase()),
     );
 
-    const mergedPlans = project.plans.map(
-      (plan) => recordByRef.get(plan.reference) ?? plan,
-    );
-    const existingRefs = new Set(project.plans.map((plan) => plan.reference));
     const newPlans = projectRecords
       .map((record) => record.plan)
-      .filter((plan) => !existingRefs.has(plan.reference));
+      .filter(
+        (plan) =>
+          !existingRefs.has(plan.reference.toLowerCase()) &&
+          !existingNames.has(plan.name.toLowerCase()),
+      );
 
     return {
       ...project,
@@ -118,8 +184,13 @@ export function upsertSavedPlanRecord(
   const withoutExisting = records.filter(
     (existing) =>
       !(
-        existing.projectCode === record.projectCode &&
-        existing.plan.reference === record.plan.reference
+        (existing.projectCode?.toLowerCase() ===
+          record.projectCode?.toLowerCase() ||
+          existing.projectCode?.toLowerCase() ===
+            String((record.plan as any).projectId || "").toLowerCase()) &&
+        (existing.plan.reference.toLowerCase() ===
+          record.plan.reference.toLowerCase() ||
+          existing.plan.name.toLowerCase() === record.plan.name.toLowerCase())
       ),
   );
   return [...withoutExisting, record];

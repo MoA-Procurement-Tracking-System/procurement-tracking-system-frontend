@@ -31,12 +31,16 @@ export interface ProcurementPlanSummary {
     from: DualCalendarDateValue;
     to: DualCalendarDateValue;
   };
+  id?: string;
   reference: string;
   status: ProcurementPlanStatus;
+  rejectionReason?: string;
+  version?: number;
   planActivities?: readonly import("./officerActivityDrafts").ProcurementActivitySummary[];
 }
 
 export interface OfficerProject {
+  id?: string;
   activePlans: number;
   assignedOfficers: readonly string[];
   assignmentStart?: {

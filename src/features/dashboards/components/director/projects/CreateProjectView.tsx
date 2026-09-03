@@ -26,6 +26,7 @@ import {
   gregorianToEthiopian,
   formatEthiopianDate,
 } from "../../../../projects/utils/ethiopianCalendar";
+import { DualCalendarField } from "../../../../projects/components/DualCalendarField";
 import {
   INITIAL_OFFICERS,
   SECTOR_OPTIONS,
@@ -180,6 +181,16 @@ export function CreateProjectView({
   // Dates
   const [startDate, setStartDate] = useState(initialData?.startDate || "");
   const [endDate, setEndDate] = useState(initialData?.endDate || "");
+  const [startEthiopianDate, setStartEthiopianDate] = useState(
+    initialData?.startDate && gregorianToEthiopian(initialData.startDate)
+      ? formatEthiopianDate(gregorianToEthiopian(initialData.startDate)!)
+      : "",
+  );
+  const [endEthiopianDate, setEndEthiopianDate] = useState(
+    initialData?.endDate && gregorianToEthiopian(initialData.endDate)
+      ? formatEthiopianDate(gregorianToEthiopian(initialData.endDate)!)
+      : "",
+  );
 
   // Description
   const [description, setDescription] = useState(
@@ -429,7 +440,7 @@ export function CreateProjectView({
 
         {/* STEPPER PROGRESS BAR SECTION */}
         <div className="px-4 py-4 sm:px-8 border-b border-slate-100 bg-white overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[540px] max-w-3xl mx-auto">
+          <div className="flex items-center justify-between min-w-135 max-w-3xl mx-auto">
             {WIZARD_STEPS.map((step, index) => {
               const IconComponent = step.icon;
               const isCompleted = currentStep > step.id;
@@ -466,7 +477,7 @@ export function CreateProjectView({
                       }`}
                     >
                       {isCompleted ? (
-                        <Check className="h-4.5 w-4.5 stroke-[3]" />
+                        <Check className="h-4.5 w-4.5 stroke-3" />
                       ) : (
                         <IconComponent className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                       )}
@@ -766,7 +777,7 @@ export function CreateProjectView({
                           (f) => f.category === "Custom",
                         ).map((f) => (
                           <option key={f.label} value={f.label}>
-                            🤙 {f.label}
+                            {f.label}
                           </option>
                         ))}
                       </optgroup>
@@ -968,82 +979,32 @@ export function CreateProjectView({
                 {/* Timeline with Dual Calendar (GC ⇄ EC) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
                   {/* Start Date Dual Calendar */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-[#0A3C2F]" />
-                      <span>Project Start Date (Optional)</span>
-                    </label>
-                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-slate-500 uppercase px-1">
-                        <span>GREGORIAN</span>
-                        <span>ETHIOPIAN</span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-[#0A3C2F] outline-none"
-                        />
-                        <ArrowRightLeft className="h-4 w-4 text-slate-400 shrink-0" />
-                        <div className="relative">
-                          <input
-                            type="text"
-                            readOnly
-                            value={
-                              startDate && gregorianToEthiopian(startDate)
-                                ? formatEthiopianDate(
-                                    gregorianToEthiopian(startDate)!,
-                                  )
-                                : ""
-                            }
-                            placeholder="DD-Month-YYYY"
-                            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 font-semibold outline-none pr-8"
-                          />
-                          <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <DualCalendarField
+                    id="project-start-date"
+                    label="Project Start Date (Optional)"
+                    gregorianValue={startDate}
+                    ethiopianValue={startEthiopianDate}
+                    onChange={(greg, eth) => {
+                      setStartDate(greg);
+                      setStartEthiopianDate(eth);
+                    }}
+                    required={false}
+                    variant="director"
+                  />
 
                   {/* End Date Dual Calendar */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-[#0A3C2F]" />
-                      <span>Project End Date (Optional)</span>
-                    </label>
-                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-slate-500 uppercase px-1">
-                        <span>GREGORIAN</span>
-                        <span>ETHIOPIAN</span>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-[#0A3C2F] outline-none"
-                        />
-                        <ArrowRightLeft className="h-4 w-4 text-slate-400 shrink-0" />
-                        <div className="relative">
-                          <input
-                            type="text"
-                            readOnly
-                            value={
-                              endDate && gregorianToEthiopian(endDate)
-                                ? formatEthiopianDate(
-                                    gregorianToEthiopian(endDate)!,
-                                  )
-                                : ""
-                            }
-                            placeholder="DD-Month-YYYY"
-                            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-xs text-slate-900 font-semibold outline-none pr-8"
-                          />
-                          <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <DualCalendarField
+                    id="project-end-date"
+                    label="Project End Date (Optional)"
+                    gregorianValue={endDate}
+                    ethiopianValue={endEthiopianDate}
+                    onChange={(greg, eth) => {
+                      setEndDate(greg);
+                      setEndEthiopianDate(eth);
+                    }}
+                    required={false}
+                    variant="director"
+                  />
                 </div>
               </div>
             )}
@@ -1191,10 +1152,8 @@ export function CreateProjectView({
                                     <input
                                       type="checkbox"
                                       checked={isChecked}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        toggleOfficer(officer.id);
-                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={() => toggleOfficer(officer.id)}
                                       className="h-4 w-4 accent-[#0A3C2F] rounded cursor-pointer"
                                     />
                                   </td>

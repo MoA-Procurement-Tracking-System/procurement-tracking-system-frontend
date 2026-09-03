@@ -384,10 +384,10 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
                           plan.isPriority ? "bg-rose-50/10" : ""
                         }`}
                       >
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                        <td className="py-3.5 px-4 font-bold text-slate-900 max-w-xs wrap-break-word">
                           <Link
                             href="/workspace/plan-for-review"
-                            className="hover:underline hover:text-emerald-800 transition-colors"
+                            className="hover:underline hover:text-emerald-800 transition-colors wrap-break-word line-clamp-2 block"
                           >
                             {plan.planName}
                           </Link>

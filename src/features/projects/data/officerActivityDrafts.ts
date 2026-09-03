@@ -8,7 +8,13 @@ export const OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY =
   "moa-pts:officer-activity-drafts:v2";
 
 export type ProcurementActivityStatus =
-  "Completed" | "Delayed" | "In Progress" | "Not Started";
+  | "Completed"
+  | "Delayed"
+  | "In Progress"
+  | "Not Started"
+  | "Returned"
+  | "Submitted to Director"
+  | "Draft";
 
 export interface ProcurementActivityAllocation {
   id: string;

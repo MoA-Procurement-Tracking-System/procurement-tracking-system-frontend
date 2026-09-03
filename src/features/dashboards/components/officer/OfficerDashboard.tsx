@@ -51,25 +51,6 @@ interface OfficerAlert {
   tone: AlertTone;
 }
 
-const defaultSummaryCards: readonly SummaryCard[] = [
-  { label: "Assigned projects", value: 1, tone: "default" },
-  { label: "Draft plans", value: 0, tone: "default" },
-  {
-    label: "Returned plans",
-    value: 0,
-    tone: "attention",
-    hasUnreadIndicator: false,
-  },
-  { label: "Submitted plans", value: 0, tone: "default" },
-  { label: "Finally approved", value: 0, tone: "success" },
-  {
-    label: "Delayed activities",
-    value: 0,
-    tone: "attention",
-    hasUnreadIndicator: false,
-  },
-];
-
 const fallbackActiveProjects: readonly ActiveProject[] = [
   {
     code: "DRIVE",
@@ -191,7 +172,6 @@ const actionLinkClasses =
 export function OfficerDashboard({ user }: { user: AuthUser }) {
   const [backendProjects, setBackendProjects] = useState<BackendProject[]>([]);
   const [backendPlans, setBackendPlans] = useState<BackendPlan[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState<number | null>(null);
 
   useEffect(() => {
@@ -213,8 +193,6 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
         }
       } catch (err) {
         console.warn("OfficerDashboard loadData note:", err);
-      } finally {
-        if (isMounted) setLoading(false);
       }
     }
     loadData();
@@ -295,29 +273,39 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
         label: "Assigned projects",
         value: officerProjectsList.length,
         tone: "default" as const,
+        href: "/workspace/projects",
       },
-      { label: "Draft plans", value: draftCount, tone: "default" as const },
+      {
+        label: "Draft plans",
+        value: draftCount,
+        tone: "default" as const,
+        href: "/workspace/projects",
+      },
       {
         label: "Returned plans",
         value: returnedCount,
         tone: "attention" as const,
         hasUnreadIndicator: returnedCount > 0,
+        href: "/workspace/projects",
       },
       {
         label: "Submitted plans",
         value: submittedCount,
         tone: "default" as const,
+        href: "/workspace/projects",
       },
       {
         label: "Finally approved",
         value: approvedCount,
         tone: "success" as const,
+        href: "/workspace/projects",
       },
       {
         label: "Delayed activities",
         value: liveDelayedActivities.length,
         tone: "attention" as const,
         hasUnreadIndicator: liveDelayedActivities.length > 0,
+        href: "/workspace/activity-tracker",
       },
     ];
   }, [officerProjectsList.length, backendPlans, liveDelayedActivities.length]);
@@ -435,9 +423,10 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
           const tone = summaryToneClasses[card.tone];
 
           return (
-            <article
+            <Link
               key={card.label}
-              className={`relative flex min-h-28 flex-col justify-between rounded-lg border bg-white p-4 shadow-sm transition-colors ${tone.card}`}
+              href={card.href}
+              className={`group relative flex min-h-28 flex-col justify-between rounded-lg border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] ${tone.card}`}
             >
               {card.hasUnreadIndicator ? (
                 <span
@@ -449,14 +438,14 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                 <span className="sr-only">Needs attention.</span>
               ) : null}
               <h2
-                className={`max-w-[8rem] text-[11px] font-extrabold uppercase leading-4 tracking-[0.08em] ${tone.label}`}
+                className={`max-w-32 text-[11px] font-extrabold uppercase leading-4 tracking-[0.08em] transition-colors group-hover:text-[#176c55] ${tone.label}`}
               >
                 {card.label}
               </h2>
               <p className={`mt-3 text-2xl font-extrabold ${tone.value}`}>
                 {card.value}
               </p>
-            </article>
+            </Link>
           );
         })}
       </section>
@@ -466,23 +455,23 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
           <DashboardPanel title="My Active Projects">
             <div
               aria-label="My active projects table"
-              className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55]"
+              className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
               role="region"
               tabIndex={0}
             >
-              <table className="min-w-[46rem] w-full border-collapse text-left">
+              <table className="min-w-184 w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-white text-xs font-bold uppercase tracking-[0.08em] text-slate-600">
-                    <th className="px-5 py-4" scope="col">
+                  <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="px-5 py-3.5" scope="col">
                       Project name &amp; code
                     </th>
-                    <th className="w-48 px-5 py-4" scope="col">
+                    <th className="w-48 px-5 py-3.5" scope="col">
                       Funding source
                     </th>
-                    <th className="w-32 px-5 py-4 text-center" scope="col">
+                    <th className="w-32 px-5 py-3.5 text-center" scope="col">
                       Active plans
                     </th>
-                    <th className="w-32 px-5 py-4 text-right" scope="col">
+                    <th className="w-32 px-5 py-3.5 text-right" scope="col">
                       Action
                     </th>
                   </tr>
@@ -490,10 +479,15 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                 <tbody className="divide-y divide-slate-200">
                   {officerProjectsList.map((project) => (
                     <tr key={project.code} className="hover:bg-[#f7fbf9]">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold leading-6 text-slate-900">
+                      <td className="px-5 py-4 max-w-sm wrap-break-word">
+                        <Link
+                          className="font-semibold leading-6 text-slate-900 underline-offset-4 hover:text-[#176c55] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] wrap-break-word line-clamp-2 block"
+                          href={`/workspace/projects?project=${encodeURIComponent(
+                            project.code,
+                          )}`}
+                        >
                           {project.name}
-                        </p>
+                        </Link>
                         <p className="mt-0.5 text-xs font-medium text-slate-500">
                           {project.code}
                         </p>
@@ -507,7 +501,9 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
                       <td className="px-5 py-4 text-right text-sm">
                         <Link
                           className={actionLinkClasses}
-                          href="/workspace/projects"
+                          href={`/workspace/projects?project=${encodeURIComponent(
+                            project.code,
+                          )}`}
                         >
                           Open project
                         </Link>
@@ -522,26 +518,26 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
           <DashboardPanel title="Requiring My Action">
             <div
               aria-label="Plans and activities requiring my action table"
-              className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#176c55]"
+              className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
               role="region"
               tabIndex={0}
             >
-              <table className="min-w-[48rem] w-full border-collapse text-left">
+              <table className="min-w-3xl w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-white text-xs font-bold uppercase tracking-[0.08em] text-slate-600">
-                    <th className="px-5 py-4" scope="col">
+                  <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="px-5 py-3.5" scope="col">
                       Plan / activity
                     </th>
-                    <th className="w-36 px-5 py-4" scope="col">
+                    <th className="w-36 px-5 py-3.5" scope="col">
                       Project
                     </th>
-                    <th className="w-40 px-5 py-4" scope="col">
+                    <th className="w-40 px-5 py-3.5" scope="col">
                       Due date
                     </th>
-                    <th className="w-56 px-5 py-4" scope="col">
+                    <th className="w-56 px-5 py-3.5" scope="col">
                       Status / reason
                     </th>
-                    <th className="w-24 px-5 py-4 text-right" scope="col">
+                    <th className="w-24 px-5 py-3.5 text-right" scope="col">
                       Action
                     </th>
                   </tr>
@@ -552,11 +548,23 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
 
                     return (
                       <tr key={item.title} className="hover:bg-[#f7fbf9]">
-                        <td className="px-5 py-5 font-semibold leading-6 text-slate-900">
-                          {item.title}
+                        <td className="px-5 py-5 max-w-sm wrap-break-word">
+                          <Link
+                            className="font-semibold leading-6 text-slate-900 underline-offset-4 hover:text-[#176c55] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55] wrap-break-word line-clamp-2 block"
+                            href={item.href}
+                          >
+                            {item.title}
+                          </Link>
                         </td>
                         <td className="px-5 py-5 text-sm font-medium text-slate-600">
-                          {item.project}
+                          <Link
+                            className="underline-offset-4 hover:text-[#176c55] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                            href={`/workspace/projects?project=${encodeURIComponent(
+                              item.project,
+                            )}`}
+                          >
+                            {item.project}
+                          </Link>
                         </td>
                         <td
                           className={`px-5 py-5 text-sm font-semibold ${
