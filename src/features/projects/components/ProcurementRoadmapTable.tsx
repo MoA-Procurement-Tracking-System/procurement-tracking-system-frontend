@@ -173,7 +173,9 @@ function RoadmapSection({
               </th>
               <th className="w-[38%] px-3 py-2.5" scope="col">
                 Original Planned Date
-                <span className="ml-1 text-[8px] font-normal text-slate-200">(GC / EC)</span>
+                <span className="ml-1 text-[8px] font-normal text-slate-200">
+                  (GC / EC)
+                </span>
               </th>
               <th className="w-[11%] px-2 py-2.5 text-center" scope="col">
                 Duration

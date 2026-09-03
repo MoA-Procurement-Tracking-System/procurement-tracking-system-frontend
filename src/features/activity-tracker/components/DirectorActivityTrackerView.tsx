@@ -178,7 +178,10 @@ export function DirectorActivityTrackerView() {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/activity-tracker") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/activity-tracker"
+      ) {
         setSelectedActivity(null);
       }
     };
@@ -1074,9 +1077,7 @@ function DirectorActivityTrackerList({
                   Delay Status
                 </th>
                 <th className="py-3.5 px-4 min-w-37.5">Assigned Officer</th>
-                <th className="py-3.5 px-4 text-center min-w-25">
-                  Action
-                </th>
+                <th className="py-3.5 px-4 text-center min-w-25">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -1583,14 +1584,10 @@ function DirectorActivityDetailView({
                   <th className="py-3.5 px-4 min-w-35">
                     Original Planned Target
                   </th>
-                  <th className="py-3.5 px-4 min-w-35">
-                    Effective Target
-                  </th>
+                  <th className="py-3.5 px-4 min-w-35">Effective Target</th>
                   <th className="py-3.5 px-4 min-w-32.5">Actual Date</th>
                   <th className="py-3.5 px-4 min-w-30">Status</th>
-                  <th className="py-3.5 px-4 text-center min-w-25">
-                    Delay
-                  </th>
+                  <th className="py-3.5 px-4 text-center min-w-25">Delay</th>
                   <th className="py-3.5 px-4 min-w-50">Officer Remarks</th>
                 </tr>
               </thead>

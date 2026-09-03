@@ -730,7 +730,9 @@ export function ActivitiesListView({
                             {idx + 1}
                           </td>
                           <td className="py-2 px-3 font-semibold text-slate-900 max-w-xs wrap-break-word">
-                            <p className="wrap-break-word line-clamp-2">{stage.stageName}</p>
+                            <p className="wrap-break-word line-clamp-2">
+                              {stage.stageName}
+                            </p>
                           </td>
                           <td className="py-2 px-3 font-mono text-slate-600">
                             {stage.notApplicable ||

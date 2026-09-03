@@ -263,7 +263,9 @@ export function SystemLogsView() {
 
                           <td className="py-4 px-4 font-bold text-[#0f172a] align-middle max-w-xs wrap-break-word">
                             <div>
-                              <span className="wrap-break-word line-clamp-2">{log.user?.name ?? "System"}</span>
+                              <span className="wrap-break-word line-clamp-2">
+                                {log.user?.name ?? "System"}
+                              </span>
                             </div>
                           </td>
 

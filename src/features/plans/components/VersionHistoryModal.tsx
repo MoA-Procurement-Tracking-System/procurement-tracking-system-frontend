@@ -82,7 +82,8 @@ export function VersionHistoryModal({
         return {
           icon: <Send className="h-3.5 w-3.5 text-blue-600" />,
           bg: "bg-blue-50 text-blue-700 border-blue-200",
-          label: action === "RESUBMITTED" ? "Plan Resubmitted" : "Plan Submitted",
+          label:
+            action === "RESUBMITTED" ? "Plan Resubmitted" : "Plan Submitted",
         };
       case "RETURNED":
         return {
@@ -95,7 +96,10 @@ export function VersionHistoryModal({
         return {
           icon: <Edit3 className="h-3.5 w-3.5 text-emerald-600" />,
           bg: "bg-emerald-50 text-emerald-800 border-emerald-200",
-          label: action === "PLAN_REVISED" ? "Plan Details Revised" : "Activity Revised",
+          label:
+            action === "PLAN_REVISED"
+              ? "Plan Details Revised"
+              : "Activity Revised",
         };
       case "ACTIVITY_ADDED":
         return {
@@ -167,7 +171,9 @@ export function VersionHistoryModal({
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-6 py-2.5 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-600">Filter Version:</span>
+            <span className="font-semibold text-slate-600">
+              Filter Version:
+            </span>
             <div className="flex items-center gap-1">
               <button
                 className={`rounded-md px-2.5 py-1 font-semibold transition ${
@@ -217,8 +223,8 @@ export function VersionHistoryModal({
               </h3>
               <p className="mt-1 max-w-sm text-xs text-slate-500">
                 This plan is currently at its baseline version (Version 1). When
-                the Director returns the plan or edits are made, revision logs and
-                field changes will be displayed here.
+                the Director returns the plan or edits are made, revision logs
+                and field changes will be displayed here.
               </p>
             </div>
           ) : (

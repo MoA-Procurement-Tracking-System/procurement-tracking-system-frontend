@@ -239,7 +239,10 @@ export function CommitteeProgressView() {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/committee-progress") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/committee-progress"
+      ) {
         setSelectedPlan(null);
         setResendComment("");
       }
@@ -619,12 +622,8 @@ export function CommitteeProgressView() {
                     <th className="py-3.5 px-4 text-center min-w-45">
                       Committee Voting
                     </th>
-                    <th className="py-3.5 px-4 text-center min-w-35">
-                      Status
-                    </th>
-                    <th className="py-3.5 px-4 text-center min-w-20">
-                      Action
-                    </th>
+                    <th className="py-3.5 px-4 text-center min-w-35">Status</th>
+                    <th className="py-3.5 px-4 text-center min-w-20">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">

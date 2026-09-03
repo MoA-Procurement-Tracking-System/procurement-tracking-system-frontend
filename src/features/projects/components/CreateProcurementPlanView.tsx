@@ -105,13 +105,14 @@ export function CreateProcurementPlanView({
   const isEditing = Boolean(initialPlan);
   const [selectedCategory, setSelectedCategory] =
     useState<ProcurementCategory | null>(() => initialPlan?.category ?? null);
-  const [planNameEdited, setPlanNameEdited] = useState(() => Boolean(initialPlan));
+  const [planNameEdited, setPlanNameEdited] = useState(() =>
+    Boolean(initialPlan),
+  );
   const [revisionReason, setRevisionReason] = useState("");
   const [saveAction, setSaveAction] = useState<SaveAction>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [form, setForm] = useState<PlanFormState>(() => ({
-    budgetYear:
-      initialPlan?.budgetYear?.replace(/ EFY/i, "").trim() || "2017",
+    budgetYear: initialPlan?.budgetYear?.replace(/ EFY/i, "").trim() || "2017",
     generalProcurementNoticeDate:
       initialPlan?.generalProcurementNoticeDate?.gregorian || "",
     generalProcurementNoticeDateEthiopian:
@@ -673,7 +674,6 @@ function CreatePlanBreadcrumb({
 }
 
 export { DualCalendarField } from "./DualCalendarField";
-
 
 function LockedInput({
   icon = false,

@@ -62,11 +62,15 @@ export function ReportTables({
                     {row.projectCode}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.planName}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.planName}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-mono">{row.refNo}</td>
                   <td className="py-2.5 px-3 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.description}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.description}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-semibold">{row.category}</td>
                   <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">
@@ -106,7 +110,9 @@ export function ReportTables({
                     {row.refNo}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.description}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.description}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-semibold">{row.method}</td>
                   <td className="py-2.5 px-3 font-mono text-slate-500">
@@ -155,7 +161,9 @@ export function ReportTables({
                     {row.refNo}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.description}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.description}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-semibold">{row.method}</td>
                   <td className="py-2.5 px-3 font-semibold text-rose-800">
@@ -168,7 +176,9 @@ export function ReportTables({
                     {row.delayDays} Days
                   </td>
                   <td className="py-2.5 px-3 text-slate-600 italic max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">&quot;{row.replanningReason}&quot;</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      &quot;{row.replanningReason}&quot;
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-medium">{row.officer}</td>
                 </tr>
@@ -202,7 +212,9 @@ export function ReportTables({
                     {row.refNo}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.supplierName}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.supplierName}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-mono">
                     {row.originalContractAmount.toLocaleString()}
@@ -248,7 +260,9 @@ export function ReportTables({
                     {row.refNo}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 max-w-xs wrap-break-word">
-                    <p className="wrap-break-word line-clamp-2">{row.description}</p>
+                    <p className="wrap-break-word line-clamp-2">
+                      {row.description}
+                    </p>
                   </td>
                   <td className="py-2.5 px-3 font-semibold">{row.category}</td>
                   <td className="py-2.5 px-3 font-bold text-[#0A3C2F]">

@@ -249,7 +249,11 @@ function EthiopianCalendarPicker({
             : "hover:border-slate-400 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]/20 cursor-pointer text-slate-900"
         }`}
       >
-        <span className={value ? "truncate text-slate-900" : "truncate text-slate-400"}>
+        <span
+          className={
+            value ? "truncate text-slate-900" : "truncate text-slate-400"
+          }
+        >
           {value || "DD-Month-YYYY"}
         </span>
         <CalendarDays className="h-3.5 w-3.5 text-slate-400 shrink-0 ml-1.5" />
@@ -325,37 +329,39 @@ function EthiopianCalendarPicker({
               <span key={`empty-${idx}`} aria-hidden="true" />
             ))}
 
-            {Array.from({ length: monthDays }, (_, idx) => idx + 1).map((day) => {
-              const isSelected =
-                parsedValue?.year === visibleYear &&
-                parsedValue.month === visibleMonth &&
-                parsedValue.day === day;
-              const isToday =
-                today.year === visibleYear &&
-                today.month === visibleMonth &&
-                today.day === day;
+            {Array.from({ length: monthDays }, (_, idx) => idx + 1).map(
+              (day) => {
+                const isSelected =
+                  parsedValue?.year === visibleYear &&
+                  parsedValue.month === visibleMonth &&
+                  parsedValue.day === day;
+                const isToday =
+                  today.year === visibleYear &&
+                  today.month === visibleMonth &&
+                  today.day === day;
 
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  aria-label={`${day} ${ETHIOPIAN_MONTHS[visibleMonth - 1]} ${visibleYear}`}
-                  onClick={() => {
-                    onSelect({ day, month: visibleMonth, year: visibleYear });
-                    setOpen(false);
-                  }}
-                  className={`flex h-7 w-full items-center justify-center rounded-lg text-xs transition-colors cursor-pointer ${
-                    isSelected
-                      ? "bg-[#0A3C2F] font-bold text-white shadow-xs"
-                      : isToday
-                      ? "border border-[#0A3C2F] font-bold text-[#0A3C2F] hover:bg-emerald-50"
-                      : "hover:bg-slate-100 text-slate-700 font-medium"
-                  }`}
-                >
-                  {day}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-label={`${day} ${ETHIOPIAN_MONTHS[visibleMonth - 1]} ${visibleYear}`}
+                    onClick={() => {
+                      onSelect({ day, month: visibleMonth, year: visibleYear });
+                      setOpen(false);
+                    }}
+                    className={`flex h-7 w-full items-center justify-center rounded-lg text-xs transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-[#0A3C2F] font-bold text-white shadow-xs"
+                        : isToday
+                          ? "border border-[#0A3C2F] font-bold text-[#0A3C2F] hover:bg-emerald-50"
+                          : "hover:bg-slate-100 text-slate-700 font-medium"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              },
+            )}
           </div>
 
           {/* Bottom Actions: Clear & Today */}

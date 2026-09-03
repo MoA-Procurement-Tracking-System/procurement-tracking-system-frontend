@@ -554,11 +554,7 @@ function CompactTable({
           <thead>
             <tr className="bg-[#0A3C2F] text-white text-[10px] font-extrabold uppercase tracking-wider">
               {columns.map((column) => (
-                <th
-                  className="px-3 py-2.5"
-                  key={column}
-                  scope="col"
-                >
+                <th className="px-3 py-2.5" key={column} scope="col">
                   {column}
                 </th>
               ))}

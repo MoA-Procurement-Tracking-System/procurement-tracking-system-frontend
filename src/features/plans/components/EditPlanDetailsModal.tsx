@@ -103,7 +103,9 @@ export function EditPlanDetailsModal({
       PLAN_FIELD_LABELS,
     );
 
-    const currentVersion = getCurrentPlanVersionNumber(plan.reference || plan.id || "");
+    const currentVersion = getCurrentPlanVersionNumber(
+      plan.reference || plan.id || "",
+    );
     const nextVersion =
       plan.status === "Returned" ? currentVersion + 1 : currentVersion;
 

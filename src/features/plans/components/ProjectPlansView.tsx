@@ -483,9 +483,7 @@ export function ProjectPlansView({
             <thead>
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-3.5 text-center w-12">#</th>
-                <th className="py-3.5 px-3.5 min-w-64 max-w-80">
-                  Plan Name
-                </th>
+                <th className="py-3.5 px-3.5 min-w-64 max-w-80">Plan Name</th>
                 <th className="py-3.5 px-3.5 w-36">Category</th>
                 <th className="py-3.5 px-3.5 w-28">Budget Year</th>
                 <th className="py-3.5 px-3.5 w-44">Coverage Period</th>

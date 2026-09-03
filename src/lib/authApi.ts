@@ -324,4 +324,3 @@ export function getClientSession(): AuthSession | null {
 export function getCurrentUser(): AuthUser | null {
   return getClientSession()?.user ?? null;
 }
-

@@ -48,10 +48,7 @@ export function OfficerProcurementPlanDetailView({
   project,
   savedActivities = [],
 }: {
-  onSubmitToDirector?: (
-    planReference: string,
-    revisionReason?: string,
-  ) => void;
+  onSubmitToDirector?: (planReference: string, revisionReason?: string) => void;
   onUpdatePlan?: (plan: ProcurementPlanSummary) => void;
   onUpdateActivity?: (activity: ProcurementActivitySummary) => void;
   plan: ProcurementPlanSummary;

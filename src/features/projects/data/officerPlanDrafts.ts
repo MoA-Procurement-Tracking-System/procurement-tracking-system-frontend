@@ -104,8 +104,7 @@ export function mergeSavedPlans(
       const resolvedStatus = isBackendAuthoritative
         ? plan.status
         : saved.status || plan.status;
-      const resolvedReason =
-        plan.rejectionReason || saved.rejectionReason;
+      const resolvedReason = plan.rejectionReason || saved.rejectionReason;
 
       const rawActivities =
         plan.planActivities && plan.planActivities.length > 0
@@ -116,7 +115,8 @@ export function mergeSavedPlans(
         ...act,
         status:
           resolvedStatus === "Returned" &&
-          (act.status === "Submitted to Director" || act.status === "Under Review")
+          (act.status === "Submitted to Director" ||
+            act.status === "Under Review")
             ? "Returned"
             : act.status,
       }));

@@ -119,7 +119,10 @@ export function ProjectsManagementView() {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/projects") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/projects"
+      ) {
         setViewMode("list");
         setSelectedProject(null);
         setSelectedPlanForActivities(null);
@@ -357,9 +360,7 @@ export function ProjectsManagementView() {
 
               const matchesPlan =
                 pRef &&
-                (pRef === planId ||
-                  pRef === planRef ||
-                  pRef === planName);
+                (pRef === planId || pRef === planRef || pRef === planName);
 
               if (matchesPlan) {
                 return {

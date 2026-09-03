@@ -22,10 +22,7 @@ import {
   History,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  INITIAL_PLANS,
-  type ProcurementPlan,
-} from "../plansData";
+import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
 import {
   fetchPlans,
   sendPlanToCommittee,
@@ -98,7 +95,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
             parsed.forEach((rec) => {
               const p = rec.plan;
               if (!p) return;
-              const planId = p.id || `officer-${rec.projectCode}-${p.reference}`;
+              const planId =
+                p.id || `officer-${rec.projectCode}-${p.reference}`;
               const mappedDraft: ProcurementPlan = {
                 id: planId,
                 projectId: rec.projectCode,
@@ -167,8 +165,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 ? matchingDraft.projectCode
                 : p.projectCode,
             reference: matchingDraft.reference || (p as any).reference,
-            rejectionReason:
-              p.rejectionReason || matchingDraft.rejectionReason,
+            rejectionReason: p.rejectionReason || matchingDraft.rejectionReason,
             activities:
               p.activities && p.activities.length > 0
                 ? p.activities
@@ -222,7 +219,10 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/plan-for-review") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/plan-for-review"
+      ) {
         setSelectedPlanForReview(null);
         setEditingPlan(null);
         setActivitiesPlan(null);
@@ -401,11 +401,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
 
               const matchesPlan =
                 (pRef &&
-                  (pRef === planId ||
-                    pRef === planRef ||
-                    pRef === planName)) ||
-                (item.projectCode?.toLowerCase()?.trim() ===
-                  plan.projectCode?.toLowerCase()?.trim());
+                  (pRef === planId || pRef === planRef || pRef === planName)) ||
+                item.projectCode?.toLowerCase()?.trim() ===
+                  plan.projectCode?.toLowerCase()?.trim();
 
               if (matchesPlan) {
                 return {
@@ -783,7 +781,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 type="button"
               >
                 <History className="h-3.5 w-3.5 text-[#0A3C2F]" />
-                Version History (v{getCurrentPlanVersionNumber(selectedPlanForReview.id)})
+                Version History (v
+                {getCurrentPlanVersionNumber(selectedPlanForReview.id)})
               </button>
               <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
                 {selectedPlanForReview.status}
@@ -880,12 +879,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     <th className="py-3 px-3.5 min-w-37.5">
                       Target Date (Roadmap)
                     </th>
-                    <th className="py-3 px-3.5 min-w-37.5">
-                      Clarifications
-                    </th>
-                    <th className="py-3 px-3.5 min-w-37.5">
-                      Technical Notes
-                    </th>
+                    <th className="py-3 px-3.5 min-w-37.5">Clarifications</th>
+                    <th className="py-3 px-3.5 min-w-37.5">Technical Notes</th>
                     <th className="py-3 px-3.5 text-center min-w-22.5">
                       Action
                     </th>
@@ -1445,9 +1440,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-3.5 text-center w-12">#</th>
                 <th className="py-3.5 px-3.5 w-36">Project Code</th>
-                <th className="py-3.5 px-3.5 min-w-64 max-w-80">
-                  Plan Name
-                </th>
+                <th className="py-3.5 px-3.5 min-w-64 max-w-80">Plan Name</th>
                 <th className="py-3.5 px-3.5 w-36">Category</th>
                 <th className="py-3.5 px-3.5 w-28">Budget Year</th>
                 <th className="py-3.5 px-3.5 w-44">Coverage Period</th>
@@ -1526,7 +1519,9 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 font-medium">To:</span>{" "}
+                          <span className="text-slate-400 font-medium">
+                            To:
+                          </span>{" "}
                           <span className="font-semibold text-slate-800">
                             {plan.planPeriodTo || "—"}
                           </span>

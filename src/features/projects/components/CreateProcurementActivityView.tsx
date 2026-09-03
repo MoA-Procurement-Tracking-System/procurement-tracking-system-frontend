@@ -385,19 +385,15 @@ function createInitialForm(
         initialActivity.description || d?.activityDescription || "",
       classificationCode: d?.classificationCode || "",
       comments: d?.comments || "",
-      contractType:
-        anyAct.contractType || d?.contractType || "Lump Sum",
-      currency:
-        anyAct.currency || plan.currency || project.baseCurrency,
+      contractType: anyAct.contractType || d?.contractType || "Lump Sum",
+      currency: anyAct.currency || plan.currency || project.baseCurrency,
       domesticPreference: d?.domesticPreference || "",
       estimatedAmount: String(
         initialActivity.estimatedAmount || d?.estimatedAmount || "",
       ),
       evaluationOptionCode: d?.evaluationOptionCode || "",
       fundingSource:
-        anyAct.fundingSource ||
-        d?.fundingSource ||
-        project.fundingSource,
+        anyAct.fundingSource || d?.fundingSource || project.fundingSource,
       highRiskCode: d?.highRiskCode || "",
       inProcess:
         initialActivity.status === "In Progress" || Boolean(d?.inProcess),
@@ -412,8 +408,8 @@ function createInitialForm(
       longitude: d?.longitude || "",
       lotRequired: Boolean(
         d?.lotRequired ||
-          (initialActivity.details?.lots &&
-            initialActivity.details.lots.length > 0),
+        (initialActivity.details?.lots &&
+          initialActivity.details.lots.length > 0),
       ),
       marketApproach:
         anyAct.marketApproach || d?.marketApproach || "Open - National",

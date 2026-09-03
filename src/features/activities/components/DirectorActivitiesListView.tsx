@@ -317,8 +317,7 @@ export function DirectorActivitiesListView({
         targetProjectCodes.add(plan.projectCode.toLowerCase().trim());
       if (project?.code)
         targetProjectCodes.add(project.code.toLowerCase().trim());
-      if (project?.id)
-        targetProjectCodes.add(project.id.toLowerCase().trim());
+      if (project?.id) targetProjectCodes.add(project.id.toLowerCase().trim());
       if ((project as any)?.shortName)
         targetProjectCodes.add((project as any).shortName.toLowerCase().trim());
       if (plan.projectId)
@@ -356,19 +355,14 @@ export function DirectorActivitiesListView({
                 const pRef = (p.reference || "").toLowerCase().trim();
                 const pName = (p.name || "").toLowerCase().trim();
                 const pId = (p.id || "").toLowerCase().trim();
-                const pProj = (
-                  item.projectCode ||
-                  p.projectCode ||
-                  ""
-                )
+                const pProj = (item.projectCode || p.projectCode || "")
                   .toLowerCase()
                   .trim();
 
                 const isPlanMatch =
                   (pRef &&
                     Array.from(targetPlanIds).some(
-                      (t) =>
-                        t === pRef || t.includes(pRef) || pRef.includes(t),
+                      (t) => t === pRef || t.includes(pRef) || pRef.includes(t),
                     )) ||
                   (pName &&
                     Array.from(targetPlanIds).some(

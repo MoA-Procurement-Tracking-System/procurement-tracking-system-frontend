@@ -218,7 +218,10 @@ export function UserManagementView({
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/user-management") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/user-management"
+      ) {
         setViewMode("list");
         setInvitedInfo(null);
         setErrorMessage(null);

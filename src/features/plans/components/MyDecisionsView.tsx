@@ -73,7 +73,10 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/my-decisions") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/my-decisions"
+      ) {
         setSelectedDecision(null);
       }
     };
@@ -340,7 +343,9 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
                         className="hover:bg-emerald-50/50 transition-colors cursor-pointer"
                       >
                         <td className="py-3.5 px-4 font-bold text-slate-900 max-w-xs wrap-break-word">
-                          <span className="wrap-break-word line-clamp-2">{dec.planName}</span>
+                          <span className="wrap-break-word line-clamp-2">
+                            {dec.planName}
+                          </span>
                           <div className="text-[10px] text-slate-400 font-normal mt-0.5 wrap-break-word line-clamp-2">
                             {dec.subtitle}
                           </div>

@@ -213,8 +213,10 @@ export function OfficerProjectsView({
     (project) =>
       project.code === selectedProjectCode ||
       (selectedProjectCode &&
-        (project.code.toLowerCase() === selectedProjectCode.trim().toLowerCase() ||
-          project.name.toLowerCase() === selectedProjectCode.trim().toLowerCase() ||
+        (project.code.toLowerCase() ===
+          selectedProjectCode.trim().toLowerCase() ||
+          project.name.toLowerCase() ===
+            selectedProjectCode.trim().toLowerCase() ||
           project.shortName?.toLowerCase() ===
             selectedProjectCode.trim().toLowerCase() ||
           (Boolean(project.id) &&
@@ -402,7 +404,9 @@ export function OfficerProjectsView({
             procurementCategory: catEnum,
             organization: input.organizationRegion,
             description: input.remarks || undefined,
-            periodStart: new Date(input.periodFrom || "2025-07-08").toISOString(),
+            periodStart: new Date(
+              input.periodFrom || "2025-07-08",
+            ).toISOString(),
             periodEnd: new Date(input.periodTo || "2026-07-07").toISOString(),
           });
         } catch (e) {
@@ -664,8 +668,7 @@ export function OfficerProjectsView({
           procurementCategory: catEnum,
           organization: selectedPlan.organizationRegion || "Federal / FPCU",
           description: selectedPlan.description || undefined,
-          periodStart:
-            selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
+          periodStart: selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
           periodEnd: selectedPlan.planPeriod?.to?.gregorian || "2026-07-07",
         });
         if (created && created.id) {
@@ -688,7 +691,8 @@ export function OfficerProjectsView({
         ).map((st: any, sIdx: number) => ({
           name: st.name || st.stageName,
           sequence: sIdx + 1,
-          plannedStartDate: st.gregorianDate || st.plannedStartDate || undefined,
+          plannedStartDate:
+            st.gregorianDate || st.plannedStartDate || undefined,
           gregorianDate: st.gregorianDate || undefined,
           ethiopianDate: st.ethiopianDate || undefined,
           isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
@@ -709,13 +713,17 @@ export function OfficerProjectsView({
                 fundingSource:
                   selectedProject.fundingSource ||
                   "African Development Bank (AfDB)",
-                loanGrantNumber: selectedProject.financingNumbers?.[0] || undefined,
+                loanGrantNumber:
+                  selectedProject.financingNumbers?.[0] || undefined,
                 allocationPct: 100,
               },
             ],
           });
         } catch (firstErr) {
-          console.warn("First createActivity attempt failed, attempting fallback without custom stages:", firstErr);
+          console.warn(
+            "First createActivity attempt failed, attempting fallback without custom stages:",
+            firstErr,
+          );
           await createActivity({
             planId: targetBackendPlanId,
             procurementMethodId: resolvedMethodId,
@@ -727,7 +735,8 @@ export function OfficerProjectsView({
                 fundingSource:
                   selectedProject.fundingSource ||
                   "African Development Bank (AfDB)",
-                loanGrantNumber: selectedProject.financingNumbers?.[0] || undefined,
+                loanGrantNumber:
+                  selectedProject.financingNumbers?.[0] || undefined,
                 allocationPct: 100,
               },
             ],
@@ -800,8 +809,7 @@ export function OfficerProjectsView({
           procurementCategory: catEnum,
           organization: selectedPlan.organizationRegion || "Federal / FPCU",
           description: selectedPlan.description || undefined,
-          periodStart:
-            selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
+          periodStart: selectedPlan.planPeriod?.from?.gregorian || "2025-07-08",
           periodEnd: selectedPlan.planPeriod?.to?.gregorian || "2026-07-07",
         });
         if (created && created.id) {
@@ -839,7 +847,8 @@ export function OfficerProjectsView({
 
         try {
           const methodLabel = act.method || "RFB - National";
-          const resolvedMethodId = await resolveProcurementMethodId(methodLabel);
+          const resolvedMethodId =
+            await resolveProcurementMethodId(methodLabel);
 
           const customStages = (
             act.details?.roadmap ||
@@ -848,7 +857,8 @@ export function OfficerProjectsView({
           ).map((st: any, sIdx: number) => ({
             name: st.name || st.stageName,
             sequence: sIdx + 1,
-            plannedStartDate: st.gregorianDate || st.plannedStartDate || undefined,
+            plannedStartDate:
+              st.gregorianDate || st.plannedStartDate || undefined,
             gregorianDate: st.gregorianDate || undefined,
             ethiopianDate: st.ethiopianDate || undefined,
             isNotApplicable: Boolean(st.notApplicable || st.isNotApplicable),
@@ -876,7 +886,10 @@ export function OfficerProjectsView({
               ],
             });
           } catch (firstErr) {
-            console.warn("First submit sync createActivity attempt failed, attempting fallback without custom stages:", firstErr);
+            console.warn(
+              "First submit sync createActivity attempt failed, attempting fallback without custom stages:",
+              firstErr,
+            );
             await createActivity({
               planId: planIdToSubmit,
               procurementMethodId: resolvedMethodId,

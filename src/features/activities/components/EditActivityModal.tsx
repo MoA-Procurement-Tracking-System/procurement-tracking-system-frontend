@@ -167,7 +167,8 @@ export function EditActivityModal({
                     ? "LIMITED"
                     : "DIRECT",
             reviewType: reviewType === "Post" ? "POST" : "PRIOR",
-            contractType: contractType === "Time-based" ? "TIME_BASED" : "LUMP_SUM",
+            contractType:
+              contractType === "Time-based" ? "TIME_BASED" : "LUMP_SUM",
           });
         }
       } catch (backendErr) {
@@ -206,7 +207,8 @@ export function EditActivityModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Update specifications, estimated costs, and document revision reasons
+                Update specifications, estimated costs, and document revision
+                reasons
               </p>
             </div>
           </div>
@@ -291,7 +293,9 @@ export function EditActivityModal({
                 <option value="FBS">FBS</option>
                 <option value="LCS">LCS</option>
                 <option value="CQS">CQS</option>
-                <option value="Individual Consultant">Individual Consultant</option>
+                <option value="Individual Consultant">
+                  Individual Consultant
+                </option>
               </select>
             </div>
 
@@ -319,7 +323,9 @@ export function EditActivityModal({
                 onChange={(e) => setMarketApproach(e.target.value)}
               >
                 <option value="Open - National">Open - National</option>
-                <option value="Open - International">Open - International</option>
+                <option value="Open - International">
+                  Open - International
+                </option>
                 <option value="Limited">Limited</option>
                 <option value="Direct">Direct</option>
               </select>
@@ -358,7 +364,9 @@ export function EditActivityModal({
           <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 space-y-2">
             <label className="block text-xs font-bold text-amber-950">
               Revision Reason / Comment (Recorded in Audit Trail){" "}
-              <span className="text-amber-700 font-normal">e.g. &quot;Updated market estimate&quot;</span>
+              <span className="text-amber-700 font-normal">
+                e.g. &quot;Updated market estimate&quot;
+              </span>
             </label>
             <input
               type="text"

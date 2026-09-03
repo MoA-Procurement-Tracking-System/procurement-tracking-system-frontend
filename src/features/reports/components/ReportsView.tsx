@@ -63,7 +63,10 @@ export function ReportsView() {
   useEffect(() => {
     const handleReset = (event: Event) => {
       const customEvent = event as CustomEvent<{ href?: string }>;
-      if (!customEvent.detail?.href || customEvent.detail.href === "/workspace/reports") {
+      if (
+        !customEvent.detail?.href ||
+        customEvent.detail.href === "/workspace/reports"
+      ) {
         setActiveReport("annual-plan");
         setFilters({ ...DEFAULT_FILTERS });
       }

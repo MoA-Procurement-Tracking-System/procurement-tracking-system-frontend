@@ -84,9 +84,7 @@ describe("CreateProcurementPlanView", () => {
 
     expect(markup).toContain("Inherited Project Information");
     expect(markup).toContain("Plan Identification &amp; Classification");
-    expect(markup).toContain(
-      "Plan Schedule &amp; Coverage Period",
-    );
+    expect(markup).toContain("Plan Schedule &amp; Coverage Period");
     expect(markup).toContain("Save Draft");
     expect(markup).toContain("Save &amp; Add Procurement Activity");
   });

@@ -168,9 +168,10 @@ describe("officer plan draft persistence", () => {
       status: "Draft" as const,
     };
 
-    const projects = mergeSavedPlans([project], [
-      { plan: staleDraft, projectCode: project.code },
-    ]);
+    const projects = mergeSavedPlans(
+      [project],
+      [{ plan: staleDraft, projectCode: project.code }],
+    );
 
     const updated = projects[0].plans.find(
       (p) => p.reference === mockProject.plans[0].reference,
@@ -195,9 +196,10 @@ describe("officer plan draft persistence", () => {
       status: "Draft" as const,
     };
 
-    const projects = mergeSavedPlans([project], [
-      { plan: staleDraft, projectCode: project.code },
-    ]);
+    const projects = mergeSavedPlans(
+      [project],
+      [{ plan: staleDraft, projectCode: project.code }],
+    );
 
     const updated = projects[0].plans.find(
       (p) => p.reference === mockProject.plans[0].reference,

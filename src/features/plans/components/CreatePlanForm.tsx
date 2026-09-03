@@ -91,7 +91,8 @@ export function CreatePlanForm({
   const [generalNoticeDate, setGeneralNoticeDate] = useState(
     initialData?.generalNoticeDate || "",
   );
-  const [generalNoticeDateEthiopian, setGeneralNoticeDateEthiopian] = useState("");
+  const [generalNoticeDateEthiopian, setGeneralNoticeDateEthiopian] =
+    useState("");
   const [status, setStatus] = useState<PlanStatus>(
     initialData?.status || "Draft",
   );

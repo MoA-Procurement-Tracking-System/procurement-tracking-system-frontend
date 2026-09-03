@@ -35,10 +35,7 @@ import {
   fetchProjects,
   mapBackendProjectToOfficerProject,
 } from "@/lib/projectsApi";
-import {
-  fetchPlans,
-  mapBackendPlanToOfficerPlanSummary,
-} from "@/lib/plansApi";
+import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
 import { fetchActivities, type BackendActivity } from "@/lib/activitiesApi";
 import {
   ArrowUpDown,
