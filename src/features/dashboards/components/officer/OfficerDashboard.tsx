@@ -84,7 +84,7 @@ export function formatDirectorNote(
   }
 
   // Clean out repetitive boilerplate prefixes
-  let cleaned = reason
+  const cleaned = reason
     .replace(/^returned\s+by\s+director\s*[:.-]?\s*/i, "")
     .replace(/^returned\s+for\s+revisions?\s*(by\s+director)?\s*[:.-]?\s*/i, "")
     .replace(/^director\s*(note|comment|feedback)?\s*[:.-]?\s*/i, "")
@@ -135,7 +135,7 @@ export function formatReturnedPlanDetail(
   }
 
   // Clean out repetitive boilerplate prefixes
-  let cleaned = reason
+  const cleaned = reason
     .replace(/^returned\s+by\s+director\s*[:.-]?\s*/i, "")
     .replace(/^returned\s+for\s+revisions?\s*(by\s+director)?\s*[:.-]?\s*/i, "")
     .replace(/^director\s*[:.-]?\s*/i, "")

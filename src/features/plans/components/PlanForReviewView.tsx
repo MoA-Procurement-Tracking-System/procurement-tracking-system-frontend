@@ -245,7 +245,10 @@ export function PlanForReviewView({
           p.projectCode?.toLowerCase() === selectedPlanId.toLowerCase(),
       );
       if (match) {
-        setActivitiesPlan(match);
+        const timer = setTimeout(() => {
+          setActivitiesPlan(match);
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [selectedPlanId, plans, activitiesPlan]);

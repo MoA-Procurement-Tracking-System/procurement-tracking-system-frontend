@@ -61,6 +61,12 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
   const [selectedSector, setSelectedSector] = useState("All Sectors");
   const [selectedProject, setSelectedProject] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [currentTime, setCurrentTime] = useState<number>(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCurrentTime(Date.now()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -269,7 +275,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
   // Critical Delays (Live activities with overdue stages > 7 days)
   const criticalDelaysLive: CriticalDelay[] = useMemo(() => {
     const delays: CriticalDelay[] = [];
-    const now = Date.now();
+    const now = currentTime;
 
     for (const plan of filteredPlans) {
       for (const act of plan.activities || []) {
@@ -277,7 +283,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           if (s.isNotApplicable || s.status === "COMPLETED") return false;
           if (s.status === "DELAYED") return true;
           const deadline = s.currentTargetEndDate || s.plannedEndDate;
-          if (deadline && new Date(deadline).getTime() < now) {
+          if (deadline && now && new Date(deadline).getTime() < now) {
             return true;
           }
           return false;
@@ -288,14 +294,16 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
             delayedStage?.currentTargetEndDate ||
             delayedStage?.plannedEndDate ||
             plan.createdAt;
-          const daysOverdue = deadline
-            ? Math.max(
-                1,
-                Math.round(
-                  (now - new Date(deadline).getTime()) / (1000 * 60 * 60 * 24),
-                ),
-              )
-            : 0;
+          const daysOverdue =
+            deadline && now
+              ? Math.max(
+                  1,
+                  Math.round(
+                    (now - new Date(deadline).getTime()) /
+                      (1000 * 60 * 60 * 24),
+                  ),
+                )
+              : 0;
 
           const stageLabel =
             delayedStage?.stageType?.label ||
@@ -325,7 +333,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
     }
 
     return delays;
-  }, [filteredPlans]);
+  }, [filteredPlans, currentTime]);
 
   const criticalDelaysCount = criticalDelaysLive.length;
 
@@ -378,7 +386,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
 
     // Database active entries calculation
     let planEstimatedValueETB = planEstimatedSum;
-    let signedContractsCommittedETB = signedCommittedSum;
+    const signedContractsCommittedETB = signedCommittedSum;
     let actualDisbursedETB = actualDisbursedSum;
 
     // Enclose plan envelope around contracted value if plan has no estimated budget

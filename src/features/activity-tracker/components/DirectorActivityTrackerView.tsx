@@ -249,7 +249,10 @@ export function DirectorActivityTrackerView({
           (it as any).id === selectedActivityReference,
       );
       if (match) {
-        setSelectedActivity(match);
+        const timer = setTimeout(() => {
+          setSelectedActivity(match);
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [selectedActivityReference, items, selectedActivity]);
