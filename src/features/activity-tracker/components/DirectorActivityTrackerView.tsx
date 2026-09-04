@@ -78,7 +78,17 @@ type TrackerSort =
 const DUE_SOON_DAYS = 7;
 const PAGE_SIZE = 10;
 
-export function DirectorActivityTrackerView() {
+export interface DirectorActivityTrackerViewProps {
+  selectedActivityReference?: string;
+  selectedPlanReference?: string;
+  selectedProjectCode?: string;
+}
+
+export function DirectorActivityTrackerView({
+  selectedActivityReference,
+  selectedPlanReference,
+  selectedProjectCode,
+}: DirectorActivityTrackerViewProps = {}) {
   const [backendProjects, setBackendProjects] = useState<OfficerProject[]>([]);
   const [savedPlanRecords, setSavedPlanRecords] = useState<
     SavedOfficerPlanRecord[]
@@ -223,6 +233,26 @@ export function DirectorActivityTrackerView() {
       ),
     [projects, effectiveActivityRecords, trackingRecords],
   );
+
+  useEffect(() => {
+    if (selectedActivityReference && items.length > 0 && !selectedActivity) {
+      const match = items.find(
+        (it) =>
+          it.activity.reference.toLowerCase() ===
+            selectedActivityReference.toLowerCase() ||
+          it.activity.description
+            .toLowerCase()
+            .includes(selectedActivityReference.toLowerCase()) ||
+          it.tracking.activityReference.toLowerCase() ===
+            selectedActivityReference.toLowerCase() ||
+          (it.activity as any).id === selectedActivityReference ||
+          (it as any).id === selectedActivityReference,
+      );
+      if (match) {
+        setSelectedActivity(match);
+      }
+    }
+  }, [selectedActivityReference, items, selectedActivity]);
 
   if (selectedActivity) {
     return (
@@ -1061,23 +1091,31 @@ function DirectorActivityTrackerList({
       {/* 5. Main Standard Table Container (Matching Projects Directory & Other Views) */}
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-287.5">
-            <thead>
+          <table className="w-full text-left border-collapse min-w-[1240px]">
+            <thead className="bg-[#0A3C2F]">
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-4 text-center w-12">#</th>
-                <th className="py-3.5 px-4 min-w-40">Reference No</th>
-                <th className="py-3.5 px-4 min-w-65 w-[26%]">
-                  Activity Name & Milestone
+                <th className="py-3.5 px-4 min-w-[130px] whitespace-nowrap">
+                  Reference No
                 </th>
-                <th className="py-3.5 px-4 min-w-40">Project / FY</th>
-                <th className="py-3.5 px-4 min-w-35">Category & Method</th>
-                <th className="py-3.5 px-4 min-w-50">Current Stage</th>
-                <th className="py-3.5 px-4 min-w-32.5">Target Date</th>
-                <th className="py-3.5 px-4 text-center min-w-32.5">
+                <th className="py-3.5 px-4 min-w-[220px]">
+                  Activity Name &amp; Milestone
+                </th>
+                <th className="py-3.5 px-4 min-w-[160px]">Project / FY</th>
+                <th className="py-3.5 px-4 min-w-[140px]">
+                  Category &amp; Method
+                </th>
+                <th className="py-3.5 px-4 min-w-[160px]">Current Stage</th>
+                <th className="py-3.5 px-4 min-w-[120px] whitespace-nowrap">
+                  Target Date
+                </th>
+                <th className="py-3.5 px-4 text-center min-w-[120px] whitespace-nowrap">
                   Delay Status
                 </th>
-                <th className="py-3.5 px-4 min-w-37.5">Assigned Officer</th>
-                <th className="py-3.5 px-4 text-center min-w-25">Action</th>
+                <th className="py-3.5 px-4 min-w-[140px]">Assigned Officer</th>
+                <th className="py-3.5 pr-6 pl-4 text-center min-w-[90px] whitespace-nowrap">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -1097,19 +1135,23 @@ function DirectorActivityTrackerList({
                       <td className="py-3.5 px-4 text-center font-bold text-slate-400">
                         {firstVisibleIndex + idx + 1}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-[#0A3C2F] px-2 py-1 rounded inline-block">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span
+                          className="font-mono font-bold text-[#0A3C2F] px-2 py-1 rounded inline-block truncate max-w-[130px]"
+                          title={item.activity.reference}
+                        >
                           {item.activity.reference}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 max-w-sm wrap-break-word">
+                      <td className="py-3.5 px-4">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onViewActivity(item);
                           }}
-                          className="font-bold text-slate-900 hover:text-[#0A3C2F] text-left transition-colors cursor-pointer line-clamp-2 leading-snug wrap-break-word"
+                          className="font-bold text-slate-900 hover:text-[#0A3C2F] text-left transition-colors cursor-pointer line-clamp-2 leading-snug break-words [overflow-wrap:anywhere]"
+                          title={item.activity.description}
                         >
                           {item.activity.description}
                         </button>
@@ -1119,7 +1161,10 @@ function DirectorActivityTrackerList({
                         </p>
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-800">
+                        <p
+                          title={item.project.shortName}
+                          className="font-bold text-slate-800 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+                        >
                           {item.project.shortName}
                         </p>
                         <p className="text-[11px] text-slate-500 font-medium">
@@ -1127,22 +1172,28 @@ function DirectorActivityTrackerList({
                         </p>
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-700">
+                        <p className="font-semibold text-slate-700 leading-snug break-words">
                           {item.activity.category}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-medium">
+                        <p
+                          className="text-[11px] text-slate-500 font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+                          title={item.activity.method}
+                        >
                           {item.activity.method}
                         </p>
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-900 leading-snug">
+                        <p
+                          className="font-bold text-slate-900 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+                          title={stage.name}
+                        >
                           {stage.name}
                         </p>
                         <p className="text-[11px] text-slate-500 font-medium">
                           Status: {stage.status}
                         </p>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <p className="font-bold text-slate-800">
                           {stage.targetDate.gregorian || "—"}
                         </p>
@@ -1168,7 +1219,7 @@ function DirectorActivityTrackerList({
                           {officerName}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 pr-6 pl-4 text-center">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1576,7 +1627,7 @@ function DirectorActivityDetailView({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-212.5">
+            <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
                 <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4 text-center w-12">#</th>

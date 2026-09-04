@@ -31,6 +31,7 @@ export default async function WorkspaceSectionPage({
     from?: string | string[];
     mode?: string | string[];
     plan?: string | string[];
+    planId?: string | string[];
     project?: string | string[];
   }>;
 }) {
@@ -63,6 +64,7 @@ export default async function WorkspaceSectionPage({
 
     return (
       <OfficerProjectsView
+        currentUser={session.user}
         fromTracker={fromTracker}
         mode={mode}
         selectedActivityReference={selectedActivityReference}
@@ -73,7 +75,18 @@ export default async function WorkspaceSectionPage({
   }
 
   if (section === "plan-for-review") {
-    return <PlanForReviewView user={session.user} />;
+    const selectedPlanId =
+      typeof query.plan === "string"
+        ? query.plan
+        : typeof query.planId === "string"
+          ? query.planId
+          : undefined;
+    return (
+      <PlanForReviewView
+        user={session.user}
+        selectedPlanId={selectedPlanId}
+      />
+    );
   }
 
   if (section === "my-decisions") {
@@ -120,13 +133,26 @@ export default async function WorkspaceSectionPage({
 
   if (section === "activity-tracker") {
     if (session.user.role === "DIRECTOR") {
-      return <DirectorActivityTrackerView />;
+      return (
+        <DirectorActivityTrackerView
+          selectedActivityReference={
+            typeof query.activity === "string" ? query.activity : undefined
+          }
+          selectedPlanReference={
+            typeof query.plan === "string" ? query.plan : undefined
+          }
+          selectedProjectCode={
+            typeof query.project === "string" ? query.project : undefined
+          }
+        />
+      );
     }
     if (session.user.role !== "OFFICER") {
       redirect("/access-denied");
     }
     return (
       <OfficerActivityTrackerView
+        currentUser={session.user}
         selectedActivityReference={
           typeof query.activity === "string" ? query.activity : undefined
         }
@@ -138,10 +164,6 @@ export default async function WorkspaceSectionPage({
         }
       />
     );
-  }
-
-  if (section === "activity-tracker" && session.user.role === "DIRECTOR") {
-    return <DirectorActivityTrackerView />;
   }
 
   return (

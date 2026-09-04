@@ -3,6 +3,7 @@ import {
   fetchProjects,
   createProject,
   assignOfficerToProject,
+  isProjectAssignedToOfficer,
   mapBackendProjectToProjectItem,
   mapBackendProjectToOfficerProject,
   type BackendProject,
@@ -137,5 +138,72 @@ describe("projectsApi", () => {
     expect(officerProject.code).toBe("DRIVE");
     expect(officerProject.status).toBe("Active");
     expect(officerProject.assignedOfficers).toEqual(["Abebe Officer"]);
+    expect(officerProject.assignedOfficerIds).toEqual(["u1"]);
+    expect(officerProject.assignedOfficerEmails).toEqual(["abebe@moa.gov.et"]);
+  });
+
+  it("handles projects with no assigned members without injecting fake officers", () => {
+    const unassignedBp: BackendProject = {
+      id: "p-empty",
+      code: "EMPTY-01",
+      name: "Empty Project",
+      fundingSourceId: "fs1",
+      sectorId: "sec1",
+      status: "ACTIVE",
+      members: [],
+    };
+
+    const officerProject = mapBackendProjectToOfficerProject(unassignedBp);
+    expect(officerProject.assignedOfficers).toEqual([]);
+    expect(officerProject.assignedOfficerIds).toEqual([]);
+    expect(officerProject.assignedOfficerEmails).toEqual([]);
+  });
+
+  it("correctly evaluates isProjectAssignedToOfficer", () => {
+    const bp: BackendProject = {
+      id: "p1",
+      code: "PRJ-01",
+      name: "Test Project",
+      fundingSourceId: "fs1",
+      sectorId: "sec1",
+      status: "ACTIVE",
+      members: [
+        {
+          id: "m1",
+          userId: "off-user-1",
+          projectId: "p1",
+          user: {
+            id: "off-user-1",
+            name: "Yeabsira Fikre",
+            email: "yeabsira@moa.gov.et",
+            role: "ProcurementOfficer",
+          },
+        },
+      ],
+    };
+
+    const matchingUser = {
+      id: "off-user-1",
+      email: "yeabsira@moa.gov.et",
+      displayName: "Yeabsira Fikre",
+      role: "OFFICER" as const,
+      username: "yeabsira",
+    };
+
+    const otherUser = {
+      id: "off-user-2",
+      email: "someoneelse@moa.gov.et",
+      displayName: "Other Officer",
+      role: "OFFICER" as const,
+      username: "other",
+    };
+
+    expect(isProjectAssignedToOfficer(bp, matchingUser)).toBe(true);
+    expect(isProjectAssignedToOfficer(bp, otherUser)).toBe(false);
+    expect(isProjectAssignedToOfficer(bp, undefined)).toBe(true);
+
+    const officerProj = mapBackendProjectToOfficerProject(bp);
+    expect(isProjectAssignedToOfficer(officerProj, matchingUser)).toBe(true);
+    expect(isProjectAssignedToOfficer(officerProj, otherUser)).toBe(false);
   });
 });

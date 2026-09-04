@@ -133,30 +133,31 @@ export function AdminDashboard({ user }: { user: AuthUser }) {
           {
             label: "TOTAL SYSTEM ACCOUNTS",
             value: String(totalAccounts),
-            detail: "Registered User Profiles",
+            detail: "Registered user profiles",
             icon: Users,
             tone: "blue",
           },
           {
             label: "ACTIVE ACCESS",
             value: String(activeAccess),
-            detail: "Permitted To Sign In",
+            detail: "Permitted to sign in",
             icon: UserCheck,
             tone: "emerald",
-            hasRightAccent: true,
           },
           {
             label: "DEACTIVATED ACCOUNTS",
             value: String(deactivatedAccounts),
-            detail: "Access Suspended",
+            detail:
+              deactivatedAccounts === 0
+                ? "No accounts suspended"
+                : "Access suspended",
             icon: UserX,
             tone: "rose",
-            hasRightAccent: true,
           },
           {
             label: "SYSTEM ROLE BREAKDOWN",
             value: String(totalAccounts),
-            detail: `Officers: ${officersCount} | Directors: ${directorsCount} | Admins: ${adminsCount}`,
+            detail: `Officers: ${officersCount} · Directors: ${directorsCount} · Admins: ${adminsCount}`,
             icon: ShieldCheck,
             tone: "purple",
           },

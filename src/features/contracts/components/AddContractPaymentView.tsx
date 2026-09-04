@@ -63,18 +63,25 @@ export function AddContractPaymentView({
     reference: "",
     remarks: "",
   });
+  const contractTotalPaid = Number(contract.totalPaid) || 0;
+  const contractCurrentAmount = Number(contract.currentAmount) || 0;
+  const contractRemainingBalance =
+    contract.remainingBalance !== null && contract.remainingBalance !== undefined
+      ? Number(contract.remainingBalance)
+      : Math.max(0, contractCurrentAmount - contractTotalPaid);
+
   const amountEntered = form.amount.trim().length > 0;
   const parsedAmount = Number(form.amount.replaceAll(",", ""));
   const amountValid =
     amountEntered && Number.isFinite(parsedAmount) && parsedAmount >= 0;
   const amount = amountValid ? parsedAmount : 0;
-  const withinContractBalance = amount <= contract.remainingBalance;
+  const withinContractBalance = amount <= contractRemainingBalance;
   const typeComplete = Boolean(form.paymentType);
   const dateComplete = Boolean(form.date.gregorian);
   const canSave =
     typeComplete && amountValid && withinContractBalance && dateComplete;
-  const updatedTotalPaid = contract.totalPaid + (amountValid ? amount : 0);
-  const updatedBalance = Math.max(0, contract.currentAmount - updatedTotalPaid);
+  const updatedTotalPaid = contractTotalPaid + (amountValid ? amount : 0);
+  const updatedBalance = Math.max(0, contractCurrentAmount - updatedTotalPaid);
 
   function updateField<K extends keyof PaymentFormState>(
     field: K,
@@ -191,7 +198,7 @@ export function AddContractPaymentView({
                         ? "Payment cannot exceed the remaining contract balance."
                         : undefined
                   }
-                  hint={`Available balance: ${formatAmount(contract.remainingBalance)} ${contract.currency}`}
+                  hint={`Available balance: ${formatAmount(contractRemainingBalance)} ${contract.currency}`}
                   label="Amount"
                   required
                 >
@@ -280,7 +287,7 @@ export function AddContractPaymentView({
                   <SummaryValue
                     currency={contract.currency}
                     label="Current Total Paid"
-                    value={contract.totalPaid}
+                    value={contractTotalPaid}
                   />
                   <SummaryValue
                     currency={contract.currency}
@@ -504,17 +511,24 @@ function SummaryValue({
   currency: OfficerContract["currency"];
   emphasized?: boolean;
   label: string;
-  value: number;
+  value: number | string;
 }) {
   return (
-    <div className={emphasized ? "bg-[#edf5f1] p-3" : "bg-slate-50 p-3"}>
-      <p className="text-[9px] font-bold uppercase tracking-[0.06em] text-slate-500">
+    <div
+      className={
+        emphasized
+          ? "min-w-0 overflow-hidden bg-[#edf5f1] p-3"
+          : "min-w-0 overflow-hidden bg-slate-50 p-3"
+      }
+    >
+      <p className="truncate text-[9px] font-bold uppercase tracking-[0.06em] text-slate-500">
         {label}
       </p>
       <p
-        className={`mt-1 font-mono text-xs font-bold tabular-nums ${
+        className={`mt-1 truncate font-mono text-xs font-bold tabular-nums ${
           emphasized ? "text-[#07523f]" : "text-slate-800"
         }`}
+        title={`${formatAmount(value)} ${currency}`}
       >
         {formatAmount(value)}{" "}
         <span className="text-[9px] text-slate-500">{currency}</span>
@@ -523,9 +537,10 @@ function SummaryValue({
   );
 }
 
-function formatAmount(value: number) {
+function formatAmount(value: number | string) {
+  const num = Number(value) || 0;
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
-  }).format(value);
+  }).format(num);
 }

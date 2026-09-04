@@ -71,13 +71,20 @@ export function addSavedContract(
   ];
 }
 
-export function parseSavedContracts(serialized: string | null) {
-  if (!serialized) return [] as OfficerContract[];
+export function parseSavedContracts(raw: string | null): OfficerContract[] {
+  if (!raw) return [];
 
   try {
-    const parsed: unknown = JSON.parse(serialized);
+    const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
+      .map((c: any) => ({
+        ...c,
+        originalAmount: Number(c.originalAmount) || 0,
+        currentAmount: Number(c.currentAmount) || 0,
+        totalPaid: Number(c.totalPaid) || 0,
+        remainingBalance: Number(c.remainingBalance) || 0,
+      }))
       .filter(isOfficerContract)
       .filter(
         (contract) => !contract.details?.activityReference?.startsWith("MOA/"),

@@ -7,6 +7,9 @@ export interface DirectorPlan {
   status: "Awaiting Review" | "Approved" | "Returned for Revision" | "Rejected";
   totalActivitiesCount: number;
   estimatedBudgetETB: number;
+  signedCommitmentETB?: number;
+  actualDisbursedETB?: number;
+  remainingBalanceETB?: number;
   description: string;
   activities: {
     id: string;
@@ -24,6 +27,7 @@ export interface CriticalDelay {
   activityTitle: string;
   fullTitle: string;
   directorate: string;
+  projectName?: string;
   delayDetail: string;
   stageName: string;
   daysOverdue: number;
@@ -33,118 +37,70 @@ export interface CriticalDelay {
   currentBottleneck: string;
 }
 
-export const INITIAL_DIRECTOR_PLANS: DirectorPlan[] = [
-  {
-    id: "plan-2018-01",
-    title: "2018 EFY Climate Action Landscape Restoration Plan",
-    directorate: "Natural Resources & Climate Change",
-    submittedBy: "Demelash Worku",
-    submissionDate: "2026-08-10",
-    status: "Awaiting Review",
-    totalActivitiesCount: 4,
-    estimatedBudgetETB: 18500000,
-    description:
-      "Multi-regional landscape restoration, tree nursery infrastructure establishment, and soil erosion control equipment procurement for EFY 2018.",
-    activities: [
-      {
-        id: "act-101",
-        activityName:
-          "Construction of Central Tree Seed Nursery Infrastructure & Verification",
-        estimatedCostETB: 8200000,
-        procurementMethod: "National Competitive Bidding (NCB)",
-        plannedStartDate: "2026-06-01",
-        plannedEndDate: "2026-07-20",
-        status: "Bid Evaluation Overdue",
-      },
-      {
-        id: "act-102",
-        activityName:
-          "Procurement of Watershed Terracing Heavy Equipment & Hand Tools",
-        estimatedCostETB: 5400000,
-        procurementMethod: "National Competitive Bidding (NCB)",
-        plannedStartDate: "2026-08-01",
-        plannedEndDate: "2026-09-30",
-        status: "Pending Plan Approval",
-      },
-      {
-        id: "act-103",
-        activityName:
-          "GIS Mapping Software & Drones for Forest Canopy Surveillance",
-        estimatedCostETB: 4900000,
-        procurementMethod: "International Competitive Bidding (ICB)",
-        plannedStartDate: "2026-08-15",
-        plannedEndDate: "2026-11-15",
-        status: "Pending Plan Approval",
-      },
-    ],
-  },
-  {
-    id: "plan-2018-02",
-    title: "2018 EFY Pastoral Fodder Reserve & Feed Storage Plan",
-    directorate: "Livestock & Pastoral Development",
-    submittedBy: "Abebe Kebede",
-    submissionDate: "2026-08-12",
-    status: "Awaiting Review",
-    totalActivitiesCount: 3,
-    estimatedBudgetETB: 24000000,
-    description:
-      "Emergency drought mitigation procurement including heavy-duty hay balers, silage storage facilities, and veterinary drug distribution.",
-    activities: [
-      {
-        id: "act-201",
-        activityName:
-          "Supply of Heavy Duty Hay Balers & Silage Storage Machinery for Lowland Cooperatives",
-        estimatedCostETB: 14500000,
-        procurementMethod: "International Competitive Bidding (ICB)",
-        plannedStartDate: "2026-07-10",
-        plannedEndDate: "2026-08-05",
-        status: "Advertisement Floating Stage Delayed",
-      },
-      {
-        id: "act-202",
-        activityName:
-          "Veterinary Antibiotics & Vaccine Storage Cold Chain Containers",
-        estimatedCostETB: 9500000,
-        procurementMethod: "National Competitive Bidding (NCB)",
-        plannedStartDate: "2026-08-20",
-        plannedEndDate: "2026-10-30",
-        status: "Pending Plan Approval",
-      },
-    ],
-  },
+export interface PipelineStageVolume {
+  id: number;
+  code: string;
+  title: string;
+  sublabel: string;
+  count: number;
+  accent: "default" | "amber" | "purple" | "teal" | "emerald";
+}
+
+export interface DirectorateHealthMetrics {
+  contractExecutionRate: number;
+  disbursementPace: number;
+  scheduleAdherence: number;
+  nextAuditDate: string;
+  bottleneckStage: string;
+  standardDaysPerStage: number;
+}
+
+export interface FinancialCapitalSummary {
+  planEstimatedValueETB: number;
+  signedContractsCommittedETB: number;
+  actualDisbursedETB: number;
+  remainingUncommittedETB: number;
+  contractExecutionRatePct: number;
+  disbursedOfContractedPct: number;
+  availableCapacityPct: number;
+  committedPendingPayETB: number;
+  uncontractedETB: number;
+}
+
+export const INITIAL_PIPELINE_STAGES: PipelineStageVolume[] = [
+  { id: 1, code: "1. PLAN", title: "1. PLAN", sublabel: "Created", count: 0, accent: "default" },
+  { id: 2, code: "2. REVIEW", title: "2. REVIEW", sublabel: "Director", count: 0, accent: "amber" },
+  { id: 3, code: "3. COMM", title: "3. COMM", sublabel: "Voting", count: 0, accent: "purple" },
+  { id: 4, code: "4. TENDER", title: "4. TENDER", sublabel: "Published", count: 0, accent: "default" },
+  { id: 5, code: "5. EVAL", title: "5. EVAL", sublabel: "Technical", count: 0, accent: "default" },
+  { id: 6, code: "6. AWARD", title: "6. AWARD", sublabel: "Intention", count: 0, accent: "default" },
+  { id: 7, code: "7. CONT", title: "7. CONT", sublabel: "Signed", count: 0, accent: "teal" },
+  { id: 8, code: "8. EXEC", title: "8. EXEC", sublabel: "Delivery", count: 0, accent: "default" },
+  { id: 9, code: "9. DONE", title: "9. DONE", sublabel: "Completed", count: 0, accent: "emerald" },
 ];
 
-export const INITIAL_CRITICAL_DELAYS: CriticalDelay[] = [
-  {
-    id: "delay-01",
-    activityTitle:
-      "Construction of Central Tree Seed Nursery Infrastructure & Ver...",
-    fullTitle:
-      "Construction of Central Tree Seed Nursery Infrastructure & Verification Facilities",
-    directorate: "Natural Resources & Climate Change",
-    delayDetail: "Overdue by 28 days on Bid Evaluation stage",
-    stageName: "Bid Evaluation & Technical Scoring",
-    daysOverdue: 28,
-    status: "Delayed",
-    assignedOfficer: "Demelash Worku",
-    plannedCompletionDate: "2026-07-20",
-    currentBottleneck:
-      "Technical evaluation committee quorum missing signatures for 2 tenderers.",
-  },
-  {
-    id: "delay-02",
-    activityTitle:
-      "Supply of Heavy Duty Hay Balers & Silage Storage Machinery f...",
-    fullTitle:
-      "Supply of Heavy Duty Hay Balers & Silage Storage Machinery for Lowland Cooperatives",
-    directorate: "Livestock & Pastoral Development",
-    delayDetail: "Delayed advertisement floating stage",
-    stageName: "Tender Document & Advertisement Publication",
-    daysOverdue: 14,
-    status: "Delayed",
-    assignedOfficer: "Abebe Kebede",
-    plannedCompletionDate: "2026-08-05",
-    currentBottleneck:
-      "Spec clarification requested by international bidders pending translation.",
-  },
-];
+export const INITIAL_HEALTH_METRICS: DirectorateHealthMetrics = {
+  contractExecutionRate: 0,
+  disbursementPace: 0,
+  scheduleAdherence: 0,
+  nextAuditDate: "Not scheduled",
+  bottleneckStage: "None detected",
+  standardDaysPerStage: 14,
+};
+
+export const INITIAL_FINANCIAL_SUMMARY: FinancialCapitalSummary = {
+  planEstimatedValueETB: 0,
+  signedContractsCommittedETB: 0,
+  actualDisbursedETB: 0,
+  remainingUncommittedETB: 0,
+  contractExecutionRatePct: 0,
+  disbursedOfContractedPct: 0,
+  availableCapacityPct: 0,
+  committedPendingPayETB: 0,
+  uncontractedETB: 0,
+};
+
+export const INITIAL_DIRECTOR_PLANS: DirectorPlan[] = [];
+
+export const INITIAL_CRITICAL_DELAYS: CriticalDelay[] = [];
+

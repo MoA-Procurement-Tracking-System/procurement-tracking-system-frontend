@@ -3,6 +3,7 @@ import type {
   ProjectOfficer,
 } from "@/features/dashboards/components/director/projects/projectsData";
 import type { OfficerProject } from "@/features/projects/data/officerProjects";
+import type { AuthUser } from "./authTypes";
 import { apiClient } from "./apiClient";
 
 export interface BackendProject {
@@ -161,11 +162,76 @@ export function mapBackendProjectToProjectItem(
   };
 }
 
+export function isProjectAssignedToOfficer(
+  project: BackendProject | OfficerProject,
+  user?: AuthUser | null,
+): boolean {
+  if (!user) return true;
+
+  // Check BackendProject with members array
+  if ("members" in project && Array.isArray(project.members)) {
+    return project.members.some((m) => {
+      if (!m) return false;
+      if (m.userId && user.id && m.userId === user.id) return true;
+      if (m.user?.id && user.id && m.user.id === user.id) return true;
+      if (
+        m.user?.email &&
+        user.email &&
+        m.user.email.trim().toLowerCase() === user.email.trim().toLowerCase()
+      ) {
+        return true;
+      }
+      if (
+        m.user?.name &&
+        user.displayName &&
+        m.user.name.trim().toLowerCase() === user.displayName.trim().toLowerCase()
+      ) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  // Check OfficerProject
+  if ("assignedOfficers" in project) {
+    const userIds = project.assignedOfficerIds || [];
+    const userEmails = project.assignedOfficerEmails || [];
+    const userNames = project.assignedOfficers || [];
+
+    if (user.id && userIds.includes(user.id)) return true;
+    if (
+      user.email &&
+      userEmails.some(
+        (e) => e.trim().toLowerCase() === user.email.trim().toLowerCase(),
+      )
+    ) {
+      return true;
+    }
+    if (
+      user.displayName &&
+      userNames.some(
+        (n) => n.trim().toLowerCase() === user.displayName.trim().toLowerCase(),
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  return false;
+}
+
 export function mapBackendProjectToOfficerProject(
   bp: BackendProject,
 ): OfficerProject {
   const assignedOfficers = (bp.members || [])
     .map((m) => m.user?.name || "")
+    .filter(Boolean);
+  const assignedOfficerIds = (bp.members || [])
+    .map((m) => m.userId || m.user?.id || "")
+    .filter(Boolean);
+  const assignedOfficerEmails = (bp.members || [])
+    .map((m) => m.user?.email || "")
     .filter(Boolean);
 
   return {
@@ -185,8 +251,9 @@ export function mapBackendProjectToOfficerProject(
     components: bp.components || [],
     subcomponents: bp.subcomponents || [],
     activePlans: bp.plans ? bp.plans.length : 0,
-    assignedOfficers:
-      assignedOfficers.length > 0 ? assignedOfficers : ["Assigned Officer"],
+    assignedOfficers,
+    assignedOfficerIds,
+    assignedOfficerEmails,
     assignmentStart: {
       ethiopian: "01 Meskerem 2016",
       gregorian: bp.projectStartDate
