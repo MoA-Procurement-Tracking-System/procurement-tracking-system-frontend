@@ -43,7 +43,9 @@ describe("OfficerDashboard - Alerts Center & UI Layout", () => {
 
     // Requiring My Action has been removed
     expect(html).not.toContain("Requiring My Action");
-    expect(html).not.toContain("Plans and activities requiring my action table");
+    expect(html).not.toContain(
+      "Plans and activities requiring my action table",
+    );
   });
 
   it("includes UI overflow protection classes on alert cards and text", () => {
@@ -69,7 +71,11 @@ describe("Delayed Activities in Alerts Center", () => {
         {
           id: "st-1",
           status: "DELAYED",
-          stageType: { id: "st-t1", code: "NOA", label: "Notification of Award" },
+          stageType: {
+            id: "st-t1",
+            code: "NOA",
+            label: "Notification of Award",
+          },
           currentTargetEndDate: new Date(
             now - 1488 * 24 * 60 * 60 * 1000,
           ).toISOString(),
@@ -178,7 +184,7 @@ describe("Alerts formatting helpers - relevance & anti-repetition", () => {
       "Returned by Director: Please adjust the delivery period for lot 3.",
     );
     expect(customFeedback).toBe(
-      'Feedback: Please adjust the delivery period for lot 3.',
+      "Feedback: Please adjust the delivery period for lot 3.",
     );
   });
 
@@ -205,9 +211,7 @@ describe("Alerts formatting helpers - relevance & anti-repetition", () => {
       "Returned by Director for revisions.",
       1,
     );
-    expect(fallback).toBe(
-      "Review 1 activity and resubmit for approval.",
-    );
+    expect(fallback).toBe("Review 1 activity and resubmit for approval.");
   });
 
   it("formatTimeAgo computes relative time cleanly", () => {
@@ -225,5 +229,3 @@ describe("Alerts formatting helpers - relevance & anti-repetition", () => {
     expect(formatTimeAgo(twoHoursAgo, null)).toBe("");
   });
 });
-
-

@@ -58,7 +58,8 @@ export function DashboardOverview({
             const cardBorderClass =
               "border border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200";
 
-            let iconBgClass = "bg-slate-50 text-slate-600 border border-slate-200/60";
+            let iconBgClass =
+              "bg-slate-50 text-slate-600 border border-slate-200/60";
             let actionColorClass = "text-slate-700 hover:text-slate-900";
 
             const numValue = Number(value);
@@ -140,7 +141,9 @@ export function DashboardOverview({
                       ))}
                     </div>
                   ) : (
-                    <div className={`flex items-center gap-1.5 truncate ${detailColorClass}`}>
+                    <div
+                      className={`flex items-center gap-1.5 truncate ${detailColorClass}`}
+                    >
                       {isActiveMetric && (
                         <span
                           className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"

@@ -184,7 +184,8 @@ export function isProjectAssignedToOfficer(
       if (
         m.user?.name &&
         user.displayName &&
-        m.user.name.trim().toLowerCase() === user.displayName.trim().toLowerCase()
+        m.user.name.trim().toLowerCase() ===
+          user.displayName.trim().toLowerCase()
       ) {
         return true;
       }

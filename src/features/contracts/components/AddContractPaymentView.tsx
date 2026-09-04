@@ -66,7 +66,8 @@ export function AddContractPaymentView({
   const contractTotalPaid = Number(contract.totalPaid) || 0;
   const contractCurrentAmount = Number(contract.currentAmount) || 0;
   const contractRemainingBalance =
-    contract.remainingBalance !== null && contract.remainingBalance !== undefined
+    contract.remainingBalance !== null &&
+    contract.remainingBalance !== undefined
       ? Number(contract.remainingBalance)
       : Math.max(0, contractCurrentAmount - contractTotalPaid);
 

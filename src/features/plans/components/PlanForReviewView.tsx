@@ -58,7 +58,10 @@ interface PlanForReviewViewProps {
   selectedPlanId?: string;
 }
 
-export function PlanForReviewView({ user, selectedPlanId }: PlanForReviewViewProps) {
+export function PlanForReviewView({
+  user,
+  selectedPlanId,
+}: PlanForReviewViewProps) {
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const [loading, setLoading] = useState(true);

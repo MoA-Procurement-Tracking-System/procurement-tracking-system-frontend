@@ -64,4 +64,3 @@ describe("AddContractPaymentView", () => {
     expect(markup).not.toContain("6,000,000,010,000,000.00");
   });
 });
-

@@ -56,7 +56,14 @@ import {
 } from "@/lib/projectsApi";
 import { getCurrentUser } from "@/lib/authApi";
 import type { AuthUser } from "@/lib/authTypes";
-import { ChevronDown, ChevronLeft, ChevronRight, FolderLock, Search, ShieldAlert } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FolderLock,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -148,9 +155,7 @@ export function OfficerProjectsView({
             if (!effectiveUser || assignedProjList.length === 0) return true;
             const parentPlan = fetchedPlans.find((p) => p.id === ba.planId);
             const projCode =
-              parentPlan?.project?.code ||
-              ba.plan?.project?.code ||
-              "";
+              parentPlan?.project?.code || ba.plan?.project?.code || "";
             const projId =
               (parentPlan as any)?.projectId ||
               parentPlan?.project?.id ||
@@ -1151,9 +1156,9 @@ export function OfficerProjectsView({
             <span className="font-mono font-semibold text-slate-800">
               {selectedProjectCode}
             </span>{" "}
-            is either not found or has not been assigned to your officer account.
-            Only projects specifically assigned to you by the Procurement
-            Director can be accessed.
+            is either not found or has not been assigned to your officer
+            account. Only projects specifically assigned to you by the
+            Procurement Director can be accessed.
           </p>
           <div className="mt-6 flex justify-center">
             <Link
@@ -1252,8 +1257,8 @@ function OfficerProjectsList({
             No Projects Assigned
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
-            You do not have any projects assigned to your officer account yet.
-            A Procurement Director must assign projects to your account before
+            You do not have any projects assigned to your officer account yet. A
+            Procurement Director must assign projects to your account before
             they will appear here for procurement planning and tracking.
           </p>
           <div className="mt-6 flex justify-center">
@@ -1369,138 +1374,147 @@ function OfficerProjectsList({
             </div>
           </section>
 
-      <section
-        aria-labelledby="projects-table-title"
-        className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
-      >
-        <h2 className="sr-only" id="projects-table-title">
-          Assigned projects
-        </h2>
-        <div
-          aria-label="Assigned projects table"
-          className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
-          role="region"
-          tabIndex={0}
-        >
-          <table className="w-full min-w-[880px] border-collapse text-left">
-            <thead>
-              <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="w-[24%] max-w-[280px] px-4 py-3.5" scope="col">
-                  Project name
-                </th>
-                <th className="w-[10%] px-4 py-3.5" scope="col">
-                  Code
-                </th>
-                <th className="w-[14%] px-4 py-3.5" scope="col">
-                  Funding source
-                </th>
-                <th className="w-[15%] px-4 py-3.5" scope="col">
-                  Organization / region
-                </th>
-                <th className="w-[15%] px-4 py-3.5" scope="col">
-                  Assignment start
-                </th>
-                <th className="w-[8%] px-4 py-3.5 text-center" scope="col">
-                  Active plans
-                </th>
-                <th className="w-[7%] px-4 py-3.5" scope="col">
-                  Status
-                </th>
-                <th className="w-[7%] px-4 py-3.5 text-right" scope="col">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filteredProjects.length > 0 ? (
-                filteredProjects.map((project) => (
-                  <tr key={project.code} className="hover:bg-[#f8fbf9]">
-                    <td className="max-w-[280px] px-4 py-3.5 align-middle">
-                      <Link
-                        title={project.name}
-                        className="line-clamp-2 break-words font-semibold leading-snug text-slate-900 underline-offset-4 hover:text-[#176c55] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
-                        href={`/workspace/projects?project=${encodeURIComponent(
-                          project.code,
-                        )}`}
-                      >
-                        {project.name}
-                      </Link>
-                      <p className="mt-1 font-mono text-[11px] font-medium text-slate-500">
-                        {project.code}
-                      </p>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 font-mono text-xs font-semibold text-slate-500">
-                      {project.code}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700">
-                      {project.fundingSource}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700">
-                      {project.organizationRegion ?? "Not provided"}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-slate-700">
-                        {project.assignmentStart?.gregorian ?? "—"}
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        {project.assignmentStart?.ethiopian}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4 text-center text-sm font-bold text-slate-800">
-                      {project.activePlans}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusText className="text-xs" label={project.status} />
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <Link
-                        aria-label={`Open ${project.name}`}
-                        className="text-sm font-semibold text-[#1261a8] underline-offset-4 hover:text-[#07523f] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07523f]"
-                        href={`/workspace/projects?project=${encodeURIComponent(
-                          project.code,
-                        )}`}
-                      >
-                        Open
-                      </Link>
-                    </td>
+          <section
+            aria-labelledby="projects-table-title"
+            className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs"
+          >
+            <h2 className="sr-only" id="projects-table-title">
+              Assigned projects
+            </h2>
+            <div
+              aria-label="Assigned projects table"
+              className="overflow-x-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#176c55]"
+              role="region"
+              tabIndex={0}
+            >
+              <table className="w-full min-w-[880px] border-collapse text-left">
+                <thead>
+                  <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                    <th
+                      className="w-[24%] max-w-[280px] px-4 py-3.5"
+                      scope="col"
+                    >
+                      Project name
+                    </th>
+                    <th className="w-[10%] px-4 py-3.5" scope="col">
+                      Code
+                    </th>
+                    <th className="w-[14%] px-4 py-3.5" scope="col">
+                      Funding source
+                    </th>
+                    <th className="w-[15%] px-4 py-3.5" scope="col">
+                      Organization / region
+                    </th>
+                    <th className="w-[15%] px-4 py-3.5" scope="col">
+                      Assignment start
+                    </th>
+                    <th className="w-[8%] px-4 py-3.5 text-center" scope="col">
+                      Active plans
+                    </th>
+                    <th className="w-[7%] px-4 py-3.5" scope="col">
+                      Status
+                    </th>
+                    <th className="w-[7%] px-4 py-3.5 text-right" scope="col">
+                      Action
+                    </th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    className="px-4 py-12 text-center text-sm text-slate-500"
-                    colSpan={8}
-                  >
-                    No projects match the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project) => (
+                      <tr key={project.code} className="hover:bg-[#f8fbf9]">
+                        <td className="max-w-[280px] px-4 py-3.5 align-middle">
+                          <Link
+                            title={project.name}
+                            className="line-clamp-2 break-words font-semibold leading-snug text-slate-900 underline-offset-4 hover:text-[#176c55] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#176c55]"
+                            href={`/workspace/projects?project=${encodeURIComponent(
+                              project.code,
+                            )}`}
+                          >
+                            {project.name}
+                          </Link>
+                          <p className="mt-1 font-mono text-[11px] font-medium text-slate-500">
+                            {project.code}
+                          </p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 font-mono text-xs font-semibold text-slate-500">
+                          {project.code}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-700">
+                          {project.fundingSource}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-700">
+                          {project.organizationRegion ?? "Not provided"}
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-medium text-slate-700">
+                            {project.assignmentStart?.gregorian ?? "—"}
+                          </p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {project.assignmentStart?.ethiopian}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 text-center text-sm font-bold text-slate-800">
+                          {project.activePlans}
+                        </td>
+                        <td className="px-4 py-4">
+                          <StatusText
+                            className="text-xs"
+                            label={project.status}
+                          />
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <Link
+                            aria-label={`Open ${project.name}`}
+                            className="text-sm font-semibold text-[#1261a8] underline-offset-4 hover:text-[#07523f] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#07523f]"
+                            href={`/workspace/projects?project=${encodeURIComponent(
+                              project.code,
+                            )}`}
+                          >
+                            Open
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        className="px-4 py-12 text-center text-sm text-slate-500"
+                        colSpan={8}
+                      >
+                        No projects match the selected filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        <footer className="flex items-center justify-between gap-4 border-t border-slate-200 bg-[#fbfcfd] px-4 py-4 text-xs text-slate-500">
-          <p aria-live="polite">{entrySummary}</p>
-          <div aria-label="Project table pagination" className="flex gap-1.5">
-            <button
-              aria-label="Previous page"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-300"
-              disabled
-              type="button"
-            >
-              <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <button
-              aria-label="Next page"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-300"
-              disabled
-              type="button"
-            >
-              <ChevronRight aria-hidden="true" className="h-4 w-4" />
-            </button>
-          </div>
-        </footer>
-      </section>
+            <footer className="flex items-center justify-between gap-4 border-t border-slate-200 bg-[#fbfcfd] px-4 py-4 text-xs text-slate-500">
+              <p aria-live="polite">{entrySummary}</p>
+              <div
+                aria-label="Project table pagination"
+                className="flex gap-1.5"
+              >
+                <button
+                  aria-label="Previous page"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-300"
+                  disabled
+                  type="button"
+                >
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                </button>
+                <button
+                  aria-label="Next page"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-300"
+                  disabled
+                  type="button"
+                >
+                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
+            </footer>
+          </section>
         </>
       )}
     </div>

@@ -156,8 +156,14 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         }
       }
       if (selectedSector !== "All Sectors") {
-        const planSector = ((p.project as any)?.sector?.label || "").toLowerCase();
-        const projName = (p.project?.name || p.organization || "").toLowerCase();
+        const planSector = (
+          (p.project as any)?.sector?.label || ""
+        ).toLowerCase();
+        const projName = (
+          p.project?.name ||
+          p.organization ||
+          ""
+        ).toLowerCase();
         const targetSector = selectedSector.toLowerCase();
         if (
           !planSector.includes(targetSector) &&
@@ -168,9 +174,17 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         }
       }
       if (selectedProject !== "ALL") {
-        const selectedProj = availableProjects.find((proj) => proj.id === selectedProject);
-        const projName = selectedProj ? selectedProj.name.toLowerCase() : selectedProject.toLowerCase();
-        const planProjName = (p.project?.name || p.organization || "").toLowerCase();
+        const selectedProj = availableProjects.find(
+          (proj) => proj.id === selectedProject,
+        );
+        const projName = selectedProj
+          ? selectedProj.name.toLowerCase()
+          : selectedProject.toLowerCase();
+        const planProjName = (
+          p.project?.name ||
+          p.organization ||
+          ""
+        ).toLowerCase();
         if (
           p.project?.id !== selectedProject &&
           p.projectId !== selectedProject &&
@@ -202,7 +216,14 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
       }
       return true;
     });
-  }, [plans, selectedFiscalYear, selectedSector, selectedProject, selectedStatus, availableProjects]);
+  }, [
+    plans,
+    selectedFiscalYear,
+    selectedSector,
+    selectedProject,
+    selectedStatus,
+    availableProjects,
+  ]);
 
   // Top KPI Metric: Awaiting Review Plans
   const pendingPlansLive: DirectorPlan[] = useMemo(() => {
@@ -217,8 +238,7 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
       .map((p) => ({
         id: p.id,
         title: p.title || "Procurement Plan",
-        directorate:
-          p.project?.name || p.organization || "—",
+        directorate: p.project?.name || p.organization || "—",
         submittedBy:
           p.creator?.displayName || p.creator?.name || "Assigned Officer",
         submissionDate: formatRelativeTime(p.createdAt),
@@ -271,7 +291,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           const daysOverdue = deadline
             ? Math.max(
                 1,
-                Math.round((now - new Date(deadline).getTime()) / (1000 * 60 * 60 * 24)),
+                Math.round(
+                  (now - new Date(deadline).getTime()) / (1000 * 60 * 60 * 24),
+                ),
               )
             : 0;
 
@@ -291,9 +313,12 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
             daysOverdue,
             status: "Delayed",
             assignedOfficer:
-              plan.creator?.displayName || plan.creator?.name || "Assigned Officer",
+              plan.creator?.displayName ||
+              plan.creator?.name ||
+              "Assigned Officer",
             plannedCompletionDate: deadline ? deadline.slice(0, 10) : "",
-            currentBottleneck: delayedStage?.remarks || "Pending stage completion",
+            currentBottleneck:
+              delayedStage?.remarks || "Pending stage completion",
           });
         }
       }
@@ -357,7 +382,10 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
     let actualDisbursedETB = actualDisbursedSum;
 
     // Enclose plan envelope around contracted value if plan has no estimated budget
-    if (signedContractsCommittedETB > planEstimatedValueETB && planEstimatedValueETB === 0) {
+    if (
+      signedContractsCommittedETB > planEstimatedValueETB &&
+      planEstimatedValueETB === 0
+    ) {
       planEstimatedValueETB = signedContractsCommittedETB;
     }
     if (actualDisbursedETB > signedContractsCommittedETB) {
@@ -379,21 +407,28 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
     const contractExecutionRatePct =
       planEstimatedValueETB > 0
         ? Number(
-            ((signedContractsCommittedETB / planEstimatedValueETB) * 100).toFixed(1),
+            (
+              (signedContractsCommittedETB / planEstimatedValueETB) *
+              100
+            ).toFixed(1),
           )
         : 0;
 
     const disbursedOfContractedPct =
       signedContractsCommittedETB > 0
         ? Number(
-            ((actualDisbursedETB / signedContractsCommittedETB) * 100).toFixed(1),
+            ((actualDisbursedETB / signedContractsCommittedETB) * 100).toFixed(
+              1,
+            ),
           )
         : 0;
 
     const availableCapacityPct =
       planEstimatedValueETB > 0
         ? Number(
-            ((remainingUncommittedETB / planEstimatedValueETB) * 100).toFixed(1),
+            ((remainingUncommittedETB / planEstimatedValueETB) * 100).toFixed(
+              1,
+            ),
           )
         : 0;
 
@@ -446,18 +481,50 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           continue;
         }
 
-        const activeStage = (act.stages || []).find((s) => s.status !== "COMPLETED");
-        const stageName = (activeStage?.stageType?.label || activeStage?.stageType?.code || (activeStage as any)?.name || "").toLowerCase();
+        const activeStage = (act.stages || []).find(
+          (s) => s.status !== "COMPLETED",
+        );
+        const stageName = (
+          activeStage?.stageType?.label ||
+          activeStage?.stageType?.code ||
+          (activeStage as any)?.name ||
+          ""
+        ).toLowerCase();
 
-        if (stageName.includes("tender") || stageName.includes("spn") || stageName.includes("notice") || stageName.includes("rfb") || stageName.includes("rfq") || stageName.includes("eoi")) {
+        if (
+          stageName.includes("tender") ||
+          stageName.includes("spn") ||
+          stageName.includes("notice") ||
+          stageName.includes("rfb") ||
+          stageName.includes("rfq") ||
+          stageName.includes("eoi")
+        ) {
           tenderCount++;
-        } else if (stageName.includes("eval") || stageName.includes("scoring") || stageName.includes("opening") || stageName.includes("technical") || stageName.includes("financial")) {
+        } else if (
+          stageName.includes("eval") ||
+          stageName.includes("scoring") ||
+          stageName.includes("opening") ||
+          stageName.includes("technical") ||
+          stageName.includes("financial")
+        ) {
           evalCount++;
-        } else if (stageName.includes("award") || stageName.includes("intention") || stageName.includes("recommendation")) {
+        } else if (
+          stageName.includes("award") ||
+          stageName.includes("intention") ||
+          stageName.includes("recommendation")
+        ) {
           awardCount++;
-        } else if (stageName.includes("contract") || stageName.includes("sign")) {
+        } else if (
+          stageName.includes("contract") ||
+          stageName.includes("sign")
+        ) {
           contractCount++;
-        } else if (stageName.includes("delivery") || stageName.includes("exec") || stageName.includes("implementation") || stageName.includes("work")) {
+        } else if (
+          stageName.includes("delivery") ||
+          stageName.includes("exec") ||
+          stageName.includes("implementation") ||
+          stageName.includes("work")
+        ) {
           execCount++;
         } else {
           tenderCount++;
@@ -476,26 +543,96 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
       return true;
     });
 
-    const activeContracts = relevantContracts.filter((c) => c.status === "ACTIVE" || c.status === "PENDING");
-    const completedContracts = relevantContracts.filter((c) => c.status === "COMPLETED");
+    const activeContracts = relevantContracts.filter(
+      (c) => c.status === "ACTIVE" || c.status === "PENDING",
+    );
+    const completedContracts = relevantContracts.filter(
+      (c) => c.status === "COMPLETED",
+    );
     if (activeContracts.length > 0) {
       contractCount = Math.max(contractCount, activeContracts.length);
-      execCount = Math.max(execCount, activeContracts.filter((c) => Number(c.paidAmount || 0) > 0).length);
+      execCount = Math.max(
+        execCount,
+        activeContracts.filter((c) => Number(c.paidAmount || 0) > 0).length,
+      );
     }
     if (completedContracts.length > 0) {
       doneCount += completedContracts.length;
     }
 
     return [
-      { id: 1, code: "1. PLAN", title: "1. PLAN", sublabel: "Created", count: draftPlans, accent: "default" },
-      { id: 2, code: "2. REVIEW", title: "2. REVIEW", sublabel: "Director", count: awaitingReviewCount, accent: "amber" },
-      { id: 3, code: "3. COMM", title: "3. COMM", sublabel: "Voting", count: committeePlansCount, accent: "purple" },
-      { id: 4, code: "4. TENDER", title: "4. TENDER", sublabel: "Published", count: tenderCount, accent: "default" },
-      { id: 5, code: "5. EVAL", title: "5. EVAL", sublabel: "Technical", count: evalCount, accent: "default" },
-      { id: 6, code: "6. AWARD", title: "6. AWARD", sublabel: "Intention", count: awardCount, accent: "default" },
-      { id: 7, code: "7. CONT", title: "7. CONT", sublabel: "Signed", count: contractCount, accent: "teal" },
-      { id: 8, code: "8. EXEC", title: "8. EXEC", sublabel: "Delivery", count: execCount, accent: "default" },
-      { id: 9, code: "9. DONE", title: "9. DONE", sublabel: "Completed", count: doneCount, accent: "emerald" },
+      {
+        id: 1,
+        code: "1. PLAN",
+        title: "1. PLAN",
+        sublabel: "Created",
+        count: draftPlans,
+        accent: "default",
+      },
+      {
+        id: 2,
+        code: "2. REVIEW",
+        title: "2. REVIEW",
+        sublabel: "Director",
+        count: awaitingReviewCount,
+        accent: "amber",
+      },
+      {
+        id: 3,
+        code: "3. COMM",
+        title: "3. COMM",
+        sublabel: "Voting",
+        count: committeePlansCount,
+        accent: "purple",
+      },
+      {
+        id: 4,
+        code: "4. TENDER",
+        title: "4. TENDER",
+        sublabel: "Published",
+        count: tenderCount,
+        accent: "default",
+      },
+      {
+        id: 5,
+        code: "5. EVAL",
+        title: "5. EVAL",
+        sublabel: "Technical",
+        count: evalCount,
+        accent: "default",
+      },
+      {
+        id: 6,
+        code: "6. AWARD",
+        title: "6. AWARD",
+        sublabel: "Intention",
+        count: awardCount,
+        accent: "default",
+      },
+      {
+        id: 7,
+        code: "7. CONT",
+        title: "7. CONT",
+        sublabel: "Signed",
+        count: contractCount,
+        accent: "teal",
+      },
+      {
+        id: 8,
+        code: "8. EXEC",
+        title: "8. EXEC",
+        sublabel: "Delivery",
+        count: execCount,
+        accent: "default",
+      },
+      {
+        id: 9,
+        code: "9. DONE",
+        title: "9. DONE",
+        sublabel: "Completed",
+        count: doneCount,
+        accent: "emerald",
+      },
     ];
   }, [filteredPlans, contracts, awaitingReviewCount, committeePlansCount]);
 
@@ -508,7 +645,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         const stage = d.stageName || d.delayDetail || "Unknown Stage";
         stageDelayCounts[stage] = (stageDelayCounts[stage] || 0) + 1;
       });
-      const sorted = Object.entries(stageDelayCounts).sort((a, b) => b[1] - a[1]);
+      const sorted = Object.entries(stageDelayCounts).sort(
+        (a, b) => b[1] - a[1],
+      );
       if (sorted[0] && sorted[0][0]) {
         bottleneckStage = `${sorted[0][0]} (${sorted[0][1]} active delays)`;
       }
@@ -658,7 +797,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         {/* CARD 1: TOTAL PROJECTS */}
         <article className="flex flex-col justify-between rounded-xl bg-white p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs transition-all duration-200 hover:shadow-md min-h-[105px]">
           <div className="flex items-start justify-between">
-            <h3 className="text-[11px] font-bold text-slate-700">Total Projects</h3>
+            <h3 className="text-[11px] font-bold text-slate-700">
+              Total Projects
+            </h3>
           </div>
           <div className="my-0.5">
             <p className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-slate-900 leading-none">
@@ -666,7 +807,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
             </p>
           </div>
           <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">Active Portfolios</span>
+            <span className="text-slate-400 font-medium text-[11px]">
+              Active Portfolios
+            </span>
             <Link
               href="/workspace/projects"
               className="text-[#006837] hover:text-[#004f29] font-bold text-[11px] flex items-center gap-0.5 cursor-pointer hover:underline"
@@ -679,7 +822,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         {/* CARD 2: AWAITING REVIEW */}
         <article className="flex flex-col justify-between rounded-xl bg-white p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs transition-all duration-200 hover:shadow-md min-h-[105px]">
           <div className="flex items-start justify-between">
-            <h3 className="text-[11px] font-bold text-slate-700">Awaiting Review</h3>
+            <h3 className="text-[11px] font-bold text-slate-700">
+              Awaiting Review
+            </h3>
             <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0 mt-0.5" />
           </div>
           <div className="my-0.5 flex items-baseline gap-1.5">
@@ -689,7 +834,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
             <span className="text-xs font-semibold text-slate-500">plans</span>
           </div>
           <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">Pending Decision</span>
+            <span className="text-slate-400 font-medium text-[11px]">
+              Pending Decision
+            </span>
             <Link
               href="/workspace/plan-for-review"
               className="text-amber-700 hover:text-amber-800 font-bold text-[11px] flex items-center gap-0.5 cursor-pointer hover:underline"
@@ -702,7 +849,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         {/* CARD 3: COMMITTEE PROGRESS */}
         <article className="flex flex-col justify-between rounded-xl bg-white p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs transition-all duration-200 hover:shadow-md min-h-[105px]">
           <div className="flex items-start justify-between">
-            <h3 className="text-[11px] font-bold text-slate-700">Committee Progress</h3>
+            <h3 className="text-[11px] font-bold text-slate-700">
+              Committee Progress
+            </h3>
           </div>
           <div className="my-0.5 flex items-baseline gap-1.5">
             <p className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-slate-900 leading-none">
@@ -711,7 +860,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
             <span className="text-xs font-semibold text-slate-500">plans</span>
           </div>
           <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">In Deliberation</span>
+            <span className="text-slate-400 font-medium text-[11px]">
+              In Deliberation
+            </span>
             <Link
               href="/workspace/committee-progress"
               className="text-purple-700 hover:text-purple-800 font-bold text-[11px] flex items-center gap-0.5 cursor-pointer hover:underline"
@@ -724,17 +875,23 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         {/* CARD 4: CRITICAL DELAYS */}
         <article className="flex flex-col justify-between rounded-xl bg-white p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs transition-all duration-200 hover:shadow-md min-h-[105px]">
           <div className="flex items-start justify-between">
-            <h3 className="text-[11px] font-bold text-slate-700">Critical Delays</h3>
+            <h3 className="text-[11px] font-bold text-slate-700">
+              Critical Delays
+            </h3>
             <span className="h-2 w-2 rounded-full bg-rose-600 shrink-0 mt-0.5" />
           </div>
           <div className="my-0.5 flex items-baseline gap-1.5">
             <p className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-rose-600 leading-none">
               {criticalDelaysCount}
             </p>
-            <span className="text-xs font-semibold text-slate-700">overdue &gt;7d</span>
+            <span className="text-xs font-semibold text-slate-700">
+              overdue &gt;7d
+            </span>
           </div>
           <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">Action Required</span>
+            <span className="text-slate-400 font-medium text-[11px]">
+              Action Required
+            </span>
             <Link
               href="/workspace/activity-tracker"
               className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-0.5 cursor-pointer hover:underline"
@@ -758,7 +915,8 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
                 Procurement Financial Capital & Contract Summary
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                Aggregated expenditure, signed commitments, and liquid disbursement balance for 2017 EFY
+                Aggregated expenditure, signed commitments, and liquid
+                disbursement balance for 2017 EFY
               </p>
             </div>
           </div>
@@ -767,7 +925,10 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
               {financialSummary.disbursedOfContractedPct}% Executed Disbursed
             </span>
             <span className="text-[11px] text-slate-600 font-medium">
-              Currency: <span className="font-bold text-slate-900">ETB (Ethiopian Birr)</span>
+              Currency:{" "}
+              <span className="font-bold text-slate-900">
+                ETB (Ethiopian Birr)
+              </span>
             </span>
           </div>
         </div>
@@ -776,8 +937,13 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 py-2.5">
           {/* Col 1 */}
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-slate-500 truncate">Plan Estimated Value</p>
-            <p className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 mt-0.5 truncate" title={`${formatETB(financialSummary.planEstimatedValueETB)} ETB`}>
+            <p className="text-[11px] font-semibold text-slate-500 truncate">
+              Plan Estimated Value
+            </p>
+            <p
+              className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 mt-0.5 truncate"
+              title={`${formatETB(financialSummary.planEstimatedValueETB)} ETB`}
+            >
               {formatETB(financialSummary.planEstimatedValueETB)}{" "}
               <span className="text-xs font-bold text-slate-500">ETB</span>
             </p>
@@ -788,20 +954,31 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
 
           {/* Col 2 */}
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-slate-500 truncate">Signed Contracts Committed</p>
-            <p className="text-base sm:text-lg lg:text-xl font-extrabold text-[#007A78] mt-0.5 truncate" title={`${formatETB(financialSummary.signedContractsCommittedETB)} ETB`}>
+            <p className="text-[11px] font-semibold text-slate-500 truncate">
+              Signed Contracts Committed
+            </p>
+            <p
+              className="text-base sm:text-lg lg:text-xl font-extrabold text-[#007A78] mt-0.5 truncate"
+              title={`${formatETB(financialSummary.signedContractsCommittedETB)} ETB`}
+            >
               {formatETB(financialSummary.signedContractsCommittedETB)}{" "}
               <span className="text-xs font-bold text-slate-500">ETB</span>
             </p>
             <p className="text-[10px] font-bold text-[#007A78] mt-0.5 truncate">
-              {financialSummary.contractExecutionRatePct}% Contract Execution Rate
+              {financialSummary.contractExecutionRatePct}% Contract Execution
+              Rate
             </p>
           </div>
 
           {/* Col 3 */}
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-slate-500 truncate">Actual Disbursed / Paid</p>
-            <p className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-600 mt-0.5 truncate" title={`${formatETB(financialSummary.actualDisbursedETB)} ETB`}>
+            <p className="text-[11px] font-semibold text-slate-500 truncate">
+              Actual Disbursed / Paid
+            </p>
+            <p
+              className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-600 mt-0.5 truncate"
+              title={`${formatETB(financialSummary.actualDisbursedETB)} ETB`}
+            >
               {formatETB(financialSummary.actualDisbursedETB)}{" "}
               <span className="text-xs font-bold text-slate-500">ETB</span>
             </p>
@@ -812,8 +989,13 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
 
           {/* Col 4 */}
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-slate-500 truncate">Remaining Uncommitted Balance</p>
-            <p className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 mt-0.5 truncate" title={`${formatETB(financialSummary.remainingUncommittedETB)} ETB`}>
+            <p className="text-[11px] font-semibold text-slate-500 truncate">
+              Remaining Uncommitted Balance
+            </p>
+            <p
+              className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 mt-0.5 truncate"
+              title={`${formatETB(financialSummary.remainingUncommittedETB)} ETB`}
+            >
               {formatETB(financialSummary.remainingUncommittedETB)}{" "}
               <span className="text-xs font-bold text-slate-500">ETB</span>
             </p>
@@ -833,19 +1015,22 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
               <div className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-xs bg-emerald-600 inline-block" />
                 <span className="text-slate-600 font-medium">
-                  Disbursed ({formatCompactM(financialSummary.actualDisbursedETB)})
+                  Disbursed (
+                  {formatCompactM(financialSummary.actualDisbursedETB)})
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-xs bg-[#007A78] inline-block" />
                 <span className="text-slate-600 font-medium">
-                  Committed Pending Pay ({formatCompactM(financialSummary.committedPendingPayETB)})
+                  Committed Pending Pay (
+                  {formatCompactM(financialSummary.committedPendingPayETB)})
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-xs bg-slate-300 inline-block" />
                 <span className="text-slate-600 font-medium">
-                  Uncontracted ({formatCompactM(financialSummary.uncontractedETB)})
+                  Uncontracted (
+                  {formatCompactM(financialSummary.uncontractedETB)})
                 </span>
               </div>
             </div>
@@ -965,7 +1150,8 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
               </span>
             </div>
             <div className="font-medium text-slate-400 text-[10px]">
-              System standard: {healthMetrics.standardDaysPerStage} days per stage
+              System standard: {healthMetrics.standardDaysPerStage} days per
+              stage
             </div>
           </div>
         </div>
@@ -987,7 +1173,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
 
             {/* Subtitle / Currency Indicator */}
             <div className="flex items-center justify-between mt-2 mb-2 text-[11px]">
-              <span className="font-medium text-slate-500">Expenditure Tracking</span>
+              <span className="font-medium text-slate-500">
+                Expenditure Tracking
+              </span>
               <span className="font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
                 ETB
               </span>
@@ -1023,7 +1211,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
                     Contracted
                   </span>
                   <span className="text-[#007A78] font-extrabold font-mono">
-                    {formatCompactM(financialSummary.signedContractsCommittedETB)}
+                    {formatCompactM(
+                      financialSummary.signedContractsCommittedETB,
+                    )}
                   </span>
                 </div>
                 <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
@@ -1063,7 +1253,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
 
           {/* Audit Footer */}
           <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium">Next Directorate Audit</span>
+            <span className="text-slate-500 font-medium">
+              Next Directorate Audit
+            </span>
             <span className="font-bold text-slate-800">
               {healthMetrics.nextAuditDate}
             </span>
@@ -1162,10 +1354,12 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
               <AlertCircle className="h-4 w-4 text-rose-600" />
               <div>
                 <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-tight">
-                  Critical Delays Requiring Immediate Intervention ({criticalDelaysLive.length})
+                  Critical Delays Requiring Immediate Intervention (
+                  {criticalDelaysLive.length})
                 </h3>
                 <p className="text-[10px] text-slate-500 mt-0.5">
-                  Activities delayed by 7+ days past scheduled milestone completion
+                  Activities delayed by 7+ days past scheduled milestone
+                  completion
                 </p>
               </div>
             </div>
@@ -1188,7 +1382,10 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
               <tbody className="divide-y divide-slate-100">
                 {displayedCriticalDelays.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
+                    <td
+                      colSpan={4}
+                      className="py-6 text-center text-xs text-slate-400"
+                    >
                       No critical delays found.
                     </td>
                   </tr>
@@ -1204,7 +1401,9 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5">
                           {delay.projectName || delay.directorate} •{" "}
-                          <span className="text-slate-600">{delay.stageName}</span>
+                          <span className="text-slate-600">
+                            {delay.stageName}
+                          </span>
                         </p>
                       </td>
                       <td className="px-2 py-2 font-medium text-slate-700 text-xs">
@@ -1246,7 +1445,8 @@ export function DirectorDashboard({ user: _user }: { user: AuthUser }) {
           </span>
         </div>
         <div>
-          Ministry of Agriculture • Federal Democratic Republic of Ethiopia • 2017 EFY
+          Ministry of Agriculture • Federal Democratic Republic of Ethiopia •
+          2017 EFY
         </div>
       </footer>
     </div>

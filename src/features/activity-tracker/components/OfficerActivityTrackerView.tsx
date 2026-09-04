@@ -150,9 +150,7 @@ export function OfficerActivityTrackerView({
                   (p) => p.id === ba.planId,
                 );
                 const projCode =
-                  parentPlan?.project?.code ||
-                  ba.plan?.project?.code ||
-                  "";
+                  parentPlan?.project?.code || ba.plan?.project?.code || "";
                 const projId =
                   (parentPlan as any)?.projectId ||
                   parentPlan?.project?.id ||

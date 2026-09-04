@@ -68,15 +68,78 @@ export interface FinancialCapitalSummary {
 }
 
 export const INITIAL_PIPELINE_STAGES: PipelineStageVolume[] = [
-  { id: 1, code: "1. PLAN", title: "1. PLAN", sublabel: "Created", count: 0, accent: "default" },
-  { id: 2, code: "2. REVIEW", title: "2. REVIEW", sublabel: "Director", count: 0, accent: "amber" },
-  { id: 3, code: "3. COMM", title: "3. COMM", sublabel: "Voting", count: 0, accent: "purple" },
-  { id: 4, code: "4. TENDER", title: "4. TENDER", sublabel: "Published", count: 0, accent: "default" },
-  { id: 5, code: "5. EVAL", title: "5. EVAL", sublabel: "Technical", count: 0, accent: "default" },
-  { id: 6, code: "6. AWARD", title: "6. AWARD", sublabel: "Intention", count: 0, accent: "default" },
-  { id: 7, code: "7. CONT", title: "7. CONT", sublabel: "Signed", count: 0, accent: "teal" },
-  { id: 8, code: "8. EXEC", title: "8. EXEC", sublabel: "Delivery", count: 0, accent: "default" },
-  { id: 9, code: "9. DONE", title: "9. DONE", sublabel: "Completed", count: 0, accent: "emerald" },
+  {
+    id: 1,
+    code: "1. PLAN",
+    title: "1. PLAN",
+    sublabel: "Created",
+    count: 0,
+    accent: "default",
+  },
+  {
+    id: 2,
+    code: "2. REVIEW",
+    title: "2. REVIEW",
+    sublabel: "Director",
+    count: 0,
+    accent: "amber",
+  },
+  {
+    id: 3,
+    code: "3. COMM",
+    title: "3. COMM",
+    sublabel: "Voting",
+    count: 0,
+    accent: "purple",
+  },
+  {
+    id: 4,
+    code: "4. TENDER",
+    title: "4. TENDER",
+    sublabel: "Published",
+    count: 0,
+    accent: "default",
+  },
+  {
+    id: 5,
+    code: "5. EVAL",
+    title: "5. EVAL",
+    sublabel: "Technical",
+    count: 0,
+    accent: "default",
+  },
+  {
+    id: 6,
+    code: "6. AWARD",
+    title: "6. AWARD",
+    sublabel: "Intention",
+    count: 0,
+    accent: "default",
+  },
+  {
+    id: 7,
+    code: "7. CONT",
+    title: "7. CONT",
+    sublabel: "Signed",
+    count: 0,
+    accent: "teal",
+  },
+  {
+    id: 8,
+    code: "8. EXEC",
+    title: "8. EXEC",
+    sublabel: "Delivery",
+    count: 0,
+    accent: "default",
+  },
+  {
+    id: 9,
+    code: "9. DONE",
+    title: "9. DONE",
+    sublabel: "Completed",
+    count: 0,
+    accent: "emerald",
+  },
 ];
 
 export const INITIAL_HEALTH_METRICS: DirectorateHealthMetrics = {
@@ -103,4 +166,3 @@ export const INITIAL_FINANCIAL_SUMMARY: FinancialCapitalSummary = {
 export const INITIAL_DIRECTOR_PLANS: DirectorPlan[] = [];
 
 export const INITIAL_CRITICAL_DELAYS: CriticalDelay[] = [];
-

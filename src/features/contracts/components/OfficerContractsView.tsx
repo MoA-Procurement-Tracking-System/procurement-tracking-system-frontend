@@ -416,19 +416,34 @@ export function OfficerContractsView({
                 <th className="w-60 min-w-[240px] px-3.5 py-3" scope="col">
                   Supplier/contractor
                 </th>
-                <th className="w-40 min-w-[160px] px-3 py-3 text-right" scope="col">
+                <th
+                  className="w-40 min-w-[160px] px-3 py-3 text-right"
+                  scope="col"
+                >
                   Original amount
                 </th>
-                <th className="w-40 min-w-[160px] px-3 py-3 text-right" scope="col">
+                <th
+                  className="w-40 min-w-[160px] px-3 py-3 text-right"
+                  scope="col"
+                >
                   Current amount
                 </th>
-                <th className="w-16 min-w-[64px] px-3 py-3 text-center" scope="col">
+                <th
+                  className="w-16 min-w-[64px] px-3 py-3 text-center"
+                  scope="col"
+                >
                   Curr
                 </th>
-                <th className="w-36 min-w-[144px] px-3 py-3 text-right" scope="col">
+                <th
+                  className="w-36 min-w-[144px] px-3 py-3 text-right"
+                  scope="col"
+                >
                   Total paid
                 </th>
-                <th className="w-40 min-w-[160px] px-3 py-3 text-right" scope="col">
+                <th
+                  className="w-40 min-w-[160px] px-3 py-3 text-right"
+                  scope="col"
+                >
                   Remaining balance
                 </th>
                 <th className="w-40 min-w-[160px] px-3 py-3" scope="col">
@@ -440,7 +455,10 @@ export function OfficerContractsView({
                 <th className="w-36 min-w-[140px] px-3 py-3" scope="col">
                   Status
                 </th>
-                <th className="w-32 min-w-[128px] px-3 py-3 text-center" scope="col">
+                <th
+                  className="w-32 min-w-[128px] px-3 py-3 text-center"
+                  scope="col"
+                >
                   Actions
                 </th>
               </tr>
@@ -468,7 +486,10 @@ export function OfficerContractsView({
                         {contract.contractNumber}
                       </td>
                       <td className="w-80 min-w-[320px] px-3.5 py-2.5 align-top text-xs leading-5 text-slate-700 wrap-break-word">
-                        <span className="wrap-break-word line-clamp-2 block" title={contract.procurementActivity}>
+                        <span
+                          className="wrap-break-word line-clamp-2 block"
+                          title={contract.procurementActivity}
+                        >
                           {contract.procurementActivity}
                         </span>
                       </td>
@@ -476,7 +497,10 @@ export function OfficerContractsView({
                         {contract.project}
                       </td>
                       <td className="w-60 min-w-[240px] px-3.5 py-2.5 align-top text-xs leading-5 text-slate-700 wrap-break-word">
-                        <span className="wrap-break-word line-clamp-2 block" title={contract.supplier}>
+                        <span
+                          className="wrap-break-word line-clamp-2 block"
+                          title={contract.supplier}
+                        >
                           {contract.supplier}
                         </span>
                       </td>

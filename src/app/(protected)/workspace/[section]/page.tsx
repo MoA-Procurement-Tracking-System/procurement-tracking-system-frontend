@@ -82,10 +82,7 @@ export default async function WorkspaceSectionPage({
           ? query.planId
           : undefined;
     return (
-      <PlanForReviewView
-        user={session.user}
-        selectedPlanId={selectedPlanId}
-      />
+      <PlanForReviewView user={session.user} selectedPlanId={selectedPlanId} />
     );
   }
 

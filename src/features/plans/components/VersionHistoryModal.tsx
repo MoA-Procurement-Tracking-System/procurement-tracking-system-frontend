@@ -100,7 +100,8 @@ export function VersionHistoryModal({
         return {
           icon: <Edit3 className="h-3 w-3 text-emerald-600" />,
           bg: "bg-emerald-50 text-emerald-800 border-emerald-200",
-          label: action === "PLAN_REVISED" ? "Plan Revised" : "Activity Revised",
+          label:
+            action === "PLAN_REVISED" ? "Plan Revised" : "Activity Revised",
         };
       case "ACTIVITY_ADDED":
         return {
@@ -233,8 +234,8 @@ export function VersionHistoryModal({
                   Baseline Version (v1)
                 </h3>
                 <p className="mt-1 max-w-xs text-[11px] text-slate-500 leading-normal">
-                  No revisions recorded yet. When updates or returns occur, audit
-                  entries and field changes will appear here.
+                  No revisions recorded yet. When updates or returns occur,
+                  audit entries and field changes will appear here.
                 </p>
               </div>
             ) : (

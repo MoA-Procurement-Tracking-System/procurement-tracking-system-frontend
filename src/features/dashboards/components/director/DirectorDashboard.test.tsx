@@ -50,7 +50,9 @@ describe("DirectorDashboard - Visual Layout & Mockup Compliance", () => {
   it("renders the Procurement Financial Capital & Contract Summary banner", () => {
     const html = renderToStaticMarkup(<DirectorDashboard user={mockUser} />);
 
-    expect(html).toContain("Procurement Financial Capital &amp; Contract Summary");
+    expect(html).toContain(
+      "Procurement Financial Capital &amp; Contract Summary",
+    );
     expect(html).toContain("Executed Disbursed");
     expect(html).toContain("Currency:");
     expect(html).toContain("ETB (Ethiopian Birr)");
@@ -98,14 +100,18 @@ describe("DirectorDashboard - Visual Layout & Mockup Compliance", () => {
     const html = renderToStaticMarkup(<DirectorDashboard user={mockUser} />);
 
     expect(html).toContain("Plans Awaiting Director Review (0)");
-    expect(html).toContain("Require formal Directorate approval or returned revision");
+    expect(html).toContain(
+      "Require formal Directorate approval or returned revision",
+    );
     expect(html).toContain("No plans matching current filter criteria.");
   });
 
   it("renders Critical Delays Requiring Immediate Intervention table with empty state", () => {
     const html = renderToStaticMarkup(<DirectorDashboard user={mockUser} />);
 
-    expect(html).toContain("Critical Delays Requiring Immediate Intervention (0)");
+    expect(html).toContain(
+      "Critical Delays Requiring Immediate Intervention (0)",
+    );
     expect(html).toContain("ALERT ACTIVE");
     expect(html).toContain("No critical delays found.");
   });
@@ -116,7 +122,9 @@ describe("DirectorDashboard - Visual Layout & Mockup Compliance", () => {
     expect(html).toContain("PTS System Operational (v2.4-Gov)");
     expect(html).toContain("Baseline Preservation Lock:");
     expect(html).toContain("Active");
-    expect(html).toContain("Ministry of Agriculture • Federal Democratic Republic of Ethiopia • 2017 EFY");
+    expect(html).toContain(
+      "Ministry of Agriculture • Federal Democratic Republic of Ethiopia • 2017 EFY",
+    );
   });
 
   it("contains overflow-x-hidden and min-w-0 container classes to prevent UI horizontal overflow", () => {

@@ -168,7 +168,9 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
               <div className="flex items-center gap-1.5">
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    delayedCount > 0 ? "bg-rose-600 animate-pulse" : "bg-slate-300"
+                    delayedCount > 0
+                      ? "bg-rose-600 animate-pulse"
+                      : "bg-slate-300"
                   }`}
                 />
                 <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide leading-tight">
