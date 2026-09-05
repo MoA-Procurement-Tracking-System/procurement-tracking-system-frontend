@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchPlans, mapBackendPlanToFrontend } from "../../../lib/plansApi";
 import type { AuthUser } from "../../../lib/authTypes";
-import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
+import type { ProcurementPlan } from "../plansData";
 
 interface DecisionRecord {
   id: string;
@@ -51,15 +51,10 @@ export function MyDecisionsView({ user }: MyDecisionsViewProps) {
         const mapped = rawPlans.map((p) =>
           mapBackendPlanToFrontend(p, user.id, user.email),
         );
-
-        const planMap = new Map<string, ProcurementPlan>();
-        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-        mapped.forEach((p) => planMap.set(p.id, p));
-
-        setPlans(Array.from(planMap.values()));
+        setPlans(mapped);
       } catch (err) {
         console.error("Failed to load decisions:", err);
-        setPlans([...INITIAL_PLANS]);
+        setPlans([]);
       } finally {
         setLoading(false);
       }

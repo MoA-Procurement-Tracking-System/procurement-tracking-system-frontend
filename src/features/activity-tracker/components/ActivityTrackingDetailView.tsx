@@ -1317,7 +1317,7 @@ function OverviewValue({
         {label}
       </p>
       <p
-        className={`mt-1.5 text-xs font-bold leading-5 text-[#10243f] ${
+        className={`mt-1.5 text-xs font-bold leading-5 text-[#10243f] break-words [overflow-wrap:anywhere] ${
           mono ? "font-mono" : ""
         }`}
         title={value}

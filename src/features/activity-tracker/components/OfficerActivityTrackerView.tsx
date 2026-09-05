@@ -33,10 +33,13 @@ import {
 } from "../../projects/data/officerProjects";
 import {
   fetchProjects,
+  isProjectAssignedToOfficer,
   mapBackendProjectToOfficerProject,
 } from "@/lib/projectsApi";
 import { fetchPlans, mapBackendPlanToOfficerPlanSummary } from "@/lib/plansApi";
 import { fetchActivities, type BackendActivity } from "@/lib/activitiesApi";
+import { getCurrentUser } from "@/lib/authApi";
+import type { AuthUser } from "@/lib/authTypes";
 import {
   ArrowUpDown,
   CalendarDays,
@@ -76,14 +79,17 @@ const DUE_SOON_DAYS = 7;
 const PAGE_SIZE = 10;
 
 export function OfficerActivityTrackerView({
+  currentUser,
   selectedActivityReference,
   selectedPlanReference,
   selectedProjectCode,
 }: {
+  currentUser?: AuthUser;
   selectedActivityReference?: string;
   selectedPlanReference?: string;
   selectedProjectCode?: string;
 }) {
+  const effectiveUser = currentUser || getCurrentUser();
   const [savedPlanRecords, setSavedPlanRecords] = useState<
     SavedOfficerPlanRecord[]
   >([]);
@@ -109,7 +115,19 @@ export function OfficerActivityTrackerView({
           fetchActivities(),
         ]);
         if (isMounted && rawProjects && rawProjects.length > 0) {
-          const mapped = rawProjects.map((p) => {
+          const assignedRawProjects = effectiveUser
+            ? rawProjects.filter((p) =>
+                isProjectAssignedToOfficer(p, effectiveUser),
+              )
+            : rawProjects;
+          const assignedIds = new Set(
+            assignedRawProjects.map((p) => p.id).filter(Boolean),
+          );
+          const assignedCodes = new Set(
+            assignedRawProjects.map((p) => p.code.toLowerCase()),
+          );
+
+          const mapped = assignedRawProjects.map((p) => {
             const officerProj = mapBackendProjectToOfficerProject(p);
             const projPlans = (rawPlans || [])
               .filter(
@@ -122,29 +140,48 @@ export function OfficerActivityTrackerView({
             };
           });
           setBackendProjects(mapped);
-        }
 
-        if (isMounted && rawActivities && rawActivities.length > 0) {
-          const dbRecords: SavedOfficerActivityRecord[] = rawActivities.map(
-            (ba: BackendActivity) => {
-              const summary =
-                mapBackendActivityToProcurementActivitySummary(ba);
-              const parentPlan = (rawPlans || []).find(
-                (p) => p.id === ba.planId,
-              );
-              const planRef = parentPlan?.title || ba.plan?.title || ba.planId;
-              const projCode =
-                parentPlan?.project?.code ||
-                ba.plan?.project?.code ||
-                "PRJ-24-001";
-              return {
-                activity: summary,
-                planReference: planRef,
-                projectCode: projCode,
-              };
-            },
-          );
-          setBackendActivities(dbRecords);
+          if (rawActivities && rawActivities.length > 0) {
+            const dbRecords: SavedOfficerActivityRecord[] = rawActivities
+              .filter((ba: BackendActivity) => {
+                if (!effectiveUser || assignedRawProjects.length === 0)
+                  return true;
+                const parentPlan = (rawPlans || []).find(
+                  (p) => p.id === ba.planId,
+                );
+                const projCode =
+                  parentPlan?.project?.code || ba.plan?.project?.code || "";
+                const projId =
+                  (parentPlan as any)?.projectId ||
+                  parentPlan?.project?.id ||
+                  (ba.plan as any)?.projectId ||
+                  ba.plan?.project?.id ||
+                  "";
+                return (
+                  (projCode && assignedCodes.has(projCode.toLowerCase())) ||
+                  (projId && assignedIds.has(projId))
+                );
+              })
+              .map((ba: BackendActivity) => {
+                const summary =
+                  mapBackendActivityToProcurementActivitySummary(ba);
+                const parentPlan = (rawPlans || []).find(
+                  (p) => p.id === ba.planId,
+                );
+                const planRef =
+                  parentPlan?.title || ba.plan?.title || ba.planId;
+                const projCode =
+                  parentPlan?.project?.code ||
+                  ba.plan?.project?.code ||
+                  "PRJ-24-001";
+                return {
+                  activity: summary,
+                  planReference: planRef,
+                  projectCode: projCode,
+                };
+              });
+            setBackendActivities(dbRecords);
+          }
         }
       } catch (err) {
         console.warn("fetchProjects tracker note:", err);
@@ -1122,37 +1159,58 @@ function ActivityTrackerList({
           role="region"
           tabIndex={0}
         >
-          <table className="w-full min-w-368 table-fixed border-collapse text-left">
-            <thead>
+          <table className="w-full min-w-[1240px] border-collapse text-left">
+            <thead className="bg-[#0A3C2F]">
               <tr className="bg-[#0A3C2F] text-white text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="w-48 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[140px] px-4 py-3.5 whitespace-nowrap"
+                  scope="col"
+                >
                   Reference No.
                 </th>
-                <th className="w-72 px-4 py-3.5" scope="col">
+                <th className="min-w-[220px] px-4 py-3.5" scope="col">
                   Activity
                 </th>
-                <th className="w-36 px-4 py-3.5" scope="col">
+                <th className="min-w-[160px] px-4 py-3.5" scope="col">
                   Project
                 </th>
-                <th className="w-44 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[100px] px-4 py-3.5 whitespace-nowrap"
+                  scope="col"
+                >
                   Category
                 </th>
-                <th className="w-28 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[130px] px-4 py-3.5 whitespace-nowrap"
+                  scope="col"
+                >
                   Method
                 </th>
-                <th className="w-56 px-4 py-3.5" scope="col">
+                <th className="min-w-[160px] px-4 py-3.5" scope="col">
                   Current Stage
                 </th>
-                <th className="w-44 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[130px] px-4 py-3.5 whitespace-nowrap"
+                  scope="col"
+                >
                   Effective Target
                 </th>
-                <th className="w-32 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[125px] px-4 py-3.5 text-center whitespace-nowrap"
+                  scope="col"
+                >
                   Delay
                 </th>
-                <th className="w-36 px-4 py-3.5" scope="col">
+                <th
+                  className="min-w-[125px] px-4 py-3.5 whitespace-nowrap"
+                  scope="col"
+                >
                   Overall Status
                 </th>
-                <th className="w-28 px-4 py-3.5 text-right" scope="col">
+                <th
+                  className="min-w-[130px] pr-6 pl-4 py-3.5 text-right whitespace-nowrap"
+                  scope="col"
+                >
                   Action
                 </th>
               </tr>
@@ -1251,47 +1309,62 @@ function TrackerRow({
     <tr className="align-middle text-xs text-slate-700 transition hover:bg-slate-50/70">
       <td className="px-4 py-3.5 whitespace-nowrap">
         <Link
-          className="font-mono text-[10px] font-bold text-[#1261a8] hover:text-[#07523f] hover:underline max-w-40 truncate block"
+          title={item.activity.reference}
+          className="font-mono text-[10px] font-bold text-[#1261a8] hover:text-[#07523f] hover:underline truncate block"
           href={href}
         >
           {item.activity.reference}
         </Link>
       </td>
-      <td className="px-4 py-3.5 wrap-break-word">
+      <td className="px-4 py-3.5">
         <Link
-          className="font-bold leading-5 text-[#10243f] hover:text-[#07523f] hover:underline wrap-break-word line-clamp-2 block"
+          title={item.activity.description}
+          className="font-bold leading-5 text-[#10243f] hover:text-[#07523f] hover:underline line-clamp-2 break-words [overflow-wrap:anywhere] block"
           href={href}
         >
           {item.activity.description}
         </Link>
         {item.activity.details?.roadmap.length ? (
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="mt-1 text-[10px] text-slate-500 font-medium">
             {progress.completed} of {progress.total} stages completed
           </p>
         ) : null}
       </td>
       <td className="px-4 py-3.5">
-        <p className="font-bold text-slate-700">{item.project.shortName}</p>
-        <p className="mt-1 text-[10px] text-slate-500">
+        <p
+          title={item.project.shortName}
+          className="font-bold text-slate-700 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+        >
+          {item.project.shortName}
+        </p>
+        <p className="mt-1 text-[10px] text-slate-500 font-medium">
           {item.plan.budgetYear}
         </p>
       </td>
-      <td className="px-4 py-3.5 font-semibold text-slate-700">
+      <td className="px-4 py-3.5 font-semibold text-slate-700 leading-snug break-words">
         {item.activity.category}
       </td>
-      <td className="px-4 py-3.5 font-semibold text-slate-700">
+      <td
+        className="px-4 py-3.5 font-semibold text-slate-700 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+        title={item.activity.method}
+      >
         {item.activity.method}
       </td>
-      <td className="px-4 py-3.5 wrap-break-word">
-        <p className="font-semibold leading-5 text-slate-700 wrap-break-word line-clamp-2">
+      <td className="px-4 py-3.5">
+        <p
+          title={stage.name}
+          className="font-semibold leading-5 text-slate-700 line-clamp-2 break-words [overflow-wrap:anywhere]"
+        >
           {stage.name}
         </p>
-        <p className="mt-1 text-[10px] text-slate-500">{stage.status}</p>
+        <p className="mt-1 text-[10px] text-slate-500 font-medium">
+          {stage.status}
+        </p>
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3.5 whitespace-nowrap">
         <DateValue date={stage.targetDate} />
       </td>
-      <td className="px-4 py-3.5 text-center">
+      <td className="px-4 py-3.5 text-center whitespace-nowrap">
         {dueSoon && remainingDays !== null ? (
           <span className="font-bold text-[#b45309]">
             {remainingDays === 0 ? "Due today" : `${remainingDays} days left`}
@@ -1304,10 +1377,10 @@ function TrackerRow({
           <span className="font-semibold text-[#166534]">On schedule</span>
         )}
       </td>
-      <td className="px-4 py-3.5">
+      <td className="px-4 py-3.5 whitespace-nowrap">
         <StatusText className="text-[10px]" label={status} />
       </td>
-      <td className="px-4 py-3.5 text-right">
+      <td className="pr-6 pl-4 py-3.5 text-right whitespace-nowrap">
         <Link
           className="font-bold text-[#1261a8] hover:text-[#07523f] hover:underline"
           href={href}
