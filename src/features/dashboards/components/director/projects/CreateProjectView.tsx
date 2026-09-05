@@ -28,7 +28,6 @@ import {
 } from "../../../../projects/utils/ethiopianCalendar";
 import { DualCalendarField } from "../../../../projects/components/DualCalendarField";
 import {
-  INITIAL_OFFICERS,
   SECTOR_OPTIONS,
   FUNDING_SOURCE_OPTIONS,
   FUNDING_TYPE_OPTIONS,
@@ -244,10 +243,7 @@ export function CreateProjectView({
   const [officerPageIndex, setOfficerPageIndex] = useState(0);
   const OFFICER_PAGE_SIZE = 4;
 
-  const rawOfficers =
-    availableOfficers && availableOfficers.length > 0
-      ? availableOfficers
-      : INITIAL_OFFICERS;
+  const rawOfficers = availableOfficers || [];
 
   const officersList = rawOfficers.filter(
     (off) =>

@@ -91,12 +91,10 @@ export function ProjectsManagementView() {
 
       // 2. Fetch projects from backend
       const backendProjects = await fetchProjects();
-      if (backendProjects && backendProjects.length > 0) {
-        const mapped = backendProjects.map((bp) =>
-          mapBackendProjectToProjectItem(bp),
-        );
-        setProjects(mapped);
-      }
+      const mapped = (backendProjects || []).map((bp) =>
+        mapBackendProjectToProjectItem(bp),
+      );
+      setProjects(mapped);
 
       // 3. Fetch plans from backend
       const backendPlans = await fetchPlans();

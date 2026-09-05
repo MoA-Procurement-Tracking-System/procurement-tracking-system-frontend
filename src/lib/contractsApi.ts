@@ -33,6 +33,7 @@ export interface BackendContract {
   contractNetOfVat?: number | null;
   paidAmount?: number | null;
   remainingValue?: number | null;
+  remarks?: string | null;
   currency?: string | null;
   region?: string | null;
   sector?: string | null;
@@ -138,17 +139,37 @@ export async function recordContractPayment(
 }
 
 export function mapBackendContractToOfficerContract(bc: BackendContract): any {
-  const paidAmount = bc.paidAmount || 0;
-  const totalValue = bc.totalValue || 0;
+  const totalValue = Number(bc.totalValue) || 0;
+  const paidAmount = Number(bc.paidAmount) || 0;
+  const remainingValue =
+    bc.remainingValue !== null && bc.remainingValue !== undefined
+      ? Number(bc.remainingValue)
+      : Math.max(0, totalValue - paidAmount);
+
+  let supplierName = bc.supplier?.name;
+  let activityDesc = bc.activity?.description || bc.activity?.reference;
+
+  if ((!supplierName || !activityDesc) && bc.remarks) {
+    const match = bc.remarks.match(/with\s+(.+?)\s+for\s+(.+)$/i);
+    if (match) {
+      if (!supplierName) supplierName = match[1].trim();
+      if (!activityDesc) activityDesc = match[2].trim();
+    }
+  }
+
+  let projectName = "MoA Project";
+  if (bc.contractNo.includes("AGP2")) projectName = "AGP-II";
+  else if (bc.contractNo.includes("LLRP")) projectName = "LLRP";
+  else if (bc.contractNo.includes("RPSNP")) projectName = "RPSNP";
+  else if (bc.contractNo.includes("SSIDP")) projectName = "SSIDP";
+  else if (bc.contractNo.includes("HORT")) projectName = "HORT";
+
   return {
     id: bc.id,
     contractNumber: bc.contractNo,
-    procurementActivity:
-      bc.activity?.description ||
-      bc.activity?.reference ||
-      "Procurement Activity",
-    project: bc.activity?.reference ? "DRIVE" : "MoA Project",
-    supplier: bc.supplier?.name || "Contractor",
+    procurementActivity: activityDesc || "Procurement Activity",
+    project: projectName,
+    supplier: supplierName || "Contractor",
     originalAmount: totalValue,
     currentAmount: totalValue,
     currency: bc.currency || "ETB",
@@ -159,7 +180,7 @@ export function mapBackendContractToOfficerContract(bc: BackendContract): any {
           ? "Completed"
           : "Planned / Prepared",
     totalPaid: paidAmount,
-    remainingBalance: bc.remainingValue ?? totalValue - paidAmount,
+    remainingBalance: remainingValue,
     signingDate: {
       ethiopian: "01 Meskerem 2017",
       gregorian: bc.createdAt

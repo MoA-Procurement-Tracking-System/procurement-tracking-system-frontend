@@ -218,11 +218,18 @@ export function CommitteeProgressView() {
     useState<CommitteeProgressItem | null>(null);
 
   const searchParams = useSearchParams();
-  const planIdFromQuery = searchParams ? searchParams.get("planId") : null;
+  const planIdFromQuery = searchParams
+    ? searchParams.get("planId") || searchParams.get("plan")
+    : null;
 
   useEffect(() => {
     if (planIdFromQuery && items.length > 0) {
-      const target = items.find((it) => it.id === planIdFromQuery);
+      const target = items.find(
+        (it) =>
+          it.id === planIdFromQuery ||
+          it.planNumber.toLowerCase() === planIdFromQuery.toLowerCase() ||
+          it.planTitle.toLowerCase().includes(planIdFromQuery.toLowerCase()),
+      );
       if (target) {
         const timer = window.setTimeout(() => {
           setSelectedPlan(target);

@@ -22,7 +22,7 @@ import {
   History,
 } from "lucide-react";
 import Link from "next/link";
-import { INITIAL_PLANS, type ProcurementPlan } from "../plansData";
+import type { ProcurementPlan } from "../plansData";
 import {
   fetchPlans,
   sendPlanToCommittee,
@@ -55,9 +55,13 @@ import { OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY } from "@/features/projects/data/of
 
 interface PlanForReviewViewProps {
   user: AuthUser;
+  selectedPlanId?: string;
 }
 
-export function PlanForReviewView({ user }: PlanForReviewViewProps) {
+export function PlanForReviewView({
+  user,
+  selectedPlanId,
+}: PlanForReviewViewProps) {
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
   const [loading, setLoading] = useState(true);
@@ -79,9 +83,6 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       );
 
       const planMap = new Map<string, ProcurementPlan>();
-      if (rawPlans.length === 0) {
-        INITIAL_PLANS.forEach((p) => planMap.set(p.id, p));
-      }
 
       // Merge saved officer plans from localStorage
       const draftList: ProcurementPlan[] = [];
@@ -184,7 +185,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
       setPlans(Array.from(planMap.values()));
     } catch (err) {
       console.error(err);
-      setPlans([...INITIAL_PLANS]);
+      setPlans([]);
     } finally {
       setLoading(false);
     }
@@ -233,6 +234,24 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
     window.addEventListener("pts:sidebar-reset", handleReset);
     return () => window.removeEventListener("pts:sidebar-reset", handleReset);
   }, []);
+
+  useEffect(() => {
+    if (selectedPlanId && plans.length > 0 && !activitiesPlan) {
+      const match = plans.find(
+        (p) =>
+          p.id === selectedPlanId ||
+          p.reference?.toLowerCase() === selectedPlanId.toLowerCase() ||
+          p.planName?.toLowerCase() === selectedPlanId.toLowerCase() ||
+          p.projectCode?.toLowerCase() === selectedPlanId.toLowerCase(),
+      );
+      if (match) {
+        const timer = setTimeout(() => {
+          setActivitiesPlan(match);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selectedPlanId, plans, activitiesPlan]);
 
   // Auto-save feedback state
   const [isSaving, setIsSaving] = useState(false);
@@ -704,7 +723,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                 >
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to Plans List
                 </button>
-                <span className="text-slate-300">â€¢</span>
+                <span className="text-slate-300">•</span>
                 <span className="font-mono text-xs font-extrabold text-[#0A3C2F] bg-white px-2 py-0.5 rounded border border-emerald-200">
                   {selectedPlanForReview.projectCode}
                 </span>
@@ -749,21 +768,21 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                     {selectedPlanForReview.category}
                   </strong>
                 </span>
-                <span>â€¢</span>
+                <span>•</span>
                 <span>
                   Fiscal Year:{" "}
                   <strong className="text-slate-900">
                     {selectedPlanForReview.budgetYear}
                   </strong>
                 </span>
-                <span>â€¢</span>
+                <span>•</span>
                 <span>
                   Region:{" "}
                   <strong className="text-slate-900">
                     {selectedPlanForReview.organizationRegion}
                   </strong>
                 </span>
-                <span>â€¢</span>
+                <span>•</span>
                 <span>
                   Coverage:{" "}
                   <strong className="text-slate-900">
@@ -916,7 +935,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                               <span className="font-bold text-slate-700 whitespace-nowrap">
                                 {act.method}
                               </span>
-                              <span className="text-slate-300">â€¢</span>
+                              <span className="text-slate-300">•</span>
                               <span className="font-extrabold text-amber-800 whitespace-nowrap">
                                 {act.reviewType}
                               </span>
@@ -1173,7 +1192,7 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
                       {editingActivity.activityRefNo}
                     </span>
                     <span className="text-xs font-bold text-slate-500">
-                      â€¢ {editingActivity.method}
+                      • {editingActivity.method}
                     </span>
                     <span className="text-xs font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                       {editingActivity.reviewType}
@@ -1354,8 +1373,8 @@ export function PlanForReviewView({ user }: PlanForReviewViewProps) {
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
             {user.role === "ENDORSING_COMMITTEE"
-              ? "Endorsement Committee â€” Plans for Review"
-              : "Director â€” Plan for Review"}
+              ? "Endorsement Committee \u2014 Plans for Review"
+              : "Director \u2014 Plan for Review"}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {user.role === "ENDORSING_COMMITTEE"

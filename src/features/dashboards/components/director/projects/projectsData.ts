@@ -32,32 +32,7 @@ export interface ProjectItem {
   createdAt: string;
 }
 
-export const INITIAL_OFFICERS: ProjectOfficer[] = [
-  {
-    id: "off-1",
-    name: "Demelash Worku",
-    email: "officer@moa.gov.et",
-    roleTag: "OFFICER",
-  },
-  {
-    id: "off-2",
-    name: "Abebe Kebede",
-    email: "newuser@moa.gov.et",
-    roleTag: "OFFICER",
-  },
-  {
-    id: "off-3",
-    name: "Dawit Mekonnen",
-    email: "dawit@moa.gov.et",
-    roleTag: "OFFICER",
-  },
-  {
-    id: "off-4",
-    name: "Bethelhem Tadesse",
-    email: "bethelhem@moa.gov.et",
-    roleTag: "OFFICER",
-  },
-];
+export const INITIAL_OFFICERS: ProjectOfficer[] = [];
 
 export const COUNTRY_ORG_OPTIONS = [
   "Ethiopia",

@@ -43,6 +43,8 @@ export interface OfficerProject {
   id?: string;
   activePlans: number;
   assignedOfficers: readonly string[];
+  assignedOfficerIds?: readonly string[];
+  assignedOfficerEmails?: readonly string[];
   assignmentStart?: {
     ethiopian: string;
     gregorian: string;

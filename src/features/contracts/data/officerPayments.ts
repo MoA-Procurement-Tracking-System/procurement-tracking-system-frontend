@@ -60,12 +60,16 @@ export function applyPaymentsToContract(
   const additionalPaid = paymentsForContract(
     payments,
     contract.contractNumber,
-  ).reduce((total, payment) => total + payment.amount, 0);
-  const totalPaid = contract.totalPaid + additionalPaid;
+  ).reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
+  const contractTotalPaid = Number(contract.totalPaid) || 0;
+  const contractCurrentAmount = Number(contract.currentAmount) || 0;
+  const totalPaid = contractTotalPaid + additionalPaid;
 
   return {
     ...contract,
-    remainingBalance: Math.max(0, contract.currentAmount - totalPaid),
+    currentAmount: contractCurrentAmount,
+    originalAmount: Number(contract.originalAmount) || contractCurrentAmount,
+    remainingBalance: Math.max(0, contractCurrentAmount - totalPaid),
     totalPaid,
   };
 }
