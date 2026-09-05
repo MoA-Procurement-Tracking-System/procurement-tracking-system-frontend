@@ -645,9 +645,25 @@ export function DirectorActivitiesListView({
 
   useEffect(() => {
     if (targetActivityRef && activities.length > 0) {
-      scrollToActivity(targetActivityRef, false);
+      const cleanRef = targetActivityRef.toLowerCase().trim();
+      const targetAct = activities.find(
+        (a) =>
+          (a.activityRefNo || "").toLowerCase().trim() === cleanRef ||
+          (a.id || "").toLowerCase().trim() === cleanRef,
+      );
+      const timer = setTimeout(() => {
+        const el =
+          document.getElementById(`activity-row-${targetActivityRef}`) ||
+          (targetAct
+            ? document.getElementById(`activity-row-${targetAct.activityRefNo}`)
+            : null);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [targetActivityRef, activities, scrollToActivity]);
+  }, [targetActivityRef, activities]);
 
   const isActivityFlagged = useCallback(
     (act: ProcurementActivity) => {

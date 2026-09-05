@@ -5,9 +5,6 @@ import {
   AlertTriangle,
   X,
   RotateCcw,
-  CheckSquare,
-  Square,
-  FileText,
   AlertCircle,
 } from "lucide-react";
 

@@ -347,9 +347,7 @@ export function PlanFullScreenReviewView({
             <textarea
               rows={3}
               value={plan.description || ""}
-              onChange={(e) => {
-                // Inline update description
-              }}
+              readOnly
               placeholder="Add justification notes or instructions for the procurement plan..."
               className="w-full text-xs text-slate-800 leading-relaxed rounded-xl border border-slate-300 bg-white p-3.5 focus:border-[#0A3C2F] focus:ring-2 focus:ring-[#0A3C2F]/10 outline-none transition-all"
             />

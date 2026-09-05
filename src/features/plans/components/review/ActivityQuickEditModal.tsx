@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import type {
   ProcurementActivity,
@@ -21,12 +21,14 @@ export function ActivityQuickEditModal({
   onClose,
   onSave,
 }: ActivityQuickEditModalProps) {
+  const [prevActivity, setPrevActivity] = useState(activity);
   const [editingActivity, setEditingActivity] =
     useState<ProcurementActivity | null>(activity);
 
-  useEffect(() => {
+  if (activity !== prevActivity) {
+    setPrevActivity(activity);
     setEditingActivity(activity);
-  }, [activity]);
+  }
 
   if (!activity || !editingActivity) return null;
 
