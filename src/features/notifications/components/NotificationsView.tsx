@@ -31,7 +31,9 @@ export function NotificationsView() {
     INITIAL_NOTIFICATIONS,
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "urgent">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "urgent">(
+    "all",
+  );
   const [typeFilter, setTypeFilter] = useState<"all" | NotificationType>("all");
 
   useEffect(() => {
@@ -43,7 +45,9 @@ export function NotificationsView() {
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const urgentCount = notifications.filter((n) => n.priority === "urgent").length;
+  const urgentCount = notifications.filter(
+    (n) => n.priority === "urgent",
+  ).length;
 
   const handleMarkAsRead = (id: string) => {
     setNotifications((prev) =>
@@ -135,7 +139,8 @@ export function NotificationsView() {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Stay updated with procurement plan reviews, committee decisions, activity deadlines, and contract milestones.
+            Stay updated with procurement plan reviews, committee decisions,
+            activity deadlines, and contract milestones.
           </p>
         </div>
 
@@ -155,8 +160,12 @@ export function NotificationsView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-500">Total Notifications</span>
-            <p className="text-2xl font-black text-slate-900 mt-0.5">{notifications.length}</p>
+            <span className="text-xs font-semibold text-slate-500">
+              Total Notifications
+            </span>
+            <p className="text-2xl font-black text-slate-900 mt-0.5">
+              {notifications.length}
+            </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-100 text-slate-700">
             <Bell size={18} />
@@ -165,8 +174,12 @@ export function NotificationsView() {
 
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-emerald-800">Unread Messages</span>
-            <p className="text-2xl font-black text-emerald-950 mt-0.5">{unreadCount}</p>
+            <span className="text-xs font-semibold text-emerald-800">
+              Unread Messages
+            </span>
+            <p className="text-2xl font-black text-emerald-950 mt-0.5">
+              {unreadCount}
+            </p>
           </div>
           <div className="p-3 rounded-xl bg-emerald-600 text-white font-bold text-xs">
             {unreadCount > 0 ? `${unreadCount} New` : "Clean"}
@@ -175,8 +188,12 @@ export function NotificationsView() {
 
         <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 shadow-2xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-rose-800">Urgent Alerts</span>
-            <p className="text-2xl font-black text-rose-950 mt-0.5">{urgentCount}</p>
+            <span className="text-xs font-semibold text-rose-800">
+              Urgent Alerts
+            </span>
+            <p className="text-2xl font-black text-rose-950 mt-0.5">
+              {urgentCount}
+            </p>
           </div>
           <div className="p-3 rounded-xl bg-rose-100 text-rose-700">
             <ShieldAlert size={18} />
@@ -268,7 +285,9 @@ export function NotificationsView() {
             <div className="p-3 rounded-full bg-slate-100 text-slate-400 w-fit mx-auto">
               <Bell size={28} />
             </div>
-            <h3 className="text-sm font-bold text-slate-800">No Notifications Found</h3>
+            <h3 className="text-sm font-bold text-slate-800">
+              No Notifications Found
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {searchQuery
                 ? `No notifications matching "${searchQuery}". Try clearing your search.`
@@ -290,7 +309,9 @@ export function NotificationsView() {
                 {/* Icon Container */}
                 <div
                   className={`p-2.5 rounded-xl shrink-0 ${
-                    n.read ? "bg-slate-100 text-slate-600" : "bg-white border border-slate-200 shadow-2xs"
+                    n.read
+                      ? "bg-slate-100 text-slate-600"
+                      : "bg-white border border-slate-200 shadow-2xs"
                   }`}
                 >
                   {getNotificationIcon(n.type)}
@@ -311,7 +332,9 @@ export function NotificationsView() {
                     )}
                     {getPriorityBadge(n.priority)}
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">{n.message}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {n.message}
+                  </p>
                   <span className="text-[10px] font-semibold text-slate-400 block pt-1">
                     {n.timestamp}
                   </span>
@@ -339,7 +362,10 @@ export function NotificationsView() {
                   title={n.read ? "Mark as unread" : "Mark as read"}
                   className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                 >
-                  <CheckCircle2 size={15} className={n.read ? "text-emerald-600" : "text-slate-400"} />
+                  <CheckCircle2
+                    size={15}
+                    className={n.read ? "text-emerald-600" : "text-slate-400"}
+                  />
                 </button>
 
                 <button

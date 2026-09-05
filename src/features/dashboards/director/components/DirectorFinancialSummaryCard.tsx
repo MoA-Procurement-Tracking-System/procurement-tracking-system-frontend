@@ -130,19 +130,22 @@ export function DirectorFinancialSummaryCard({
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-xs bg-[#0A3C2F] inline-block shrink-0" />
             <span className="text-slate-600 font-medium">
-              Disbursed ({formatMValue(financialSummary.actualDisbursedETB)}M ETB)
+              Disbursed ({formatMValue(financialSummary.actualDisbursedETB)}M
+              ETB)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-xs bg-[#144233] inline-block shrink-0" />
             <span className="text-slate-600 font-medium">
-              Committed ({formatMValue(financialSummary.committedPendingPayETB)}M ETB)
+              Committed ({formatMValue(financialSummary.committedPendingPayETB)}
+              M ETB)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-xs bg-[#D5E5DC] inline-block shrink-0" />
             <span className="text-slate-600 font-medium">
-              Uncommitted ({formatMValue(financialSummary.uncontractedETB)}M ETB)
+              Uncommitted ({formatMValue(financialSummary.uncontractedETB)}M
+              ETB)
             </span>
           </div>
         </div>

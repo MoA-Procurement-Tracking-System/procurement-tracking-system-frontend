@@ -16,12 +16,8 @@ export {
 } from "./officerCalculations";
 
 export function OfficerDashboard({ user }: { user: AuthUser }) {
-  const {
-    loading,
-    officerProjectsList,
-    overviewStatusItems,
-    dynamicAlerts,
-  } = useOfficerDashboard(user);
+  const { loading, officerProjectsList, overviewStatusItems, dynamicAlerts } =
+    useOfficerDashboard(user);
 
   return (
     <div className="space-y-5 pb-6">
@@ -50,10 +46,7 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
           />
         </div>
 
-        <OfficerAlertsCenter
-          alerts={dynamicAlerts}
-          loading={loading}
-        />
+        <OfficerAlertsCenter alerts={dynamicAlerts} loading={loading} />
       </div>
     </div>
   );

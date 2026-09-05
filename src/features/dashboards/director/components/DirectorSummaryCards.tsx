@@ -106,9 +106,7 @@ export function DirectorSummaryCards({
           </div>
         </div>
         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-          <span className="text-slate-400 font-medium text-[11px]">
-            Voting
-          </span>
+          <span className="text-slate-400 font-medium text-[11px]">Voting</span>
           <Link
             href="/workspace/committee-progress"
             className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0"

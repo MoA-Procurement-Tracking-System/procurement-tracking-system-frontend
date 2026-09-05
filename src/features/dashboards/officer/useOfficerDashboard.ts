@@ -78,7 +78,11 @@ export function useOfficerDashboard(user: AuthUser) {
   }, [officerProjectsList.length, assignedPlans, liveDelayedActivities.length]);
 
   const dynamicAlerts: readonly OfficerAlert[] = useMemo(() => {
-    return generateDynamicAlerts(assignedPlans, liveDelayedActivities, currentTime);
+    return generateDynamicAlerts(
+      assignedPlans,
+      liveDelayedActivities,
+      currentTime,
+    );
   }, [assignedPlans, liveDelayedActivities, currentTime]);
 
   return {

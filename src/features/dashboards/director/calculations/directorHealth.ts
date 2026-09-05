@@ -35,9 +35,11 @@ export function computeCriticalDelays(
         const daysOverdue =
           deadline && now
             ? Math.max(
-              1,
-              Math.round((now - new Date(deadline).getTime()) / (1000 * 60 * 60 * 24)),
-            )
+                1,
+                Math.round(
+                  (now - new Date(deadline).getTime()) / (1000 * 60 * 60 * 24),
+                ),
+              )
             : 0;
 
         const stageLabel =
@@ -56,9 +58,12 @@ export function computeCriticalDelays(
           daysOverdue,
           status: "Delayed",
           assignedOfficer:
-            plan.creator?.displayName || plan.creator?.name || "Assigned Officer",
+            plan.creator?.displayName ||
+            plan.creator?.name ||
+            "Assigned Officer",
           plannedCompletionDate: deadline ? deadline.slice(0, 10) : "",
-          currentBottleneck: delayedStage?.remarks || "Pending stage completion",
+          currentBottleneck:
+            delayedStage?.remarks || "Pending stage completion",
         });
       }
     }
@@ -91,7 +96,9 @@ export function computeDirectorHealthMetrics(
     contractExecutionRate: financialSummary.contractExecutionRatePct,
     disbursementPace: financialSummary.disbursedOfContractedPct,
     scheduleAdherence:
-      criticalDelays.length === 0 ? 100 : Math.max(0, 100 - criticalDelays.length * 5),
+      criticalDelays.length === 0
+        ? 100
+        : Math.max(0, 100 - criticalDelays.length * 5),
     nextAuditDate: "Not scheduled",
     bottleneckStage,
     standardDaysPerStage: 14,

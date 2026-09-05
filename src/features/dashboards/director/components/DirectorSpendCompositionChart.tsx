@@ -24,9 +24,9 @@ export function DirectorSpendCompositionChart({
   const committedM = (
     financialSummary.committedPendingPayETB / 1_000_000
   ).toFixed(1);
-  const uncontractedM = (
-    financialSummary.uncontractedETB / 1_000_000
-  ).toFixed(1);
+  const uncontractedM = (financialSummary.uncontractedETB / 1_000_000).toFixed(
+    1,
+  );
 
   // SVG Donut Calculations
   const radius = 68;

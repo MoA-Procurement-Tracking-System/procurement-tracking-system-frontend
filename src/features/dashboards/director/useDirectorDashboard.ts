@@ -32,7 +32,8 @@ export function useDirectorDashboard() {
   );
 
   // Filter States matching mockup
-  const [selectedFiscalYear, setSelectedFiscalYear] = useState<string>(defaultFiscalYear);
+  const [selectedFiscalYear, setSelectedFiscalYear] =
+    useState<string>(defaultFiscalYear);
   const [selectedSector, setSelectedSector] = useState("All Sectors");
   const [selectedProject, setSelectedProject] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -196,7 +197,13 @@ export function useDirectorDashboard() {
       selectedProject !== "ALL" ||
       selectedStatus !== "ALL"
     );
-  }, [selectedFiscalYear, defaultFiscalYear, selectedSector, selectedProject, selectedStatus]);
+  }, [
+    selectedFiscalYear,
+    defaultFiscalYear,
+    selectedSector,
+    selectedProject,
+    selectedStatus,
+  ]);
 
   const resetFilters = () => {
     setSelectedFiscalYear(defaultFiscalYear);

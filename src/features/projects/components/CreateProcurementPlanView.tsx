@@ -219,7 +219,7 @@ export function CreateProcurementPlanView({
       { ...form, category: selectedCategory },
       action,
       revisionReason.trim() ||
-      (isEditing ? "Updated plan parameters" : undefined),
+        (isEditing ? "Updated plan parameters" : undefined),
     );
     setSaveAction(action);
   }
@@ -230,8 +230,8 @@ export function CreateProcurementPlanView({
 
   const planBackHref = initialPlan
     ? `/workspace/projects?project=${encodeURIComponent(
-      project.code,
-    )}&plan=${encodeURIComponent(initialPlan.reference)}`
+        project.code,
+      )}&plan=${encodeURIComponent(initialPlan.reference)}`
     : detailHref;
 
   return (
@@ -368,8 +368,9 @@ export function CreateProcurementPlanView({
             {/* Category Dropdown */}
             <fieldset className="max-w-2xl">
               <legend
-                className={`mb-2 text-xs font-semibold ${categoryError ? "text-red-600" : "text-slate-700"
-                  }`}
+                className={`mb-2 text-xs font-semibold ${
+                  categoryError ? "text-red-600" : "text-slate-700"
+                }`}
               >
                 Procurement Category <span className="text-red-600">*</span>
               </legend>
@@ -524,7 +525,7 @@ export function CreateProcurementPlanView({
 
             <div className="grid gap-4 sm:grid-cols-2">
               {form.generalProcurementNoticeDate ||
-                !form.generalProcurementNoticeDateEthiopian ? (
+              !form.generalProcurementNoticeDateEthiopian ? (
                 <DualCalendarField
                   ethiopianValue={form.generalProcurementNoticeDateEthiopian}
                   gregorianValue={form.generalProcurementNoticeDate}
@@ -684,8 +685,9 @@ function LockedInput({
       <p className="mb-1.5 text-xs font-semibold text-slate-500">{label}</p>
       <div className="relative">
         <input
-          className={`h-9 w-full truncate rounded-none border border-slate-400 bg-white px-2.5 text-xs text-slate-600 outline-none ${icon ? "pl-7" : ""
-            }`}
+          className={`h-9 w-full truncate rounded-none border border-slate-400 bg-white px-2.5 text-xs text-slate-600 outline-none ${
+            icon ? "pl-7" : ""
+          }`}
           readOnly
           title={value}
           value={value}
@@ -719,8 +721,9 @@ function CompactFormField({
   return (
     <div>
       <label
-        className={`mb-2 block text-xs font-semibold ${error ? "text-red-600" : "text-slate-700"
-          }`}
+        className={`mb-2 block text-xs font-semibold ${
+          error ? "text-red-600" : "text-slate-700"
+        }`}
         htmlFor={htmlFor}
       >
         {label}

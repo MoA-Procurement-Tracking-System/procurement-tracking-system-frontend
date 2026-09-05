@@ -51,11 +51,17 @@ export function useCommitteeDashboard(user: AuthUser) {
   }, [user.id]);
 
   const awaitingPlans = useMemo(() => filterAwaitingPlans(plans), [plans]);
-  const delayedPlans = useMemo(() => filterDelayedPlans(awaitingPlans), [awaitingPlans]);
+  const delayedPlans = useMemo(
+    () => filterDelayedPlans(awaitingPlans),
+    [awaitingPlans],
+  );
   const delayedCount = delayedPlans.length;
 
   const reviewedPlans = useMemo(() => filterReviewedPlans(plans), [plans]);
-  const voteStats = useMemo(() => calculateVoteStats(reviewedPlans), [reviewedPlans]);
+  const voteStats = useMemo(
+    () => calculateVoteStats(reviewedPlans),
+    [reviewedPlans],
+  );
 
   useEffect(() => {
     const delay = voteStats.totalReviewedCount > 0 ? 100 : 0;
@@ -69,7 +75,11 @@ export function useCommitteeDashboard(user: AuthUser) {
       }
     }, delay);
     return () => clearTimeout(timer);
-  }, [voteStats.approvedPercent, voteStats.rejectedPercent, voteStats.totalReviewedCount]);
+  }, [
+    voteStats.approvedPercent,
+    voteStats.rejectedPercent,
+    voteStats.totalReviewedCount,
+  ]);
 
   const sortedAwaitingPlans = useMemo(
     () => sortAwaitingPlans(awaitingPlans),
@@ -92,11 +102,13 @@ export function useCommitteeDashboard(user: AuthUser) {
     filter,
     setFilter,
     loading,
-    awaitingPlansCount: awaitingPlans.length,
+    awaitingCount: awaitingPlans.length,
     delayedCount,
     totalReviewedCount: voteStats.totalReviewedCount,
     approvedCount: voteStats.approvedCount,
     rejectedCount: voteStats.rejectedCount,
+    approvedPercent: voteStats.approvedPercent,
+    rejectedPercent: voteStats.rejectedPercent,
     approvedPercentAnim,
     rejectedPercentAnim,
     filteredAwaitingPlans,

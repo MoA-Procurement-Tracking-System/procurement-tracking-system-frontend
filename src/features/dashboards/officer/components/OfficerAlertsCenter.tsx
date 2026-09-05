@@ -49,9 +49,7 @@ export function OfficerAlertsCenter({
           ) : alerts.length === 0 ? (
             <div className="flex flex-1 h-full min-h-[220px] flex-col items-center justify-center py-6 text-center text-sm text-slate-500">
               <CheckCircle2 className="h-7 w-7 text-[#48675d]/40 mb-1.5" />
-              <p className="font-semibold text-slate-700">
-                No active alerts
-              </p>
+              <p className="font-semibold text-slate-700">No active alerts</p>
               <p className="text-xs text-slate-500">
                 You are all caught up for now.
               </p>

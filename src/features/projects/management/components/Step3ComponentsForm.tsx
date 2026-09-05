@@ -5,7 +5,7 @@ import { DualCalendarInput } from "@/components/common/DualCalendarInput";
 import {
   gregorianToEthiopian,
   formatEthiopianDate,
-} from "../../../../../projects/utils/ethiopianCalendar";
+} from "@/features/projects/utils/ethiopianCalendar";
 
 export interface ProjectComponentFormItem {
   id: string;

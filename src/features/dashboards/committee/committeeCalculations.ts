@@ -1,12 +1,16 @@
 import type { ProcurementPlan } from "@/features/plans/plansData";
 
-export function filterAwaitingPlans(plans: ProcurementPlan[]): ProcurementPlan[] {
+export function filterAwaitingPlans(
+  plans: ProcurementPlan[],
+): ProcurementPlan[] {
   return plans.filter(
     (p) => p.status === "Committee Review" && p.committeeDecision === undefined,
   );
 }
 
-export function filterDelayedPlans(awaitingPlans: ProcurementPlan[]): ProcurementPlan[] {
+export function filterDelayedPlans(
+  awaitingPlans: ProcurementPlan[],
+): ProcurementPlan[] {
   const now = Date.now();
   return awaitingPlans.filter((p) => {
     if (!p.deadlineDate) return false;
@@ -14,7 +18,9 @@ export function filterDelayedPlans(awaitingPlans: ProcurementPlan[]): Procuremen
   });
 }
 
-export function filterReviewedPlans(plans: ProcurementPlan[]): ProcurementPlan[] {
+export function filterReviewedPlans(
+  plans: ProcurementPlan[],
+): ProcurementPlan[] {
   return plans.filter((p) => p.committeeDecision !== undefined);
 }
 
@@ -42,7 +48,9 @@ export function calculateVoteStats(reviewedPlans: ProcurementPlan[]) {
   };
 }
 
-export function sortAwaitingPlans(awaitingPlans: ProcurementPlan[]): ProcurementPlan[] {
+export function sortAwaitingPlans(
+  awaitingPlans: ProcurementPlan[],
+): ProcurementPlan[] {
   return [...awaitingPlans].sort((a, b) => {
     if (!a.deadlineDate) return 1;
     if (!b.deadlineDate) return -1;

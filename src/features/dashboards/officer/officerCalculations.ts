@@ -266,12 +266,10 @@ export function calculateOverviewStatusItems(
   ).length;
   const submittedCount = assignedPlans.filter(
     (p) =>
-      p.status === "SUBMITTED" ||
-      (p as any).status === "Submitted to Director",
+      p.status === "SUBMITTED" || (p as any).status === "Submitted to Director",
   ).length;
   const approvedCount = assignedPlans.filter(
-    (p) =>
-      p.status === "APPROVED" || (p as any).status === "Finally Approved",
+    (p) => p.status === "APPROVED" || (p as any).status === "Finally Approved",
   ).length;
 
   return [
@@ -320,10 +318,7 @@ export function generateDynamicAlerts(
     (p) => p.status === "REJECTED" || (p as any).status === "Returned",
   );
   for (const returned of returnedPlans) {
-    const refLine = formatPlanReference(
-      returned.project?.code,
-      returned.title,
-    );
+    const refLine = formatPlanReference(returned.project?.code, returned.title);
     const directorNote = formatDirectorNote(
       returned.rejectionReason,
       returned.activities?.length,
@@ -346,21 +341,15 @@ export function generateDynamicAlerts(
 
   // Delayed activity alerts
   for (const { act, plan } of liveDelayedActivities) {
-    list.push(
-      formatDelayedActivityAlert(act, plan.project?.code, currentTime),
-    );
+    list.push(formatDelayedActivityAlert(act, plan.project?.code, currentTime));
   }
 
   // Approved plan alerts
   const approvedPlans = assignedPlans.filter(
-    (p) =>
-      p.status === "APPROVED" || (p as any).status === "Finally Approved",
+    (p) => p.status === "APPROVED" || (p as any).status === "Finally Approved",
   );
   for (const approved of approvedPlans) {
-    const refLine = formatPlanReference(
-      approved.project?.code,
-      approved.title,
-    );
+    const refLine = formatPlanReference(approved.project?.code, approved.title);
 
     list.push({
       id: `approved-${approved.id}`,

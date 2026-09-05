@@ -53,7 +53,10 @@ export function computeFinancialSummary(
   const signedContractsCommittedETB = signedCommittedSum;
   let actualDisbursedETB = actualDisbursedSum;
 
-  if (signedContractsCommittedETB > planEstimatedValueETB && planEstimatedValueETB === 0) {
+  if (
+    signedContractsCommittedETB > planEstimatedValueETB &&
+    planEstimatedValueETB === 0
+  ) {
     planEstimatedValueETB = signedContractsCommittedETB;
   }
   if (actualDisbursedETB > signedContractsCommittedETB) {
@@ -74,17 +77,25 @@ export function computeFinancialSummary(
 
   const contractExecutionRatePct =
     planEstimatedValueETB > 0
-      ? Number(((signedContractsCommittedETB / planEstimatedValueETB) * 100).toFixed(1))
+      ? Number(
+          ((signedContractsCommittedETB / planEstimatedValueETB) * 100).toFixed(
+            1,
+          ),
+        )
       : 0;
 
   const disbursedOfContractedPct =
     signedContractsCommittedETB > 0
-      ? Number(((actualDisbursedETB / signedContractsCommittedETB) * 100).toFixed(1))
+      ? Number(
+          ((actualDisbursedETB / signedContractsCommittedETB) * 100).toFixed(1),
+        )
       : 0;
 
   const availableCapacityPct =
     planEstimatedValueETB > 0
-      ? Number(((remainingUncommittedETB / planEstimatedValueETB) * 100).toFixed(1))
+      ? Number(
+          ((remainingUncommittedETB / planEstimatedValueETB) * 100).toFixed(1),
+        )
       : 0;
 
   return {
@@ -103,7 +114,9 @@ export function computeFinancialSummary(
 /**
  * Percentage breakdown for spend composition
  */
-export function computeSpendPercentages(financialSummary: FinancialCapitalSummary) {
+export function computeSpendPercentages(
+  financialSummary: FinancialCapitalSummary,
+) {
   const total = financialSummary.planEstimatedValueETB;
   if (!total || total <= 0) {
     return {
@@ -113,7 +126,8 @@ export function computeSpendPercentages(financialSummary: FinancialCapitalSummar
     };
   }
   const disbursedPct = (financialSummary.actualDisbursedETB / total) * 100;
-  const committedPendingPct = (financialSummary.committedPendingPayETB / total) * 100;
+  const committedPendingPct =
+    (financialSummary.committedPendingPayETB / total) * 100;
   const uncontractedPct = Math.max(0, 100 - disbursedPct - committedPendingPct);
   return {
     disbursed: disbursedPct.toFixed(1),

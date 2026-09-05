@@ -1,5 +1,6 @@
 export type NotificationPriority = "urgent" | "normal" | "info";
-export type NotificationType = "plan" | "contract" | "activity" | "system" | "approval";
+export type NotificationType =
+  "plan" | "contract" | "activity" | "system" | "approval";
 
 export interface SystemNotification {
   id: string;
@@ -17,7 +18,8 @@ export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
   {
     id: "notif-1",
     title: "Procurement Plan Submitted for Review",
-    message: "Officer Tadesse Alemu submitted 'BREFONS - Goods Procurement Plan - 2018 EFY' for Director approval.",
+    message:
+      "Officer Tadesse Alemu submitted 'BREFONS - Goods Procurement Plan - 2018 EFY' for Director approval.",
     type: "plan",
     priority: "urgent",
     timestamp: "10 mins ago",
@@ -28,7 +30,8 @@ export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
   {
     id: "notif-2",
     title: "Contract Payment Milestone Due",
-    message: "Payment Milestone #2 for Contract MoA/GOODS/02/2017 (Supply of 4WD Vehicles) is due in 3 days.",
+    message:
+      "Payment Milestone #2 for Contract MoA/GOODS/02/2017 (Supply of 4WD Vehicles) is due in 3 days.",
     type: "contract",
     priority: "normal",
     timestamp: "1 hour ago",
@@ -39,7 +42,8 @@ export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
   {
     id: "notif-3",
     title: "Committee Endorsement Decision Recorded",
-    message: "Management Committee approved 'PASIDP II - Works Procurement Plan' with 4 positive votes.",
+    message:
+      "Management Committee approved 'PASIDP II - Works Procurement Plan' with 4 positive votes.",
     type: "approval",
     priority: "info",
     timestamp: "3 hours ago",
@@ -50,7 +54,8 @@ export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
   {
     id: "notif-4",
     title: "Activity Milestone Deadline Alert",
-    message: "Activity 'Technical Specification Preparation for Irrigation Pumps' has passed target start date.",
+    message:
+      "Activity 'Technical Specification Preparation for Irrigation Pumps' has passed target start date.",
     type: "activity",
     priority: "urgent",
     timestamp: "Yesterday",
@@ -61,7 +66,8 @@ export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
   {
     id: "notif-5",
     title: "System Audit Log Generated",
-    message: "Monthly user authentication and permission change audit summary report is available.",
+    message:
+      "Monthly user authentication and permission change audit summary report is available.",
     type: "system",
     priority: "info",
     timestamp: "2 days ago",

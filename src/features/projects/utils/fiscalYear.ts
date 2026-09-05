@@ -36,7 +36,9 @@ export function formatFiscalYear(efy: number): string {
  * Dynamically extract distinct fiscal years available from plans and the current date.
  * Automatically accommodates future fiscal years without hardcoding.
  */
-export function extractAvailableFiscalYears(plans: HasBudgetYear[] = []): string[] {
+export function extractAvailableFiscalYears(
+  plans: HasBudgetYear[] = [],
+): string[] {
   const yearsSet = new Set<string>();
   const currentEFY = getCurrentEthiopianYear();
 
@@ -73,7 +75,8 @@ export function matchesFiscalYear(
   planBudgetYear: string | undefined | null,
   selectedFiscalYear: string,
 ): boolean {
-  if (!selectedFiscalYear || selectedFiscalYear === "All Fiscal Years") return true;
+  if (!selectedFiscalYear || selectedFiscalYear === "All Fiscal Years")
+    return true;
   if (!planBudgetYear) return true;
 
   const efyNum = parseInt(selectedFiscalYear.replace(/[^0-9]/g, ""), 10);

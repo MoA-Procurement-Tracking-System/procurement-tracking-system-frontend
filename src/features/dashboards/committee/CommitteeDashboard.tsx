@@ -14,11 +14,13 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
     filter,
     setFilter,
     loading,
-    awaitingPlansCount,
+    awaitingCount,
     delayedCount,
     totalReviewedCount,
     approvedCount,
     rejectedCount,
+    approvedPercent,
+    rejectedPercent,
     approvedPercentAnim,
     rejectedPercentAnim,
     filteredAwaitingPlans,
@@ -47,14 +49,20 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
 
       {/* Row 1: KPI Stats Cards */}
       <CommitteeStatsCards
-        awaitingPlansCount={awaitingPlansCount}
         delayedCount={delayedCount}
+        awaitingCount={awaitingCount}
         totalReviewedCount={totalReviewedCount}
         approvedCount={approvedCount}
         rejectedCount={rejectedCount}
+        approvedPercent={approvedPercent}
+        rejectedPercent={rejectedPercent}
         approvedPercentAnim={approvedPercentAnim}
         rejectedPercentAnim={rejectedPercentAnim}
-        loading={loading}
+        filter={filter}
+        onToggleDelayedFilter={() =>
+          setFilter((prev) => (prev === "delayed" ? "all" : "delayed"))
+        }
+        onSelectAllFilter={() => setFilter("all")}
       />
 
       {/* Row 2: Two Columns */}
@@ -62,19 +70,20 @@ export function CommitteeDashboard({ user }: { user: AuthUser }) {
         {/* Left Col: Awaiting Table */}
         <div className="lg:col-span-8">
           <CommitteeAwaitingTable
-            plans={filteredAwaitingPlans}
+            filteredAwaitingPlans={filteredAwaitingPlans}
+            totalAwaitingCount={awaitingCount}
             loading={loading}
-            filter={filter}
-            setFilter={setFilter}
             searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
+            onSearchChange={setSearchQuery}
+            filter={filter}
+            onClearFilter={() => setFilter("all")}
           />
         </div>
 
         {/* Right Col: Recent Decisions Feed */}
         <div className="lg:col-span-4">
           <CommitteeRecentDecisions
-            decisions={recentDecisions}
+            recentDecisions={recentDecisions}
             loading={loading}
           />
         </div>

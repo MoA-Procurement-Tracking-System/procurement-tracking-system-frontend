@@ -6,7 +6,9 @@ import { formatRelativeTime } from "../directorFormatters";
 /**
  * Compute plans awaiting director review
  */
-export function computePendingPlans(filteredPlans: BackendPlan[]): DirectorPlan[] {
+export function computePendingPlans(
+  filteredPlans: BackendPlan[],
+): DirectorPlan[] {
   return filteredPlans
     .filter(
       (p) =>
@@ -19,7 +21,8 @@ export function computePendingPlans(filteredPlans: BackendPlan[]): DirectorPlan[
       id: p.id,
       title: p.title || "Procurement Plan",
       directorate: p.project?.name || p.organization || "—",
-      submittedBy: p.creator?.displayName || p.creator?.name || "Assigned Officer",
+      submittedBy:
+        p.creator?.displayName || p.creator?.name || "Assigned Officer",
       submissionDate: formatRelativeTime(p.createdAt),
       status: "Awaiting Review" as const,
       totalActivitiesCount: p.activities?.length || 0,
@@ -36,7 +39,9 @@ export function computePendingPlans(filteredPlans: BackendPlan[]): DirectorPlan[
 /**
  * Compute count of plans under committee review
  */
-export function computeCommitteePlansCount(filteredPlans: BackendPlan[]): number {
+export function computeCommitteePlansCount(
+  filteredPlans: BackendPlan[],
+): number {
   return filteredPlans.filter(
     (p) =>
       p.status === "WITH_COMMITTEE" ||
@@ -106,10 +111,7 @@ export function computePipelineStages(
         stageName.includes("recommendation")
       ) {
         awardCount++;
-      } else if (
-        stageName.includes("contract") ||
-        stageName.includes("sign")
-      ) {
+      } else if (stageName.includes("contract") || stageName.includes("sign")) {
         contractCount++;
       } else if (
         stageName.includes("delivery") ||
@@ -152,14 +154,77 @@ export function computePipelineStages(
   }
 
   return [
-    { id: 1, code: "1. PLAN", title: "1. PLAN", sublabel: "Created", count: draftPlans, accent: "default" },
-    { id: 2, code: "2. REVIEW", title: "2. REVIEW", sublabel: "Director", count: awaitingReviewCount, accent: "amber" },
-    { id: 3, code: "3. COMM", title: "3. COMM", sublabel: "Voting", count: committeePlansCount, accent: "purple" },
-    { id: 4, code: "4. TENDER", title: "4. TENDER", sublabel: "Published", count: tenderCount, accent: "default" },
-    { id: 5, code: "5. EVAL", title: "5. EVAL", sublabel: "Technical", count: evalCount, accent: "default" },
-    { id: 6, code: "6. AWARD", title: "6. AWARD", sublabel: "Intention", count: awardCount, accent: "default" },
-    { id: 7, code: "7. CONT", title: "7. CONT", sublabel: "Signed", count: contractCount, accent: "teal" },
-    { id: 8, code: "8. EXEC", title: "8. EXEC", sublabel: "Delivery", count: execCount, accent: "default" },
-    { id: 9, code: "9. DONE", title: "9. DONE", sublabel: "Completed", count: doneCount, accent: "emerald" },
+    {
+      id: 1,
+      code: "1. PLAN",
+      title: "1. PLAN",
+      sublabel: "Created",
+      count: draftPlans,
+      accent: "default",
+    },
+    {
+      id: 2,
+      code: "2. REVIEW",
+      title: "2. REVIEW",
+      sublabel: "Director",
+      count: awaitingReviewCount,
+      accent: "amber",
+    },
+    {
+      id: 3,
+      code: "3. COMM",
+      title: "3. COMM",
+      sublabel: "Voting",
+      count: committeePlansCount,
+      accent: "purple",
+    },
+    {
+      id: 4,
+      code: "4. TENDER",
+      title: "4. TENDER",
+      sublabel: "Published",
+      count: tenderCount,
+      accent: "default",
+    },
+    {
+      id: 5,
+      code: "5. EVAL",
+      title: "5. EVAL",
+      sublabel: "Technical",
+      count: evalCount,
+      accent: "default",
+    },
+    {
+      id: 6,
+      code: "6. AWARD",
+      title: "6. AWARD",
+      sublabel: "Intention",
+      count: awardCount,
+      accent: "default",
+    },
+    {
+      id: 7,
+      code: "7. CONT",
+      title: "7. CONT",
+      sublabel: "Signed",
+      count: contractCount,
+      accent: "teal",
+    },
+    {
+      id: 8,
+      code: "8. EXEC",
+      title: "8. EXEC",
+      sublabel: "Delivery",
+      count: execCount,
+      accent: "default",
+    },
+    {
+      id: 9,
+      code: "9. DONE",
+      title: "9. DONE",
+      sublabel: "Completed",
+      count: doneCount,
+      accent: "emerald",
+    },
   ];
 }

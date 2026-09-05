@@ -40,7 +40,9 @@ export function mapBackendAlertToNotification(
   // Calculate relative timestamp
   const date = new Date(alert.createdAt);
   const now = new Date();
-  const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  const diffMinutes = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60),
+  );
   let timestamp = "Just now";
 
   if (diffMinutes >= 1440) {

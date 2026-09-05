@@ -13,7 +13,10 @@ export interface FilterParams {
 /**
  * Filter plans by fiscal year, sector, project, and review/execution status
  */
-export function filterPlans(plans: BackendPlan[], filters: FilterParams): BackendPlan[] {
+export function filterPlans(
+  plans: BackendPlan[],
+  filters: FilterParams,
+): BackendPlan[] {
   const { fiscalYear, sector, project, status, availableProjects } = filters;
 
   return plans.filter((p) => {
@@ -24,7 +27,9 @@ export function filterPlans(plans: BackendPlan[], filters: FilterParams): Backen
 
     // 2. Sector Filter
     if (sector !== "All Sectors") {
-      const planSector = ((p.project as any)?.sector?.label || "").toLowerCase();
+      const planSector = (
+        (p.project as any)?.sector?.label || ""
+      ).toLowerCase();
       const projName = (p.project?.name || p.organization || "").toLowerCase();
       const targetSector = sector.toLowerCase();
       if (
@@ -38,11 +43,17 @@ export function filterPlans(plans: BackendPlan[], filters: FilterParams): Backen
 
     // 3. Project Filter
     if (project !== "ALL") {
-      const selectedProj = availableProjects.find((proj) => proj.id === project);
+      const selectedProj = availableProjects.find(
+        (proj) => proj.id === project,
+      );
       const projName = selectedProj
         ? selectedProj.name.toLowerCase()
         : project.toLowerCase();
-      const planProjName = (p.project?.name || p.organization || "").toLowerCase();
+      const planProjName = (
+        p.project?.name ||
+        p.organization ||
+        ""
+      ).toLowerCase();
       if (
         p.project?.id !== project &&
         p.projectId !== project &&
@@ -82,7 +93,10 @@ export function filterPlans(plans: BackendPlan[], filters: FilterParams): Backen
 /**
  * Filter projects by sector
  */
-export function filterProjects(projects: BackendProject[], sector: string): BackendProject[] {
+export function filterProjects(
+  projects: BackendProject[],
+  sector: string,
+): BackendProject[] {
   return projects.filter((p) => {
     if (
       sector !== "All Sectors" &&

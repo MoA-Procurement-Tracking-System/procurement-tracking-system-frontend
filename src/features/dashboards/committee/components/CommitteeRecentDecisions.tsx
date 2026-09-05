@@ -72,11 +72,12 @@ export function CommitteeRecentDecisions({
                 </span>
               </div>
 
-              {plan.committeeDecision === "Rejected" && plan.rejectionReason && (
-                <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-[10px] text-slate-600 italic font-semibold leading-relaxed">
-                  &quot;{plan.rejectionReason}&quot;
-                </div>
-              )}
+              {plan.committeeDecision === "Rejected" &&
+                plan.rejectionReason && (
+                  <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-[10px] text-slate-600 italic font-semibold leading-relaxed">
+                    &quot;{plan.rejectionReason}&quot;
+                  </div>
+                )}
 
               <Link
                 href={`/workspace/committee-progress?planId=${plan.id}`}

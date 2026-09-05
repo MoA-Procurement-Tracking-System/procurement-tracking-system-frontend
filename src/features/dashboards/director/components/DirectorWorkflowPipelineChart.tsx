@@ -166,7 +166,10 @@ export function DirectorWorkflowPipelineChart({
               {bottleneckStage}
             </span>
           </span>
-          <span className="hidden sm:inline"> • {standardDaysPerStage}d target</span>
+          <span className="hidden sm:inline">
+            {" "}
+            • {standardDaysPerStage}d target
+          </span>
         </div>
       </div>
     </div>

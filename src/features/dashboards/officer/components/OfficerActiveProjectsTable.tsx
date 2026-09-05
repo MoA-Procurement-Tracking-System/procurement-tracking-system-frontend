@@ -25,7 +25,10 @@ export function OfficerActiveProjectsTable({
       className="overflow-hidden rounded-xl border border-[#bdd0c8] bg-white shadow-sm"
     >
       <div className="border-b border-[#c7d7d0] bg-[#edf5f1] px-5 py-4">
-        <h2 id="my-active-projects" className="text-lg font-extrabold text-[#16253d]">
+        <h2
+          id="my-active-projects"
+          className="text-lg font-extrabold text-[#16253d]"
+        >
           My Active Projects
         </h2>
       </div>

@@ -104,7 +104,8 @@ const workspaceSections = {
     label: "Notifications",
     href: "/workspace/notifications",
     icon: "clipboard",
-    description: "View alerts, reviews, milestone deadlines and system notifications.",
+    description:
+      "View alerts, reviews, milestone deadlines and system notifications.",
     allowedRoles: ["OFFICER", "DIRECTOR", "ENDORSING_COMMITTEE", "ADMIN"],
   },
 } as const satisfies Record<string, WorkspaceSection>;

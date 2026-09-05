@@ -14,7 +14,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
+import type { ProjectItem } from "@/features/projects/management/projectsData";
 import { DualCalendarInput } from "@/components/common/DualCalendarInput";
 import {
   gregorianToEthiopian,
@@ -77,7 +77,7 @@ export function CreatePlanForm({
   );
   const [planName, setPlanName] = useState(
     initialData?.planName ||
-    `${project.code} - Goods Procurement Plan - 2018 EFY`,
+      `${project.code} - Goods Procurement Plan - 2018 EFY`,
   );
   const [planPeriodFrom, setPlanPeriodFrom] = useState(
     initialData?.planPeriodFrom || "2025-07-08",
@@ -301,10 +301,11 @@ export function CreatePlanForm({
                 handleCategoryChange(e.target.value as PlanCategory)
               }
               disabled={readOnly || isDirector || isDraftPlanForDirector}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${readOnly || isDirector
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                readOnly || isDirector
                   ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                   : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+              }`}
               required
             >
               {PLAN_CATEGORY_CHOICES.map((c) => (
@@ -326,10 +327,11 @@ export function CreatePlanForm({
               onChange={(e) => setPlanName(e.target.value)}
               disabled={readOnly || isDraftPlanForDirector}
               placeholder="e.g. BREFONS - Goods Procurement Plan - 2018 EFY"
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${readOnly
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                readOnly
                   ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                   : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                }`}
+              }`}
               required
             />
           </div>
@@ -352,10 +354,11 @@ export function CreatePlanForm({
                 value={budgetYear}
                 onChange={(e) => handleBudgetYearChange(e.target.value)}
                 disabled={readOnly || isDirector || isDraftPlanForDirector}
-                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${readOnly || isDirector
+                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                  readOnly || isDirector
                     ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                  }`}
+                }`}
                 required
               >
                 {BUDGET_YEAR_OPTIONS.map((year) => (
@@ -375,10 +378,11 @@ export function CreatePlanForm({
                 value={organizationRegion}
                 onChange={(e) => setOrganizationRegion(e.target.value)}
                 disabled={readOnly || isDraftPlanForDirector}
-                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${readOnly
+                className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                  readOnly
                     ? "bg-slate-100 text-slate-700 border-slate-200 cursor-not-allowed font-medium"
                     : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
-                  }`}
+                }`}
                 required
               >
                 {ORGANIZATION_REGION_OPTIONS.map((reg) => (
@@ -474,10 +478,10 @@ export function CreatePlanForm({
                 <option value="Finally Approved">Finally Approved</option>
               </select>
             </div>
-          </div >
+          </div>
 
-    {/* Remarks */ }
-    < div >
+          {/* Remarks */}
+          <div>
             <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
               Description / Remarks (Optional)
             </label>
@@ -493,82 +497,80 @@ export function CreatePlanForm({
                   : "bg-white text-slate-900 border-slate-300 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F]"
               }`}
             />
-          </div >
+          </div>
 
-    {/* Officer Revision Comment Box */ }
-  {
-    !isDirector &&
-    (status === "Returned" || initialData?.status === "Returned") && (
-      <div className="space-y-1.5 pt-1">
-        <label className="block text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
-          <MessageSquare className="h-4 w-4 text-[#0A3C2F]" />
-          <span>
-            Officer Revision Comment / Justification for Director{" "}
-            <span className="text-rose-600">*</span>
-          </span>
-        </label>
-        <textarea
-          rows={3}
-          value={revisionComment}
-          onChange={(e) => setRevisionComment(e.target.value)}
-          placeholder="Explain the revisions made to address feedback before resending to the Director..."
-          className="w-full rounded-xl border border-amber-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors bg-white"
-        />
-      </div>
-    )
-  }
+          {/* Officer Revision Comment Box */}
+          {!isDirector &&
+            (status === "Returned" || initialData?.status === "Returned") && (
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <MessageSquare className="h-4 w-4 text-[#0A3C2F]" />
+                  <span>
+                    Officer Revision Comment / Justification for Director{" "}
+                    <span className="text-rose-600">*</span>
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={revisionComment}
+                  onChange={(e) => setRevisionComment(e.target.value)}
+                  placeholder="Explain the revisions made to address feedback before resending to the Director..."
+                  className="w-full rounded-xl border border-amber-300 px-4 py-2.5 text-sm text-slate-900 focus:border-[#0A3C2F] focus:ring-1 focus:ring-[#0A3C2F] outline-none transition-colors bg-white"
+                />
+              </div>
+            )}
 
-  {/* Form Actions */ }
-  <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
-    <button
-      type="button"
-      onClick={onBackClick}
-      className="px-5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-    >
-      Back to Plans List
-    </button>
-
-    {!readOnly && !isDraftPlanForDirector && (
-      <div className="flex items-center gap-2.5">
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-800 transition-colors cursor-pointer"
-        >
-          <Save className="h-4 w-4" />
-          <span>
-            {isDirector
-              ? "Save Edits"
-              : initialData
-                ? "Save Changes"
-                : "Create Procurement Plan"}
-          </span>
-        </button>
-
-        {!isDirector &&
-          (status === "Returned" ||
-            initialData?.status === "Returned" ||
-            status === "Draft") && (
+          {/* Form Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
-              onClick={() =>
-                handleSaveWithStatus("Submitted to Director")
-              }
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A3C2F] hover:bg-[#072b22] text-xs sm:text-sm font-bold text-white shadow-xs transition-colors cursor-pointer"
+              onClick={onBackClick}
+              className="px-5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <Send className="h-4 w-4" />
-              <span>
-                {status === "Returned" ||
-                  initialData?.status === "Returned"
-                  ? "Resend to Director for Approval"
-                  : "Submit to Director"}
-              </span>
+              Back to Plans List
             </button>
-          )}
-      </div>
-    )}
-  </div>
-        </section >
-      </form >
-    </div >
+
+            {!readOnly && !isDraftPlanForDirector && (
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs sm:text-sm font-bold text-slate-800 transition-colors cursor-pointer"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>
+                    {isDirector
+                      ? "Save Edits"
+                      : initialData
+                        ? "Save Changes"
+                        : "Create Procurement Plan"}
+                  </span>
+                </button>
+
+                {!isDirector &&
+                  (status === "Returned" ||
+                    initialData?.status === "Returned" ||
+                    status === "Draft") && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSaveWithStatus("Submitted to Director")
+                      }
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A3C2F] hover:bg-[#072b22] text-xs sm:text-sm font-bold text-white shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>
+                        {status === "Returned" ||
+                        initialData?.status === "Returned"
+                          ? "Resend to Director for Approval"
+                          : "Submit to Director"}
+                      </span>
+                    </button>
+                  )}
+              </div>
+            )}
+          </div>
+        </section>
+      </form>
+    </div>
   );
 }
