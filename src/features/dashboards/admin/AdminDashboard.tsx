@@ -9,7 +9,7 @@ import {
   UserX,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
-import { getDashboardHeading } from "../../dashboard.config";
+import { getDashboardHeading } from "../dashboard.config";
 import { DashboardOverview } from "../DashboardOverview";
 import { RecentAuditTrailTable } from "./RecentAuditTrailTable";
 import { UserAccessTable } from "./UserAccessTable";

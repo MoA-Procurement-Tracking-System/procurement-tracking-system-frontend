@@ -1,7 +1,7 @@
 import { ReportsView } from "@/features/reports/components/ReportsView";
 import { CommitteeProgressView } from "@/features/plans/components/CommitteeProgressView";
-import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLogsView";
-import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
+import { SystemLogsView } from "@/features/dashboards/admin/SystemLogsView";
+import { UserManagementView } from "@/features/dashboards/admin/UserManagementView";
 import { OfficerContractsView } from "@/features/contracts/components/OfficerContractsView";
 import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
 import { DirectorActivityTrackerView } from "@/features/activity-tracker/components/DirectorActivityTrackerView";
