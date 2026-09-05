@@ -34,7 +34,7 @@ import type { AuthUser } from "../../../lib/authTypes";
 import {
   INITIAL_PROJECTS,
   type ProjectItem,
-} from "../../dashboards/components/director/projects/projectsData";
+} from "@/features/projects/management/projectsData";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import { VersionHistoryModal } from "./VersionHistoryModal";

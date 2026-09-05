@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { PlanCategory, ProcurementPlan } from "../../plans/plansData";
-import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
+import type { ProjectItem } from "@/features/projects/management/projectsData";
 import {
   INITIAL_ACTIVITIES,
   type ProcurementActivity,

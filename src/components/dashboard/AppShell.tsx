@@ -23,6 +23,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import type { AuthUser } from "../../lib/authTypes";
+import { NotificationHeaderDropdown } from "@/features/notifications/components/NotificationHeaderDropdown";
 import { ROLE_LABELS } from "../../lib/authTypes";
 import {
   getNavigationForRole,
@@ -232,20 +233,7 @@ export function AppShell({
           </button>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Notifications, 3 unread"
-              className="relative p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0A3C2F] transition-colors cursor-pointer flex items-center justify-center"
-            >
-              <Bell
-                size={16}
-                strokeWidth={1.8}
-                className="w-4 h-4 text-slate-600"
-              />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
-                3
-              </span>
-            </button>
+            <NotificationHeaderDropdown />
 
             <div
               aria-label="Current language: English and Amharic"

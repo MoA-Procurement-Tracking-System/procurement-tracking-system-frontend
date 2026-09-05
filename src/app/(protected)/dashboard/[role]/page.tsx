@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { DashboardRenderer } from "../../../../features/dashboards/components/DashboardRenderer";
+import { DashboardRenderer } from "@/features/dashboards/DashboardRenderer";
 import { normalizeUserRole, roleFromSlug } from "../../../../lib/authTypes";
 import { requireAuthenticatedSession } from "../../../../lib/serverAuth";
 

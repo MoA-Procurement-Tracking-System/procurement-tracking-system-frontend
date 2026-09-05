@@ -76,7 +76,7 @@ export const FUNDING_SOURCE_OPTIONS = [
     category: "Standard",
   },
   { label: "EU Grant / European Union", category: "Standard" },
-  { label: "Other (Specify Custom Funding Source...)", category: "Custom" },
+  { label: "Other (Specify Custom Donor)", category: "Custom" },
 ];
 
 export const FUNDING_TYPE_OPTIONS = [

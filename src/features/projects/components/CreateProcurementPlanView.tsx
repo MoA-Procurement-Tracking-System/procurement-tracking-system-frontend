@@ -19,12 +19,8 @@ import {
 import { DualCalendarField } from "./DualCalendarField";
 import {
   ArrowLeft,
-  ArrowRightLeft,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Hammer,
   Info,
   Lightbulb,

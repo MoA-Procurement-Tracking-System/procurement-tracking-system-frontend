@@ -14,7 +14,12 @@ import {
   MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProjectItem } from "../../dashboards/components/director/projects/projectsData";
+import type { ProjectItem } from "@/features/projects/management/projectsData";
+import { DualCalendarInput } from "@/components/common/DualCalendarInput";
+import {
+  gregorianToEthiopian,
+  formatEthiopianDate,
+} from "@/features/projects/utils/ethiopianCalendar";
 import {
   PLAN_CATEGORY_CHOICES,
   type PlanCategory,

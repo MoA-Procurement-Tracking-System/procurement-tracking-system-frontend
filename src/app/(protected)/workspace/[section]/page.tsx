@@ -1,14 +1,15 @@
 import { ReportsView } from "@/features/reports/components/ReportsView";
 import { CommitteeProgressView } from "@/features/plans/components/CommitteeProgressView";
-import { SystemLogsView } from "@/features/dashboards/components/admin/SystemLogsView";
-import { UserManagementView } from "@/features/dashboards/components/admin/UserManagementView";
+import { SystemLogsView } from "@/features/dashboards/admin/SystemLogsView";
+import { UserManagementView } from "@/features/dashboards/admin/UserManagementView";
 import { OfficerContractsView } from "@/features/contracts/components/OfficerContractsView";
 import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
 import { DirectorActivityTrackerView } from "@/features/activity-tracker/components/DirectorActivityTrackerView";
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
-import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
+import { ProjectsManagementView } from "@/features/projects/management/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
 import { MyDecisionsView } from "@/features/plans/components/MyDecisionsView";
+import { NotificationsView } from "@/features/notifications/components/NotificationsView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -100,6 +101,10 @@ export default async function WorkspaceSectionPage({
 
   if (section === "system-logs") {
     return <SystemLogsView />;
+  }
+
+  if (section === "notifications") {
+    return <NotificationsView />;
   }
 
   if (section === "user-management") {
