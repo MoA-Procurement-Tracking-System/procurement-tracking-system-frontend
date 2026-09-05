@@ -99,6 +99,14 @@ const workspaceSections = {
     description: "Review timestamped system and authentication activity.",
     allowedRoles: ["ADMIN"],
   },
+  notifications: {
+    section: "notifications",
+    label: "Notifications",
+    href: "/workspace/notifications",
+    icon: "clipboard",
+    description: "View alerts, reviews, milestone deadlines and system notifications.",
+    allowedRoles: ["OFFICER", "DIRECTOR", "ENDORSING_COMMITTEE", "ADMIN"],
+  },
 } as const satisfies Record<string, WorkspaceSection>;
 
 type WorkspaceSectionKey = keyof typeof workspaceSections;

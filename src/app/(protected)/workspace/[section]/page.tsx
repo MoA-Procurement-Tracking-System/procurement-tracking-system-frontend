@@ -9,6 +9,7 @@ import { OfficerProjectsView } from "@/features/projects/components/OfficerProje
 import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
 import { MyDecisionsView } from "@/features/plans/components/MyDecisionsView";
+import { NotificationsView } from "@/features/notifications/components/NotificationsView";
 import { PanelsTopLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { ROLE_LABELS } from "../../../../lib/authTypes";
@@ -90,6 +91,10 @@ export default async function WorkspaceSectionPage({
 
   if (section === "system-logs") {
     return <SystemLogsView />;
+  }
+
+  if (section === "notifications") {
+    return <NotificationsView />;
   }
 
   if (section === "user-management") {
