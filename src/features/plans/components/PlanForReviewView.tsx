@@ -20,9 +20,11 @@ import {
   Clock,
   Mail,
   History,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProcurementPlan } from "../plansData";
+import { type ProcurementPlan, parseRejectionDetails } from "../plansData";
 import {
   fetchPlans,
   sendPlanToCommittee,
@@ -38,6 +40,7 @@ import {
 import { CreatePlanForm } from "./CreatePlanForm";
 import { DirectorActivitiesListView } from "../../activities/components/DirectorActivitiesListView";
 import { VersionHistoryModal } from "./VersionHistoryModal";
+import { CommitteeRejectionModal } from "./CommitteeRejectionModal";
 import { DualCalendarField } from "@/features/projects/components/DualCalendarField";
 import {
   getCurrentPlanVersionNumber,
@@ -56,11 +59,13 @@ import { OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY } from "@/features/projects/data/of
 interface PlanForReviewViewProps {
   user: AuthUser;
   selectedPlanId?: string;
+  selectedActivityRef?: string;
 }
 
 export function PlanForReviewView({
   user,
   selectedPlanId,
+  selectedActivityRef,
 }: PlanForReviewViewProps) {
   const [plans, setPlans] = useState<ProcurementPlan[]>([]);
   const [projects] = useState<ProjectItem[]>(INITIAL_PROJECTS);
@@ -115,6 +120,16 @@ export function PlanForReviewView({
                 description: p.description || "",
                 reference: p.reference,
                 rejectionReason: p.rejectionReason,
+                rejectionScope:
+                  p.rejectionScope ||
+                  parseRejectionDetails(p.rejectionReason).scope,
+                rejectedActivityIds: p.rejectedActivityIds,
+                rejectedActivityRefs:
+                  p.rejectedActivityRefs ||
+                  (parseRejectionDetails(p.rejectionReason).scope === "SPECIFIC"
+                    ? parseRejectionDetails(p.rejectionReason)
+                        .rejectedActivityRefs
+                    : undefined),
                 activities: (p.planActivities as any) || [],
                 activitiesCount:
                   (p.planActivities as any)?.length || p.activities || 0,
@@ -158,6 +173,10 @@ export function PlanForReviewView({
 
         if (matchingDraft) {
           planMap.delete(matchingDraft.id);
+          const effectiveReason =
+            p.rejectionReason || matchingDraft.rejectionReason;
+          const parsedEff = parseRejectionDetails(effectiveReason);
+
           const merged: ProcurementPlan = {
             ...p,
             projectCode:
@@ -166,7 +185,19 @@ export function PlanForReviewView({
                 ? matchingDraft.projectCode
                 : p.projectCode,
             reference: matchingDraft.reference || (p as any).reference,
-            rejectionReason: p.rejectionReason || matchingDraft.rejectionReason,
+            rejectionReason: effectiveReason,
+            rejectionScope:
+              p.rejectionScope ||
+              matchingDraft.rejectionScope ||
+              parsedEff.scope,
+            rejectedActivityIds:
+              p.rejectedActivityIds || matchingDraft.rejectedActivityIds,
+            rejectedActivityRefs:
+              p.rejectedActivityRefs ||
+              matchingDraft.rejectedActivityRefs ||
+              (parsedEff.scope === "SPECIFIC"
+                ? parsedEff.rejectedActivityRefs
+                : undefined),
             activities:
               p.activities && p.activities.length > 0
                 ? p.activities
@@ -216,6 +247,8 @@ export function PlanForReviewView({
   );
   const [editingActivity, setEditingActivity] =
     useState<ProcurementActivity | null>(null);
+  const [isCommitteeRejectionModalOpen, setIsCommitteeRejectionModalOpen] =
+    useState(false);
 
   useEffect(() => {
     const handleReset = (event: Event) => {
@@ -346,9 +379,31 @@ export function PlanForReviewView({
     newPlanStatus: string,
     newActivityStatus?: string,
     rejectionReason?: string,
+    rejectionScope?: "ALL" | "SPECIFIC",
+    rejectedActivityIds?: string[],
+    rejectedActivityRefs?: string[],
   ) => {
     if (typeof window === "undefined") return;
     try {
+      const isSpecific = rejectionScope === "SPECIFIC";
+      const isActivityFlagged = (actId?: string, actRef?: string) => {
+        if (!isSpecific) return true;
+        const cleanId = (actId || "").toLowerCase().trim();
+        const cleanRef = (actRef || "").toLowerCase().trim();
+        return (
+          (rejectedActivityIds &&
+            rejectedActivityIds.some((id) => {
+              const c = id.toLowerCase().trim();
+              return c === cleanId || c === cleanRef;
+            })) ||
+          (rejectedActivityRefs &&
+            rejectedActivityRefs.some((ref) => {
+              const c = ref.toLowerCase().trim();
+              return c === cleanRef || c === cleanId;
+            }))
+        );
+      };
+
       const rawPlanDrafts = window.localStorage.getItem(
         OFFICER_PLAN_DRAFTS_STORAGE_KEY,
       );
@@ -377,10 +432,21 @@ export function PlanForReviewView({
             if (matches) {
               const updatedPlanActivities =
                 newActivityStatus && item.plan?.planActivities
-                  ? item.plan.planActivities.map((act: any) => ({
-                      ...act,
-                      status: newActivityStatus,
-                    }))
+                  ? item.plan.planActivities.map((act: any) => {
+                      const flagged = isActivityFlagged(
+                        act.id,
+                        act.activityRefNo || act.reference,
+                      );
+                      return {
+                        ...act,
+                        status: isSpecific
+                          ? flagged
+                            ? newActivityStatus
+                            : act.status || "Approved"
+                          : newActivityStatus,
+                        isFlaggedByCommittee: flagged,
+                      };
+                    })
                   : item.plan?.planActivities;
 
               return {
@@ -392,6 +458,11 @@ export function PlanForReviewView({
                     rejectionReason !== undefined
                       ? rejectionReason
                       : item.plan.rejectionReason,
+                  rejectionScope: rejectionScope || item.plan.rejectionScope,
+                  rejectedActivityIds:
+                    rejectedActivityIds || item.plan.rejectedActivityIds,
+                  rejectedActivityRefs:
+                    rejectedActivityRefs || item.plan.rejectedActivityRefs,
                   planActivities: updatedPlanActivities,
                 },
               };
@@ -425,11 +496,20 @@ export function PlanForReviewView({
                   plan.projectCode?.toLowerCase()?.trim();
 
               if (matchesPlan) {
+                const flagged = isActivityFlagged(
+                  item.activity?.id,
+                  item.activity?.activityRefNo || item.activity?.reference,
+                );
                 return {
                   ...item,
                   activity: {
                     ...item.activity,
-                    status: newActivityStatus,
+                    status: isSpecific
+                      ? flagged
+                        ? newActivityStatus
+                        : item.activity?.status || "Approved"
+                      : newActivityStatus,
+                    isFlaggedByCommittee: flagged,
                   },
                 };
               }
@@ -540,8 +620,26 @@ export function PlanForReviewView({
   const handleCommitteeVote = async (
     plan: ProcurementPlan,
     decision: "APPROVE" | "REJECT",
+    customRemarks?: string,
+    rejectionDetails?: {
+      scope: "ALL" | "SPECIFIC";
+      rejectedActivityIds: string[];
+      rejectedActivityRefs: string[];
+    },
   ) => {
-    const commentText = returnRemarks.trim() || undefined;
+    let commentText =
+      (customRemarks !== undefined ? customRemarks : returnRemarks).trim() ||
+      undefined;
+
+    if (
+      decision === "REJECT" &&
+      rejectionDetails?.scope === "SPECIFIC" &&
+      rejectionDetails.rejectedActivityRefs.length > 0
+    ) {
+      const prefix = `[Flagged Activities: ${rejectionDetails.rejectedActivityRefs.join(", ")}]`;
+      commentText = commentText ? `${prefix} ${commentText}` : prefix;
+    }
+
     try {
       await submitVote(plan.id, decision, commentText, user.id, user.email);
     } catch (err) {
@@ -556,6 +654,9 @@ export function PlanForReviewView({
       nextStatus,
       nextActStatus,
       decision === "REJECT" ? commentText : undefined,
+      rejectionDetails?.scope || "ALL",
+      rejectionDetails?.rejectedActivityIds,
+      rejectionDetails?.rejectedActivityRefs,
     );
 
     recordPlanVersionEvent({
@@ -567,7 +668,9 @@ export function PlanForReviewView({
       actionLabel:
         decision === "APPROVE"
           ? "Plan Endorsed & Finally Approved"
-          : "Plan Rejected by Committee",
+          : rejectionDetails?.scope === "SPECIFIC"
+            ? `Plan Returned (${rejectionDetails.rejectedActivityRefs.length} Specific Activities Flagged)`
+            : "Plan Rejected by Committee",
       changedBy: user.displayName || user.email || "Endorsement Committee",
       changedByRole: "Endorsement Committee",
       reason:
@@ -583,7 +686,9 @@ export function PlanForReviewView({
     showToast(
       decision === "APPROVE"
         ? `Vote "Approved" recorded for plan "${plan.planName}".`
-        : `Vote "Rejected" recorded for plan "${plan.planName}".`,
+        : rejectionDetails?.scope === "SPECIFIC"
+          ? `Vote "Rejected" recorded: flagged ${rejectionDetails.rejectedActivityRefs.length} specific activities.`
+          : `Vote "Rejected" recorded for plan "${plan.planName}".`,
     );
   };
 
@@ -604,6 +709,7 @@ export function PlanForReviewView({
         project={proj}
         parentSection="plan-for-review"
         userRole={user.role}
+        targetActivityRef={selectedActivityRef}
         onBackClick={() => setActivitiesPlan(null)}
         onApprovePlan={
           user.role === "DIRECTOR"
@@ -624,9 +730,9 @@ export function PlanForReviewView({
         }
         onCommitteeVote={
           user.role === "ENDORSING_COMMITTEE"
-            ? (p, decision, remarks) => {
+            ? (p, decision, remarks, rejectionDetails) => {
                 if (remarks) setReturnRemarks(remarks);
-                handleCommitteeVote(p, decision);
+                handleCommitteeVote(p, decision, remarks, rejectionDetails);
                 setActivitiesPlan(null);
               }
             : undefined
@@ -810,6 +916,126 @@ export function PlanForReviewView({
           </div>
         </section>
 
+        {/* Rejection Alert Banner (Director & Viewer Insight) */}
+        {(() => {
+          const parsed = parseRejectionDetails(
+            selectedPlanForReview.rejectionReason,
+          );
+          if (parsed.scope === "SPECIFIC") {
+            return (
+              <section className="rounded-xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50/40 p-4 shadow-2xs space-y-2.5 animate-in fade-in">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-1 rounded-lg bg-amber-100 border border-amber-200 shrink-0 mt-0.5">
+                      <AlertTriangle className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-extrabold text-amber-950 uppercase tracking-wider">
+                        Committee Objection: Specific Activities Flagged (
+                        {parsed.rejectedActivityRefs.length} item
+                        {parsed.rejectedActivityRefs.length > 1 ? "s" : ""})
+                      </h3>
+                      <p className="text-xs text-amber-900/90 mt-0.5 leading-relaxed">
+                        The Endorsement Committee returned this plan due to
+                        objections on specific activities. Per regulations, the
+                        entire plan package is on hold until these specific
+                        activities are revised.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-200/70 text-amber-900 border border-amber-300 shrink-0">
+                    Specific Activity Rejection
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/60 text-xs">
+                  <span className="font-bold text-amber-950 text-[11px]">
+                    Flagged Activities:
+                  </span>
+                  {parsed.rejectedActivityRefs.map((ref) => (
+                    <button
+                      key={ref}
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById(
+                          `review-activity-row-${ref}`,
+                        );
+                        if (el) {
+                          el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 font-mono font-bold text-rose-900 bg-rose-100 hover:bg-rose-200 border border-rose-300 hover:border-rose-400 px-2.5 py-1 rounded-md text-[11px] transition-all cursor-pointer shadow-2xs group"
+                      title={`Click to jump to activity ${ref}`}
+                    >
+                      <AlertCircle className="h-3 w-3 text-rose-600" />
+                      <span>{ref}</span>
+                      <span className="font-sans text-[10px] text-rose-700 group-hover:underline">
+                        ↓ Jump to Activity
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {parsed.cleanRemarks && (
+                  <div className="text-xs bg-white/90 rounded-lg p-3 border border-amber-200/80 shadow-2xs text-amber-950">
+                    <span className="font-bold text-slate-800">
+                      Committee Feedback &amp; Deliberation Notes:{" "}
+                    </span>
+                    <span className="italic text-slate-700 font-medium">
+                      &ldquo;{parsed.cleanRemarks}&rdquo;
+                    </span>
+                  </div>
+                )}
+              </section>
+            );
+          }
+          if (
+            (selectedPlanForReview.status === "Returned" ||
+              selectedPlanForReview.rejectionReason) &&
+            parsed.cleanRemarks
+          ) {
+            return (
+              <section className="rounded-xl border border-rose-200 bg-rose-50/70 p-4 shadow-2xs space-y-2 animate-in fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded-lg bg-rose-100 border border-rose-200 shrink-0">
+                      <RotateCcw className="h-4 w-4 text-rose-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-extrabold text-rose-950 uppercase tracking-wider">
+                        Plan Returned: Common / Entire Plan Package Rejection
+                      </h3>
+                      <p className="text-xs text-rose-900/90 mt-0.5">
+                        The Endorsement Committee returned the entire
+                        procurement plan package for general revisions across
+                        all activities.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
+                    General Rejection (All Activities)
+                  </span>
+                </div>
+
+                {parsed.cleanRemarks && (
+                  <div className="text-xs bg-white/90 rounded-lg p-3 border border-rose-200/80 shadow-2xs text-rose-950">
+                    <span className="font-bold text-slate-800">
+                      Revision Notes:{" "}
+                    </span>
+                    <span className="italic text-slate-700 font-medium">
+                      &ldquo;{parsed.cleanRemarks}&rdquo;
+                    </span>
+                  </div>
+                )}
+              </section>
+            );
+          }
+          return null;
+        })()}
+
         {/* Full-Width Plan Scope & Package Activities Card */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-6">
           {/* Plan Description & Scope Overview */}
@@ -916,11 +1142,23 @@ export function PlanForReviewView({
                         act.roadmap[0]?.originalPlannedDate ||
                         "N/A";
 
+                      const isTargeted =
+                        selectedActivityRef &&
+                        (act.activityRefNo?.toLowerCase().trim() ===
+                          selectedActivityRef.toLowerCase().trim() ||
+                          act.id.toLowerCase().trim() ===
+                            selectedActivityRef.toLowerCase().trim());
+
                       return (
                         <tr
                           key={act.id}
+                          id={`review-activity-row-${act.activityRefNo}`}
                           onClick={() => setEditingActivity(act)}
-                          className="hover:bg-emerald-50/40 transition-colors cursor-pointer group"
+                          className={`transition-all duration-300 cursor-pointer group ${
+                            isTargeted
+                              ? "bg-rose-100/90 ring-3 ring-rose-500 shadow-md"
+                              : "hover:bg-emerald-50/40"
+                          }`}
                         >
                           <td className="py-3.5 px-3.5 text-center font-bold text-slate-400 align-top pt-4">
                             {idx + 1}
@@ -928,9 +1166,16 @@ export function PlanForReviewView({
 
                           {/* Ref No & Method */}
                           <td className="py-3.5 px-3.5 align-top space-y-1.5 pt-3.5">
-                            <span className="font-mono font-extrabold text-[#0A3C2F] text-[11px] whitespace-nowrap block group-hover:text-emerald-800">
-                              {act.activityRefNo}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-extrabold text-[#0A3C2F] text-[11px] whitespace-nowrap block group-hover:text-emerald-800">
+                                {act.activityRefNo}
+                              </span>
+                              {isTargeted && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-600 text-white animate-pulse">
+                                  Targeted Activity
+                                </span>
+                              )}
+                            </div>
                             <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                               <span className="font-bold text-slate-700 whitespace-nowrap">
                                 {act.method}
@@ -1101,15 +1346,8 @@ export function PlanForReviewView({
 
               <button
                 type="button"
-                disabled={!returnRemarks.trim()}
-                onClick={() =>
-                  handleCommitteeVote(selectedPlanForReview, "REJECT")
-                }
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${
-                  returnRemarks.trim()
-                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
-                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                }`}
+                onClick={() => setIsCommitteeRejectionModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-colors bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer shadow-2xs"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Vote: Reject / Return Plan</span>
@@ -1337,6 +1575,30 @@ export function PlanForReviewView({
             </div>
           </div>
         )}
+
+        <CommitteeRejectionModal
+          isOpen={isCommitteeRejectionModalOpen}
+          onClose={() => setIsCommitteeRejectionModalOpen(false)}
+          onConfirm={(scope, activityIds, activityRefs, remarks) => {
+            handleCommitteeVote(selectedPlanForReview, "REJECT", remarks, {
+              scope,
+              rejectedActivityIds: activityIds,
+              rejectedActivityRefs: activityRefs,
+            });
+          }}
+          activities={(
+            selectedPlanForReview.activities || reviewActivities
+          ).map((a: any) => ({
+            id: a.id,
+            activityRefNo: a.activityRefNo || a.reference,
+            description: a.description,
+            method: a.method || a.procurementMethod?.label,
+            estimatedAmount: a.estimatedAmount || a.estimatedBudget,
+            currency: a.currency,
+          }))}
+          planName={selectedPlanForReview.planName}
+          projectCode={selectedPlanForReview.projectCode}
+        />
       </div>
     );
   }
