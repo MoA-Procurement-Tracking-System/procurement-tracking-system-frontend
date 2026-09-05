@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AlertTriangle,
-  X,
-  RotateCcw,
-  AlertCircle,
-} from "lucide-react";
+import { AlertTriangle, X, RotateCcw, AlertCircle } from "lucide-react";
 
 export interface RejectionActivityItem {
   id: string;
