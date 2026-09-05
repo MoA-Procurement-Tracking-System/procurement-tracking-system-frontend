@@ -6,19 +6,19 @@ import type {
   DashboardFocusItem,
   DashboardMetric,
   DashboardWorkspace,
-} from "../types";
+} from "./types";
 
 interface DashboardOverviewProps {
   user: AuthUser;
-  eyebrow: string;
-  description: string;
+  eyebrow?: string;
+  description?: string;
   metrics: readonly DashboardMetric[];
-  workspaceTitle: string;
-  workspaceDescription: string;
-  workspaces: readonly DashboardWorkspace[];
-  focusTitle: string;
-  focusDescription: string;
-  focusItems: readonly DashboardFocusItem[];
+  workspaceTitle?: string;
+  workspaceDescription?: string;
+  workspaces?: readonly DashboardWorkspace[];
+  focusTitle?: string;
+  focusDescription?: string;
+  focusItems?: readonly DashboardFocusItem[];
 }
 
 export function DashboardOverview({
