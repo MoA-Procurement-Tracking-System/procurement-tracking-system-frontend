@@ -6,7 +6,7 @@ import { OfficerContractsView } from "@/features/contracts/components/OfficerCon
 import { OfficerActivityTrackerView } from "@/features/activity-tracker/components/OfficerActivityTrackerView";
 import { DirectorActivityTrackerView } from "@/features/activity-tracker/components/DirectorActivityTrackerView";
 import { OfficerProjectsView } from "@/features/projects/components/OfficerProjectsView";
-import { ProjectsManagementView } from "@/features/dashboards/components/director/projects/ProjectsManagementView";
+import { ProjectsManagementView } from "@/features/projects/management/ProjectsManagementView";
 import { PlanForReviewView } from "@/features/plans/components/PlanForReviewView";
 import { MyDecisionsView } from "@/features/plans/components/MyDecisionsView";
 import { NotificationsView } from "@/features/notifications/components/NotificationsView";

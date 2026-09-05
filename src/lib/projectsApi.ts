@@ -1,7 +1,7 @@
 import type {
   ProjectItem,
   ProjectOfficer,
-} from "@/features/dashboards/components/director/projects/projectsData";
+} from "@/features/projects/management/projectsData";
 import type { OfficerProject } from "@/features/projects/data/officerProjects";
 import type { AuthUser } from "./authTypes";
 import { apiClient } from "./apiClient";
