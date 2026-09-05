@@ -5,6 +5,7 @@ import { Calendar } from "lucide-react";
 interface DirectorTopFilterBarProps {
   selectedFiscalYear: string;
   onSelectFiscalYear: (year: string) => void;
+  availableFiscalYears?: string[];
   selectedSector: string;
   onSelectSector: (sector: string) => void;
   availableSectors: string[];
@@ -21,6 +22,7 @@ interface DirectorTopFilterBarProps {
 export function DirectorTopFilterBar({
   selectedFiscalYear,
   onSelectFiscalYear,
+  availableFiscalYears = [],
   selectedSector,
   onSelectSector,
   availableSectors,
@@ -40,6 +42,18 @@ export function DirectorTopFilterBar({
       : availableProjects.find((p) => p.id === selectedProject)?.name ||
         "Project";
 
+  // Ensure selected year is in options if not All Fiscal Years
+  const fiscalYearOptions = Array.from(
+    new Set(
+      [
+        ...availableFiscalYears,
+        ...(selectedFiscalYear && selectedFiscalYear !== "All Fiscal Years"
+          ? [selectedFiscalYear]
+          : []),
+      ].filter(Boolean),
+    ),
+  );
+
   return (
     <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap w-full py-0.5 overflow-x-auto no-scrollbar">
       {/* 1. Fiscal Year Pill: Light mint background, green border, calendar icon, no chevron */}
@@ -54,8 +68,11 @@ export function DirectorTopFilterBar({
           className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
           aria-label="Filter by Fiscal Year"
         >
-          <option value="2017 EFY">2017 EFY</option>
-          <option value="2016 EFY">2016 EFY</option>
+          {fiscalYearOptions.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
           <option value="All Fiscal Years">All Fiscal Years</option>
         </select>
       </div>
