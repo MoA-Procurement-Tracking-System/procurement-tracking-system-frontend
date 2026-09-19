@@ -118,7 +118,7 @@ export async function fetchProjects(): Promise<BackendProject[]> {
     const res = await apiClient.get<any>("/projects");
     return Array.isArray(res) ? res : res.data || [];
   } catch (err) {
-    console.error("fetchProjects error:", err);
+    console.warn("fetchProjects notice:", err);
     return [];
   }
 }
@@ -164,6 +164,16 @@ export async function removeOfficerFromProject(
   );
 }
 
+export async function deleteProject(projectId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/projects/${encodeURIComponent(projectId)}`);
+    return true;
+  } catch (err) {
+    console.warn(`deleteProject notice for ${projectId}:`, err);
+    return false;
+  }
+}
+
 export function mapBackendProjectToProjectItem(
   bp: BackendProject,
 ): ProjectItem {
@@ -199,7 +209,9 @@ export function mapBackendProjectToProjectItem(
     assignedOfficers,
     description: "Sector project",
     status:
-      bp.status === "ACTIVE"
+      bp.status?.toUpperCase() === "ACTIVE" ||
+      bp.isActive === true ||
+      (!bp.status && bp.isActive !== false)
         ? assignedOfficers.length > 0
           ? "Active"
           : "Draft"
