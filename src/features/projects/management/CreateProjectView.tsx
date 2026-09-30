@@ -223,17 +223,35 @@ export function CreateProjectView({
   });
 
   // Step 2 State
-  const isStandardFunding = FUNDING_SOURCE_OPTIONS.some(
-    (fs) => fs.label === initialData?.fundingSource,
-  );
+  const initialFundingSources = (() => {
+    if (!isEditing || !initialData?.fundingSource) {
+      return [];
+    }
+    // Parse existing funding source — may be comma-separated if multiple were saved
+    const parts = initialData.fundingSource
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const resolved: string[] = [];
+    let hasCustom = false;
+    for (const part of parts) {
+      if (part === "Other (Specify Custom Donor)") {
+        hasCustom = true;
+      } else {
+        resolved.push(part);
+      }
+    }
+    if (hasCustom && !resolved.includes("Other (Specify Custom Donor)")) {
+      resolved.push("Other (Specify Custom Donor)");
+    }
+    return resolved;
+  })();
+
+  const initialCustomFunding = initialData?.customFundingSource || "";
+
   const [step2Data, setStep2Data] = useState<Step2FinancialsFormData>({
-    fundingSource: isEditing
-      ? isStandardFunding
-        ? initialData!.fundingSource
-        : "Other (Specify Custom Donor)"
-      : FUNDING_SOURCE_OPTIONS[0].label,
-    customFundingSource:
-      isEditing && !isStandardFunding ? initialData!.fundingSource : "",
+    fundingSources: initialFundingSources,
+    customFundingSource: initialCustomFunding,
     fundingType: initialData?.fundingType || FUNDING_TYPE_OPTIONS[0],
     currency: initialData?.currency || CURRENCY_OPTIONS[0],
     loanGrantNumbers:
@@ -340,18 +358,6 @@ export function CreateProjectView({
         return false;
       }
 
-      const isDuplicateCode = existingProjects.some(
-        (p) =>
-          p.code.toUpperCase() === cleanCode &&
-          (!initialData || p.id !== initialData.id),
-      );
-      if (isDuplicateCode) {
-        setErrorMsg(
-          `Project Code "${cleanCode}" is already in use. Each project must have a unique code.`,
-        );
-        return false;
-      }
-
       if (!step1Data.name.trim()) {
         setErrorMsg("Project Full Name is required.");
         return false;
@@ -374,7 +380,20 @@ export function CreateProjectView({
 
     if (currentStep === 2) {
       if (
-        step2Data.fundingSource === "Other (Specify Custom Donor)" &&
+        step2Data.fundingSources.length === 0 ||
+        (step2Data.fundingSources.length === 1 &&
+          step2Data.fundingSources[0] === "Other (Specify Custom Donor)" &&
+          !step2Data.customFundingSource.trim())
+      ) {
+        setErrorMsg(
+          step2Data.fundingSources.length === 0
+            ? "Please select at least one Funding Source / Donor."
+            : "Please specify the Custom Funding Source / Donor Name.",
+        );
+        return false;
+      }
+      if (
+        step2Data.fundingSources.includes("Other (Specify Custom Donor)") &&
         !step2Data.customFundingSource.trim()
       ) {
         setErrorMsg("Please specify the Custom Funding Source / Donor Name.");
@@ -449,11 +468,19 @@ export function CreateProjectView({
         ? step1Data.customExecutingAgency.trim() || "Custom Agency"
         : step1Data.executingAgency;
 
-    const isCustomDonor =
-      step2Data.fundingSource === "Other (Specify Custom Donor)";
-    const finalFunding = isCustomDonor
-      ? step2Data.customFundingSource.trim() || "Custom Funding Source"
-      : step2Data.fundingSource;
+    const hasCustomDonor = step2Data.fundingSources.includes(
+      "Other (Specify Custom Donor)",
+    );
+    const standardSources = step2Data.fundingSources.filter(
+      (s) => s !== "Other (Specify Custom Donor)",
+    );
+    const allSources = [
+      ...standardSources,
+      ...(hasCustomDonor
+        ? [step2Data.customFundingSource.trim() || "Custom Funding Source"]
+        : []),
+    ];
+    const finalFunding = allSources.join(", ") || "Custom Funding Source";
 
     const cleanedLoanNumbers = step2Data.loanGrantNumbers.filter((num) =>
       num.trim(),
@@ -563,6 +590,7 @@ export function CreateProjectView({
             officerSearch={officerSearch}
             onSearchChange={setOfficerSearch}
             onToggleOfficer={toggleOfficer}
+            onSelectOfficers={setSelectedOfficerIds}
             onSelectAllOfficers={() =>
               setSelectedOfficerIds(allOfficers.map((o) => o.id))
             }
@@ -570,7 +598,7 @@ export function CreateProjectView({
             code={step1Data.code}
             name={step1Data.name}
             sector={step1Data.sector}
-            fundingSource={step2Data.fundingSource}
+            fundingSources={step2Data.fundingSources}
             customFundingSource={step2Data.customFundingSource}
             currency={step2Data.currency}
             componentsCount={step3Data.componentsList.length}

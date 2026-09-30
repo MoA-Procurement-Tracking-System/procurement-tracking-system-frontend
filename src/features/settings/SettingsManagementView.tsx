@@ -15,6 +15,8 @@ import {
   Pencil,
   AlertTriangle,
   X,
+  Banknote,
+  CircleDollarSign,
 } from "lucide-react";
 import type { AuthUser } from "@/lib/authTypes";
 import {
@@ -31,7 +33,12 @@ interface SettingsManagementViewProps {
 }
 
 type TabType =
-  "PROJECT_CODE" | "SECTOR" | "FUNDING_SOURCE" | "PROCUREMENT_METHOD";
+  | "PROJECT_CODE"
+  | "SECTOR"
+  | "FUNDING_SOURCE"
+  | "FUNDING_TYPE"
+  | "PROCUREMENT_METHOD"
+  | "CURRENCY";
 
 const TAB_CONFIGS: {
   type: TabType;
@@ -61,12 +68,54 @@ const TAB_CONFIGS: {
       "Development partners, multilateral banks, and treasury accounts.",
   },
   {
+    type: "FUNDING_TYPE",
+    label: "Funding Types",
+    icon: Banknote,
+    description:
+      "Financing instruments and mechanisms (e.g. Loan, Grant, Treasury, Mixed).",
+  },
+  {
     type: "PROCUREMENT_METHOD",
     label: "Procurement Methods",
     icon: FileSpreadsheet,
     description: "Approved procurement selection and bidding methods.",
   },
+  {
+    type: "CURRENCY",
+    label: "Base Currencies",
+    icon: CircleDollarSign,
+    description:
+      "Configured transaction and reporting currencies (e.g. ETB, USD, EUR, UA).",
+  },
 ];
+
+const TAB_PLACEHOLDERS: Record<TabType, { code: string; label: string }> = {
+  PROJECT_CODE: {
+    code: "e.g. DRIVE, CALM, BREFONS",
+    label: "e.g. De-risking, Inclusion and Value Enhancement Project",
+  },
+  SECTOR: {
+    code: "e.g. SEC_AGRI, SEC_LIVESTOCK",
+    label: "e.g. Agriculture and Horticulture Development Sector",
+  },
+  FUNDING_SOURCE: {
+    code: "e.g. FS_WB, FS_AFDB, FS_GOV",
+    label: "e.g. World Bank (IDA), African Development Bank (AfDB)",
+  },
+  FUNDING_TYPE: {
+    code: "e.g. FT_LOAN, FT_GRANT, FT_CONCESSIONAL",
+    label: "e.g. Loan, Grant, Concessional Financing, Blended Finance",
+  },
+  PROCUREMENT_METHOD: {
+    code: "e.g. PM_RFQ, PM_NCB, PM_QCBS",
+    label:
+      "e.g. Request for Quotations (RFQ), Quality and Cost-Based Selection (QCBS)",
+  },
+  CURRENCY: {
+    code: "e.g. ETB, USD, EUR, UA, GBP",
+    label: "e.g. ETB (Ethiopian Birr), USD (United States Dollar)",
+  },
+};
 
 export function SettingsManagementView({
   currentUser: _currentUser,
@@ -82,7 +131,9 @@ export function SettingsManagementView({
     PROJECT_CODE: 0,
     SECTOR: 0,
     FUNDING_SOURCE: 0,
+    FUNDING_TYPE: 0,
     PROCUREMENT_METHOD: 0,
+    CURRENCY: 0,
   });
 
   // Form states (Add)
@@ -129,14 +180,15 @@ export function SettingsManagementView({
         PROJECT_CODE: 0,
         SECTOR: 0,
         FUNDING_SOURCE: 0,
+        FUNDING_TYPE: 0,
         PROCUREMENT_METHOD: 0,
+        CURRENCY: 0,
       };
       all.forEach((item) => {
         if (counts[item.type as TabType] !== undefined) {
           counts[item.type as TabType]++;
         }
       });
-      setTabCounts(counts);
     } catch {
       // Fallback
     }
@@ -398,11 +450,7 @@ export function SettingsManagementView({
                 type="text"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value)}
-                placeholder={
-                  activeTab === "PROJECT_CODE"
-                    ? "e.g. DRIVE, CALM, BREFONS"
-                    : "e.g. SEC_AGRI"
-                }
+                placeholder={TAB_PLACEHOLDERS[activeTab].code}
                 className="w-full rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 uppercase placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
               />
             </div>
@@ -417,11 +465,7 @@ export function SettingsManagementView({
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                placeholder={
-                  activeTab === "PROJECT_CODE"
-                    ? "e.g. De-risking, Inclusion and Value Enhancement Project"
-                    : "e.g. Agriculture & Livestock"
-                }
+                placeholder={TAB_PLACEHOLDERS[activeTab].label}
                 className="w-full rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
               />
             </div>
@@ -631,6 +675,7 @@ export function SettingsManagementView({
                   type="text"
                   value={editCode}
                   onChange={(e) => setEditCode(e.target.value)}
+                  placeholder={TAB_PLACEHOLDERS[activeTab].code}
                   className="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 uppercase focus:bg-white focus:border-emerald-500 outline-none"
                 />
               </div>
@@ -645,6 +690,7 @@ export function SettingsManagementView({
                   rows={2}
                   value={editLabel}
                   onChange={(e) => setEditLabel(e.target.value)}
+                  placeholder={TAB_PLACEHOLDERS[activeTab].label}
                   className="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 focus:bg-white focus:border-emerald-500 outline-none resize-none"
                 />
               </div>

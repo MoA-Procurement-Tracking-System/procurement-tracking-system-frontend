@@ -27,28 +27,59 @@ export interface OfficerUserItem {
 
 import { apiClient } from "./apiClient";
 
-const FALLBACK_LOOKUPS: LookupItem[] = [
+export const FALLBACK_LOOKUPS: LookupItem[] = [
+  // Sectors (Standard Ministry of Agriculture Directorates & Sectors)
   {
     id: "sec-1",
     type: "SECTOR",
     code: "SEC_AGRI",
-    label: "Agriculture & Livestock",
+    label: "Agriculture and Horticulture Development Sector",
     isActive: true,
   },
   {
     id: "sec-2",
     type: "SECTOR",
-    code: "SEC_HORT",
-    label: "Horticulture & Seed Development",
+    code: "SEC_INPUT",
+    label: "Agricultural Investment and Input Sector",
     isActive: true,
   },
   {
     id: "sec-3",
     type: "SECTOR",
-    code: "SEC_NAT",
-    label: "Natural Resources & Irrigation",
+    code: "SEC_LIVESTOCK",
+    label: "Livestock Resource Development Sector",
     isActive: true,
   },
+  {
+    id: "sec-4",
+    type: "SECTOR",
+    code: "SEC_MGMT",
+    label: "Management Chief Executives",
+    isActive: true,
+  },
+  {
+    id: "sec-5",
+    type: "SECTOR",
+    code: "SEC_MINISTER",
+    label: "Minister Office",
+    isActive: true,
+  },
+  {
+    id: "sec-6",
+    type: "SECTOR",
+    code: "SEC_NAT",
+    label: "Natural Resource Development Sector",
+    isActive: true,
+  },
+  {
+    id: "sec-7",
+    type: "SECTOR",
+    code: "SEC_GEN",
+    label: "General Agriculture Sector",
+    isActive: true,
+  },
+
+  // Funding Sources
   {
     id: "fs-1",
     type: "FUNDING_SOURCE",
@@ -67,9 +98,99 @@ const FALLBACK_LOOKUPS: LookupItem[] = [
     id: "fs-3",
     type: "FUNDING_SOURCE",
     code: "FS_GOV",
-    label: "Government of Ethiopia (Treasury)",
+    label: "Government Treasury (መንግሥት)",
     isActive: true,
   },
+  {
+    id: "fs-4",
+    type: "FUNDING_SOURCE",
+    code: "FS_UNOPS",
+    label: "UNOPS",
+    isActive: true,
+  },
+  {
+    id: "fs-5",
+    type: "FUNDING_SOURCE",
+    code: "FS_IFAD",
+    label: "IFAD (International Fund for Agricultural Development)",
+    isActive: true,
+  },
+  {
+    id: "fs-6",
+    type: "FUNDING_SOURCE",
+    code: "FS_EU",
+    label: "EU Grant / European Union",
+    isActive: true,
+  },
+  {
+    id: "fs-7",
+    type: "FUNDING_SOURCE",
+    code: "FS_GEN",
+    label: "General Funding Source",
+    isActive: true,
+  },
+
+  // Funding Types
+  {
+    id: "ft-1",
+    type: "FUNDING_TYPE",
+    code: "FT_TREASURY",
+    label: "Treasury",
+    isActive: true,
+  },
+  {
+    id: "ft-2",
+    type: "FUNDING_TYPE",
+    code: "FT_LOAN",
+    label: "Loan",
+    isActive: true,
+  },
+  {
+    id: "ft-3",
+    type: "FUNDING_TYPE",
+    code: "FT_GRANT",
+    label: "Grant",
+    isActive: true,
+  },
+  {
+    id: "ft-4",
+    type: "FUNDING_TYPE",
+    code: "FT_MIXED",
+    label: "Mixed (Loan & Grant)",
+    isActive: true,
+  },
+
+  // Primary Base Currencies
+  {
+    id: "cur-1",
+    type: "CURRENCY",
+    code: "ETB",
+    label: "ETB (Ethiopian Birr)",
+    isActive: true,
+  },
+  {
+    id: "cur-2",
+    type: "CURRENCY",
+    code: "USD",
+    label: "USD (US Dollar)",
+    isActive: true,
+  },
+  {
+    id: "cur-3",
+    type: "CURRENCY",
+    code: "UA",
+    label: "UA (AfDB Unit of Account)",
+    isActive: true,
+  },
+  {
+    id: "cur-4",
+    type: "CURRENCY",
+    code: "EUR",
+    label: "EUR (Euro)",
+    isActive: true,
+  },
+
+  // Procurement Methods
   {
     id: "pm-1",
     type: "PROCUREMENT_METHOD",
@@ -91,6 +212,50 @@ const FALLBACK_LOOKUPS: LookupItem[] = [
     label: "National Competitive Bidding (NCB)",
     isActive: true,
   },
+  {
+    id: "pm-4",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_ICB",
+    label: "International Competitive Bidding (ICB)",
+    isActive: true,
+  },
+  {
+    id: "pm-5",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_SSS",
+    label: "Single Source Selection (SSS)",
+    isActive: true,
+  },
+  {
+    id: "pm-6",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_DIR",
+    label: "Direct Contracting",
+    isActive: true,
+  },
+  {
+    id: "pm-7",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_CQS",
+    label: "Consultant's Qualifications Based Selection (CQS)",
+    isActive: true,
+  },
+  {
+    id: "pm-8",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_INDV",
+    label: "Individual Consultant Selection (INDV)",
+    isActive: true,
+  },
+  {
+    id: "pm-9",
+    type: "PROCUREMENT_METHOD",
+    code: "PM_FA",
+    label: "Framework Agreement (FA)",
+    isActive: true,
+  },
+
+  // Project Short Codes
   {
     id: "proj-code-1",
     type: "PROJECT_CODE",
@@ -147,6 +312,7 @@ const FALLBACK_OFFICERS: OfficerUserItem[] = [
 ];
 
 const CUSTOM_LOOKUPS_STORAGE_KEY = "pts_custom_lookups";
+const DELETED_LOOKUPS_STORAGE_KEY = "pts_deleted_lookups";
 
 function getStoredCustomLookups(): LookupItem[] {
   if (typeof window === "undefined") return [];
@@ -160,15 +326,63 @@ function getStoredCustomLookups(): LookupItem[] {
   }
 }
 
+function getStoredDeletedLookups(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(DELETED_LOOKUPS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function addDeletedLookup(id: string, type?: string, code?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredDeletedLookups();
+    if (id && !list.includes(id)) list.push(id);
+    if (type && code) {
+      const typeCodeKey = `${type.trim().toUpperCase()}:${code.trim().toUpperCase()}`;
+      if (!list.includes(typeCodeKey)) list.push(typeCodeKey);
+    }
+    window.localStorage.setItem(
+      DELETED_LOOKUPS_STORAGE_KEY,
+      JSON.stringify(list),
+    );
+  } catch {}
+}
+
+function unmarkDeletedLookup(id: string, type?: string, code?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    let list = getStoredDeletedLookups();
+    list = list.filter((item) => item !== id);
+    if (type && code) {
+      const typeCodeKey = `${type.trim().toUpperCase()}:${code.trim().toUpperCase()}`;
+      list = list.filter((item) => item !== typeCodeKey);
+    }
+    window.localStorage.setItem(
+      DELETED_LOOKUPS_STORAGE_KEY,
+      JSON.stringify(list),
+    );
+  } catch {}
+}
+
 function saveCustomLookupToStorage(item: LookupItem) {
   if (typeof window === "undefined") return;
   try {
+    unmarkDeletedLookup(item.id, item.type, item.code);
     const list = getStoredCustomLookups();
     const existingIdx = list.findIndex(
-      (l) => l.id === item.id || (l.type === item.type && l.code === item.code),
+      (l) =>
+        l.id === item.id ||
+        (l.type.toUpperCase() === item.type.toUpperCase() &&
+          l.code.toUpperCase() === item.code.toUpperCase()),
     );
     if (existingIdx >= 0) {
-      list[existingIdx] = item;
+      list[existingIdx] = { ...list[existingIdx], ...item };
     } else {
       list.unshift(item);
     }
@@ -181,9 +395,14 @@ function saveCustomLookupToStorage(item: LookupItem) {
   }
 }
 
-function removeCustomLookupFromStorage(id: string) {
+function removeCustomLookupFromStorage(
+  id: string,
+  type?: string,
+  code?: string,
+) {
   if (typeof window === "undefined") return;
   try {
+    addDeletedLookup(id, type, code);
     const list = getStoredCustomLookups().filter((l) => l.id !== id);
     window.localStorage.setItem(
       CUSTOM_LOOKUPS_STORAGE_KEY,
@@ -194,39 +413,105 @@ function removeCustomLookupFromStorage(id: string) {
   }
 }
 
-export async function fetchLookups(type?: string): Promise<LookupItem[]> {
+export function getInitialLookups(type?: string): LookupItem[] {
+  const normType = type ? type.trim().toUpperCase() : undefined;
   const customItems = getStoredCustomLookups();
+  const deletedKeys = new Set(getStoredDeletedLookups());
+  const baseline = normType
+    ? FALLBACK_LOOKUPS.filter((l) => l.type.toUpperCase() === normType)
+    : FALLBACK_LOOKUPS;
+
+  const combinedMap = new Map<string, LookupItem>();
+  const makeKey = (t: string, c: string) =>
+    `${t.trim().toUpperCase()}:${c.trim().toUpperCase()}`;
+
+  baseline.forEach((item) => {
+    const k = makeKey(item.type, item.code);
+    if (!deletedKeys.has(item.id) && !deletedKeys.has(k)) {
+      combinedMap.set(k, {
+        ...item,
+        type: item.type.toUpperCase(),
+        code: item.code.toUpperCase(),
+      });
+    }
+  });
+
+  customItems.forEach((item) => {
+    if (!normType || item.type.toUpperCase() === normType) {
+      const k = makeKey(item.type, item.code);
+      if (!deletedKeys.has(item.id) && !deletedKeys.has(k)) {
+        combinedMap.set(k, {
+          ...item,
+          type: item.type.toUpperCase(),
+          code: item.code.toUpperCase(),
+        });
+      }
+    }
+  });
+
+  return Array.from(combinedMap.values()).filter((l) => l.isActive);
+}
+
+export async function fetchLookups(type?: string): Promise<LookupItem[]> {
+  const normType = type ? type.trim().toUpperCase() : undefined;
+  const customItems = getStoredCustomLookups();
+  const deletedKeys = new Set(getStoredDeletedLookups());
   let serverItems: LookupItem[] = [];
 
   try {
     const payload = await apiClient.get<any>("/lookups", {
-      params: type ? { type } : undefined,
+      params: normType ? { type: normType } : undefined,
     });
     serverItems = Array.isArray(payload) ? payload : payload?.data || [];
   } catch {
     // Graceful fallback
   }
 
-  const baseline = type
-    ? FALLBACK_LOOKUPS.filter((l) => l.type === type)
+  const baseline = normType
+    ? FALLBACK_LOOKUPS.filter((l) => l.type.toUpperCase() === normType)
     : FALLBACK_LOOKUPS;
 
   const combinedMap = new Map<string, LookupItem>();
+  const makeKey = (t: string, c: string) =>
+    `${t.trim().toUpperCase()}:${c.trim().toUpperCase()}`;
 
   // 1. Baseline
   baseline.forEach((item) => {
-    combinedMap.set(`${item.type}:${item.code}`, item);
+    const k = makeKey(item.type, item.code);
+    if (!deletedKeys.has(item.id) && !deletedKeys.has(k)) {
+      combinedMap.set(k, {
+        ...item,
+        type: item.type.toUpperCase(),
+        code: item.code.toUpperCase(),
+      });
+    }
   });
 
-  // 2. Server items
+  // 2. Server items (priority over baseline)
   serverItems.forEach((item) => {
-    combinedMap.set(`${item.type}:${item.code}`, item);
+    if (!normType || item.type.toUpperCase() === normType) {
+      const k = makeKey(item.type, item.code);
+      if (!deletedKeys.has(item.id) && !deletedKeys.has(k)) {
+        combinedMap.set(k, {
+          ...item,
+          type: item.type.toUpperCase(),
+          code: item.code.toUpperCase(),
+        });
+      }
+    }
   });
 
-  // 3. Custom stored items
+  // 3. Custom stored items (preserve user-created and updated lookups with highest precedence)
   customItems.forEach((item) => {
-    if (!type || item.type === type) {
-      combinedMap.set(`${item.type}:${item.code}`, item);
+    if (!normType || item.type.toUpperCase() === normType) {
+      const k = makeKey(item.type, item.code);
+      if (!deletedKeys.has(item.id) && !deletedKeys.has(k)) {
+        combinedMap.set(k, {
+          ...item,
+          type: item.type.toUpperCase(),
+          code: item.code.toUpperCase(),
+        });
+      }
     }
   });
 
@@ -300,11 +585,12 @@ export async function createLookup(data: {
   code: string;
   label: string;
 }): Promise<LookupItem> {
+  const cleanType = data.type.trim().toUpperCase();
   const cleanCode = data.code.trim().toUpperCase();
   const cleanLabel = data.label.trim();
   const newItem: LookupItem = {
-    id: `custom-${data.type.toLowerCase()}-${Date.now()}`,
-    type: data.type,
+    id: `custom-${cleanType.toLowerCase()}-${Date.now()}`,
+    type: cleanType,
     code: cleanCode,
     label: cleanLabel,
     isActive: true,
@@ -312,12 +598,15 @@ export async function createLookup(data: {
 
   try {
     const res = await apiClient.post<any>("/lookups", {
-      type: data.type,
+      type: cleanType,
       code: cleanCode,
       label: cleanLabel,
     });
-    if (res?.data?.id) {
-      newItem.id = res.data.id;
+    const resultData = res?.data || res;
+    if (resultData?.id) {
+      newItem.id = resultData.id;
+      if (resultData.code) newItem.code = resultData.code;
+      if (resultData.label) newItem.label = resultData.label;
     }
   } catch (err) {
     console.warn("Backend createLookup note (saved locally):", err);
@@ -358,7 +647,13 @@ export async function updateLookup(
 }
 
 export async function deleteLookup(id: string): Promise<boolean> {
-  removeCustomLookupFromStorage(id);
+  const customList = getStoredCustomLookups();
+  const target = customList.find((l) => l.id === id);
+  const baselineTarget = FALLBACK_LOOKUPS.find((l) => l.id === id);
+  const type = target?.type || baselineTarget?.type;
+  const code = target?.code || baselineTarget?.code;
+
+  removeCustomLookupFromStorage(id, type, code);
   try {
     await apiClient.delete<any>(`/lookups/${id}`);
   } catch (err) {

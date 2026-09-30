@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import Link from "next/link";
 import {
   Building2,
-  ExternalLink,
   Plus,
   Search,
   Check,
@@ -14,6 +12,7 @@ import {
   fetchLookups,
   createLookup,
   subscribeToLookups,
+  getInitialLookups,
   type LookupItem,
 } from "@/lib/lookupsApi";
 import {
@@ -42,47 +41,62 @@ interface Step1IdentityFormProps {
 
 export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
   const [projectCodeOptions, setProjectCodeOptions] = useState<LookupItem[]>(
-    [],
+    () => getInitialLookups("PROJECT_CODE"),
+  );
+  const [sectorOptions, setSectorOptions] = useState<LookupItem[]>(() =>
+    getInitialLookups("SECTOR"),
   );
   const [isCustomCode, setIsCustomCode] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Quick-Add Modal state
+  // Quick-Add Project Code Modal state
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [quickCode, setQuickCode] = useState("");
   const [quickLabel, setQuickLabel] = useState("");
   const [quickError, setQuickError] = useState<string | null>(null);
   const [isQuickSubmitting, setIsQuickSubmitting] = useState(false);
 
+  // Quick-Add Sector Modal state
+  const [showQuickAddSectorModal, setShowQuickAddSectorModal] = useState(false);
+  const [quickSectorCode, setQuickSectorCode] = useState("");
+  const [quickSectorLabel, setQuickSectorLabel] = useState("");
+  const [quickSectorError, setQuickSectorError] = useState<string | null>(null);
+  const [isQuickSectorSubmitting, setIsQuickSectorSubmitting] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
-    async function loadCodes() {
+    async function loadData() {
       try {
-        const list = await fetchLookups("PROJECT_CODE");
+        const [codeList, sectorList] = await Promise.all([
+          fetchLookups("PROJECT_CODE"),
+          fetchLookups("SECTOR"),
+        ]);
         if (isMounted) {
-          setProjectCodeOptions(list);
-          if (data.code && !list.some((item) => item.code === data.code)) {
-            setIsCustomCode(true);
+          if (codeList && codeList.length > 0) {
+            setProjectCodeOptions(codeList);
+          }
+          if (sectorList && sectorList.length > 0) {
+            setSectorOptions(sectorList);
           }
         }
       } catch {
         // Fallback handled by API
       }
     }
-    loadCodes();
+    loadData();
 
     // Subscribe to cross-tab and in-app lookups updates
     const unsubscribe = subscribeToLookups(() => {
-      loadCodes();
+      loadData();
     });
 
     return () => {
       isMounted = false;
       unsubscribe();
     };
-  }, [data.code]);
+  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -108,7 +122,13 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
     );
   }, [projectCodeOptions, searchQuery]);
 
-  const selectedMatched = projectCodeOptions.find((p) => p.code === data.code);
+  const selectedMatched = useMemo(() => {
+    if (!data.code) return undefined;
+    const clean = data.code.trim().toUpperCase();
+    return projectCodeOptions.find(
+      (p) => p.code.trim().toUpperCase() === clean,
+    );
+  }, [projectCodeOptions, data.code]);
 
   const handleSelectCode = (selectedCode: string) => {
     if (selectedCode === "CUSTOM") {
@@ -119,7 +139,10 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
 
     setIsCustomCode(false);
     setIsDropdownOpen(false);
-    const matched = projectCodeOptions.find((p) => p.code === selectedCode);
+    const target = selectedCode.trim().toUpperCase();
+    const matched = projectCodeOptions.find(
+      (p) => p.code.trim().toUpperCase() === target,
+    );
     if (matched) {
       onChange({
         code: matched.code,
@@ -129,7 +152,7 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
             : data.name,
       });
     } else {
-      onChange({ code: selectedCode });
+      onChange({ code: target });
     }
   };
 
@@ -145,7 +168,9 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
       return;
     }
 
-    if (projectCodeOptions.some((p) => p.code.toUpperCase() === cleanCode)) {
+    if (
+      projectCodeOptions.some((p) => p.code.trim().toUpperCase() === cleanCode)
+    ) {
       setQuickError(`Project code "${cleanCode}" already exists.`);
       return;
     }
@@ -177,6 +202,62 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
     }
   };
 
+  const displayedSectors = useMemo(() => {
+    const list = sectorOptions.map((s) => s.label);
+    if (data.sector && !list.includes(data.sector)) {
+      return [data.sector, ...list];
+    }
+    return list;
+  }, [sectorOptions, data.sector]);
+
+  const handleQuickAddSectorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanLabel = quickSectorLabel.trim();
+    const cleanCode =
+      quickSectorCode.trim().toUpperCase() ||
+      `SEC_${cleanLabel
+        .replace(/[^A-Za-z0-9]/g, "_")
+        .toUpperCase()
+        .slice(0, 15)}`;
+
+    if (!cleanLabel) {
+      setQuickSectorError("Please provide the sector / directorate name.");
+      return;
+    }
+
+    if (
+      sectorOptions.some(
+        (s) =>
+          s.code.trim().toUpperCase() === cleanCode ||
+          s.label.trim().toLowerCase() === cleanLabel.toLowerCase(),
+      )
+    ) {
+      setQuickSectorError(`Sector "${cleanLabel}" already exists.`);
+      return;
+    }
+
+    setIsQuickSectorSubmitting(true);
+    setQuickSectorError(null);
+
+    try {
+      const created = await createLookup({
+        type: "SECTOR",
+        code: cleanCode,
+        label: cleanLabel,
+      });
+
+      setSectorOptions((prev) => [created, ...prev]);
+      onChange({ sector: created.label });
+      setQuickSectorCode("");
+      setQuickSectorLabel("");
+      setShowQuickAddSectorModal(false);
+    } catch (err: any) {
+      setQuickSectorError(err?.message || "Failed to create sector.");
+    } finally {
+      setIsQuickSectorSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -204,31 +285,20 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
               <label className="text-xs font-semibold text-slate-800 block">
                 Project Code / Acronym *
               </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickError(null);
-                    setQuickCode("");
-                    setQuickLabel("");
-                    setShowQuickAddModal(true);
-                  }}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#006837] hover:text-[#00552c] bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
-                  title="Quick-add a new code without leaving this wizard"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>Add Code</span>
-                </button>
-                <Link
-                  href="/workspace/settings"
-                  target="_blank"
-                  className="text-[11px] font-semibold text-slate-500 hover:text-[#006837] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
-                  title="Configure project short codes in Settings"
-                >
-                  <span>Settings</span>
-                  <ExternalLink className="h-2.5 w-2.5" />
-                </Link>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickError(null);
+                  setQuickCode("");
+                  setQuickLabel("");
+                  setShowQuickAddModal(true);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#006837] hover:text-[#00552c] bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                title="Quick-add a new code without leaving this wizard"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add Code</span>
+              </button>
             </div>
 
             {isCustomCode ? (
@@ -236,14 +306,16 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
                 <input
                   type="text"
                   value={data.code}
-                  onChange={(e) => onChange({ code: e.target.value })}
+                  onChange={(e) =>
+                    onChange({ code: e.target.value.toUpperCase() })
+                  }
                   placeholder="Enter custom project code (e.g. DRIVE, CALM)..."
                   className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-900 uppercase placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setIsCustomCode(false)}
-                  className="text-[11px] text-slate-500 hover:text-slate-800 font-medium underline cursor-pointer"
+                  className="text-[11px] text-[#006837] hover:text-[#00552c] font-semibold underline cursor-pointer"
                 >
                   &larr; Choose from configured codes
                 </button>
@@ -251,11 +323,19 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
             ) : (
               <div className="relative">
                 {/* Combobox Trigger */}
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setIsDropdownOpen(!isDropdownOpen);
                     setSearchQuery("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setIsDropdownOpen(!isDropdownOpen);
+                      setSearchQuery("");
+                    }
                   }}
                   className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all flex items-center justify-between text-left cursor-pointer hover:border-slate-300"
                 >
@@ -269,16 +349,40 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
                       </span>
                     </span>
                   ) : data.code ? (
-                    <span className="font-mono font-semibold text-slate-900">
-                      {data.code}
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-900 font-mono font-semibold text-[11px] shrink-0 border border-slate-200">
+                        {data.code}
+                      </span>
+                      <span className="text-[11px] text-slate-500 italic">
+                        (Custom Code)
+                      </span>
                     </span>
                   ) : (
                     <span className="text-slate-400">
                       -- Select or Search Project Short Code --
                     </span>
                   )}
-                  <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 ml-2" />
-                </button>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {data.code && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChange({ code: "" });
+                        }}
+                        className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60"
+                        title="Clear selection"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-400 transition-transform ${
+                        isDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </div>
 
                 {/* Combobox Floating Menu */}
                 {isDropdownOpen && (
@@ -296,62 +400,111 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
                     </div>
 
                     <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
-                      {filteredCodes.length === 0 ? (
-                        <div className="py-4 px-2 text-center text-xs text-slate-400">
-                          No matching project codes found.
-                        </div>
-                      ) : (
-                        filteredCodes.map((opt) => {
-                          const isSelected = opt.code === data.code;
-                          return (
+                      {filteredCodes.map((opt) => {
+                        const isSelected =
+                          opt.code.trim().toUpperCase() ===
+                          (data.code || "").trim().toUpperCase();
+                        return (
+                          <button
+                            key={opt.id || opt.code}
+                            type="button"
+                            onClick={() => handleSelectCode(opt.code)}
+                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? "bg-emerald-50 text-emerald-900 font-semibold"
+                                : "hover:bg-slate-50 text-slate-800"
+                            }`}
+                          >
+                            <div className="min-w-0 flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono font-semibold text-[10px] shrink-0 border border-slate-200">
+                                {opt.code}
+                              </span>
+                              <span className="truncate text-[11px] text-slate-700">
+                                {opt.label}
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {searchQuery.trim() &&
+                        !projectCodeOptions.some(
+                          (p) =>
+                            p.code.trim().toUpperCase() ===
+                            searchQuery.trim().toUpperCase(),
+                        ) && (
+                          <div className="pt-1.5 space-y-1">
                             <button
-                              key={opt.id || opt.code}
                               type="button"
-                              onClick={() => handleSelectCode(opt.code)}
-                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-between gap-2 ${
-                                isSelected
-                                  ? "bg-emerald-50 text-emerald-900 font-semibold"
-                                  : "hover:bg-slate-50 text-slate-800"
-                              }`}
+                              onClick={() => {
+                                handleSelectCode(
+                                  searchQuery.trim().toUpperCase(),
+                                );
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-lg text-xs hover:bg-emerald-50 text-emerald-900 font-semibold transition-colors cursor-pointer flex items-center gap-2"
                             >
-                              <div className="min-w-0 flex items-center gap-2">
-                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono font-semibold text-[10px] shrink-0 border border-slate-200">
-                                  {opt.code}
-                                </span>
-                                <span className="truncate text-[11px] text-slate-700">
-                                  {opt.label}
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              )}
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono text-[10px] shrink-0 border border-emerald-200">
+                                Use
+                              </span>
+                              <span className="truncate text-[11px]">
+                                Use &ldquo;{searchQuery.trim().toUpperCase()}
+                                &rdquo; as project code
+                              </span>
                             </button>
-                          );
-                        })
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQuickCode(searchQuery.trim().toUpperCase());
+                                setQuickLabel("");
+                                setQuickError(null);
+                                setIsDropdownOpen(false);
+                                setShowQuickAddModal(true);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 text-[#006837] font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Plus className="h-3.5 w-3.5 text-[#006837]" />
+                              <span className="text-[11px]">
+                                + Add &ldquo;{searchQuery.trim().toUpperCase()}
+                                &rdquo; to system
+                              </span>
+                            </button>
+                          </div>
+                        )}
+
+                      {filteredCodes.length === 0 && !searchQuery.trim() && (
+                        <div className="py-4 px-2 text-center text-xs text-slate-400">
+                          No project codes found.
+                        </div>
                       )}
                     </div>
 
-                    {/* Bottom Actions */}
-                    <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-600 px-1">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectCode("CUSTOM")}
-                        className="hover:text-emerald-700 hover:underline cursor-pointer"
-                      >
-                        + Enter Custom Code
-                      </button>
+                    <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-[11px]">
                       <button
                         type="button"
                         onClick={() => {
                           setIsDropdownOpen(false);
-                          setQuickError(null);
+                          setIsCustomCode(true);
+                        }}
+                        className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                      >
+                        Enter code manually...
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setQuickCode("");
                           setQuickLabel("");
+                          setQuickError(null);
+                          setIsDropdownOpen(false);
                           setShowQuickAddModal(true);
                         }}
-                        className="text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer font-semibold"
+                        className="text-[#006837] hover:text-[#00552c] font-semibold cursor-pointer flex items-center gap-0.5"
                       >
-                        + Add New Code
+                        <Plus className="h-3 w-3" />
+                        <span>Add new code</span>
                       </button>
                     </div>
                   </div>
@@ -489,15 +642,31 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
 
           {/* Sector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-800 block">
-              Sector / Directorate *
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-800 block">
+                Sector / Directorate *
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickSectorError(null);
+                  setQuickSectorCode("");
+                  setQuickSectorLabel("");
+                  setShowQuickAddSectorModal(true);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#006837] hover:text-[#00552c] bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                title="Quick-add a new sector if not on the list"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add Sector</span>
+              </button>
+            </div>
             <select
               value={data.sector}
               onChange={(e) => onChange({ sector: e.target.value })}
               className="w-full rounded-xl bg-slate-50/80 border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:border-emerald-500 outline-none cursor-pointer transition-all"
             >
-              {SECTOR_OPTIONS.map((sec) => (
+              {displayedSectors.map((sec) => (
                 <option key={sec} value={sec}>
                   {sec}
                 </option>
@@ -583,6 +752,89 @@ export function Step1IdentityForm({ data, onChange }: Step1IdentityFormProps) {
                   className="px-4 py-1.5 rounded-xl bg-[#006837] hover:bg-[#00552c] text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {isQuickSubmitting ? "Saving..." : "Save & Select"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick-Add Sector Modal */}
+      {showQuickAddSectorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Quick-Add Sector / Directorate
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Saves to system and immediately selects in this wizard
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddSectorModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {quickSectorError && (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{quickSectorError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleQuickAddSectorSubmit} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-800 block">
+                  Sector Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={quickSectorCode}
+                  onChange={(e) => setQuickSectorCode(e.target.value)}
+                  placeholder="e.g. SEC_COFFEE, SEC_HORT"
+                  autoFocus
+                  className="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 uppercase placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-800 block">
+                  Sector / Directorate Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={quickSectorLabel}
+                  onChange={(e) => setQuickSectorLabel(e.target.value)}
+                  placeholder="e.g. Coffee and Tea Development Authority"
+                  className="w-full rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAddSectorModal(false)}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isQuickSectorSubmitting}
+                  className="px-4 py-1.5 rounded-xl bg-[#006837] hover:bg-[#00552c] text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {isQuickSectorSubmitting ? "Saving..." : "Save & Select"}
                 </button>
               </div>
             </form>
