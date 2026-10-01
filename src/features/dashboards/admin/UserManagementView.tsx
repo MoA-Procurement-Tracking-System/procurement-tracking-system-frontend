@@ -418,7 +418,7 @@ export function UserManagementView({
         pageSize: PAGE_SIZE,
         search: searchQuery || undefined,
         role: roleFilterMap[selectedRole],
-        isActive: isActiveParam,
+        isActive: selectedStatus === "Active" ? true : undefined,
       });
       setUsersResponse((prev) => {
         if (!prev) return result;
@@ -477,7 +477,7 @@ export function UserManagementView({
       pageSize: PAGE_SIZE,
       search: searchQuery || undefined,
       role: roleFilterMap[selectedRole],
-      isActive: isActiveParam,
+      isActive: selectedStatus === "Active" ? true : undefined,
     })
       .then((result) => {
         if (active) {

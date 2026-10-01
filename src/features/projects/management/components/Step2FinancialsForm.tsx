@@ -213,7 +213,7 @@ function MultiSelectFundingSource({
 
             {filteredOptions.length === 0 && (
               <div className="px-3 py-4 text-xs text-slate-400 text-center">
-                No configured funding sources match &ldquo;{search}&rdquo;
+                No configured funding sources match &quot;{search}&quot;
               </div>
             )}
           </div>
