@@ -15,6 +15,7 @@ import {
 } from "../data/officerActivityTracking";
 import { ActivityTrackingDetailView } from "./ActivityTrackingDetailView";
 import {
+  isTestOrJunkActivity,
   mapBackendActivityToProcurementActivitySummary,
   OFFICER_ACTIVITY_DRAFTS_STORAGE_KEY,
   parseSavedActivityRecords,
@@ -31,6 +32,7 @@ import {
   type OfficerProject,
   type ProcurementPlanSummary,
 } from "../../projects/data/officerProjects";
+import { formatGregorianDate as formatGregorianDateHelper } from "../../projects/utils/ethiopianCalendar";
 import {
   fetchProjects,
   isProjectAssignedToOfficer,
@@ -116,11 +118,15 @@ export function OfficerActivityTrackerView({
           fetchActivities(),
         ]);
         if (isMounted && rawProjects && rawProjects.length > 0) {
-          const assignedRawProjects = effectiveUser
+          const filteredProjects = effectiveUser
             ? rawProjects.filter((p) =>
                 isProjectAssignedToOfficer(p, effectiveUser),
               )
             : rawProjects;
+          const assignedRawProjects = effectiveUser
+            ? [...filteredProjects]
+            : [...rawProjects];
+
           const assignedIds = new Set(
             assignedRawProjects.map((p) => p.id).filter(Boolean),
           );
@@ -130,10 +136,21 @@ export function OfficerActivityTrackerView({
 
           const mapped = assignedRawProjects.map((p) => {
             const officerProj = mapBackendProjectToOfficerProject(p);
+            const pCodeNorm = (p.code || "").toLowerCase().trim();
+            const pIdNorm = (p.id || "").toLowerCase().trim();
             const projPlans = (rawPlans || [])
-              .filter(
-                (pl) => pl.projectId === p.id || pl.project?.code === p.code,
-              )
+              .filter((pl) => {
+                const plProjCode = (pl.project?.code || "")
+                  .toLowerCase()
+                  .trim();
+                const plProjId = (pl.projectId || pl.project?.id || "")
+                  .toLowerCase()
+                  .trim();
+                return (
+                  (pIdNorm && plProjId === pIdNorm) ||
+                  (pCodeNorm && plProjCode === pCodeNorm)
+                );
+              })
               .map(mapBackendPlanToOfficerPlanSummary);
             return {
               ...officerProj,
@@ -144,33 +161,28 @@ export function OfficerActivityTrackerView({
 
           if (rawActivities && rawActivities.length > 0) {
             const dbRecords: SavedOfficerActivityRecord[] = rawActivities
-              .filter((ba: BackendActivity) => {
-                if (!effectiveUser || assignedRawProjects.length === 0)
-                  return true;
-                const parentPlan = (rawPlans || []).find(
-                  (p) => p.id === ba.planId,
-                );
-                const projCode =
-                  parentPlan?.project?.code || ba.plan?.project?.code || "";
-                const projId =
-                  (parentPlan as any)?.projectId ||
-                  parentPlan?.project?.id ||
-                  (ba.plan as any)?.projectId ||
-                  ba.plan?.project?.id ||
-                  "";
-                return (
-                  (projCode && assignedCodes.has(projCode.toLowerCase())) ||
-                  (projId && assignedIds.has(projId))
-                );
-              })
+              .filter(
+                (ba: BackendActivity) =>
+                  !isTestOrJunkActivity(ba.reference, ba.description || ""),
+              )
               .map((ba: BackendActivity) => {
                 const summary =
                   mapBackendActivityToProcurementActivitySummary(ba);
                 const parentPlan = (rawPlans || []).find(
-                  (p) => p.id === ba.planId,
+                  (p) =>
+                    p.id === ba.planId ||
+                    (ba.plan?.id && p.id === ba.plan.id) ||
+                    (p.title &&
+                      ba.plan?.title &&
+                      p.title.toLowerCase().trim() ===
+                        ba.plan.title.toLowerCase().trim()),
                 );
                 const planRef =
-                  parentPlan?.title || ba.plan?.title || ba.planId;
+                  parentPlan?.id ||
+                  ba.planId ||
+                  parentPlan?.title ||
+                  ba.plan?.title ||
+                  "";
                 const projCode =
                   parentPlan?.project?.code ||
                   ba.plan?.project?.code ||
@@ -290,10 +302,17 @@ export function collectTrackableActivities(
             (record.projectCode?.toLowerCase() ===
               project.code?.toLowerCase() ||
               record.projectCode?.toLowerCase() ===
-                project.shortName?.toLowerCase()) &&
+                project.shortName?.toLowerCase() ||
+              (Boolean(project.id) &&
+                record.projectCode?.toLowerCase() ===
+                  project.id?.toLowerCase())) &&
             (record.planReference?.toLowerCase() ===
               plan.reference?.toLowerCase() ||
-              record.planReference?.toLowerCase() === plan.name?.toLowerCase()),
+              record.planReference?.toLowerCase() ===
+                plan.name?.toLowerCase() ||
+              (Boolean(plan.id) &&
+                record.planReference?.toLowerCase() ===
+                  plan.id?.toLowerCase())),
         )
         .map((record) => record.activity);
 
@@ -308,6 +327,9 @@ export function collectTrackableActivities(
       const allActivitiesForPlan = Array.from(combinedMap.values());
 
       for (const activity of allActivitiesForPlan) {
+        if (isTestOrJunkActivity(activity.reference, activity.description)) {
+          continue;
+        }
         const tracking =
           findActivityTrackingRecord(
             trackingRecords,
@@ -324,6 +346,70 @@ export function collectTrackableActivities(
         const key =
           `${project.code}-${plan.reference}-${activity.reference}`.toLowerCase();
         itemsByIdentity.set(key, { activity, plan, project, tracking });
+      }
+    }
+  }
+
+  // Safety net: ensure every activity in savedActivityRecords is captured even if plan/project references differ
+  for (const record of savedActivityRecords) {
+    const act = record.activity;
+    if (!act || !act.reference) continue;
+    if (isTestOrJunkActivity(act.reference, act.description)) continue;
+    const refLower = act.reference.toLowerCase();
+    const alreadyCaptured = Array.from(itemsByIdentity.values()).some(
+      (item) =>
+        item.activity.reference.toLowerCase() === refLower ||
+        (Boolean(act.id) &&
+          Boolean(item.activity.id) &&
+          item.activity.id === act.id) ||
+        (Boolean(act.activityId) &&
+          Boolean(item.activity.activityId) &&
+          item.activity.activityId === act.activityId),
+    );
+    if (!alreadyCaptured && projects.length > 0) {
+      const projMatch =
+        projects.find(
+          (p) =>
+            p.code?.toLowerCase() === record.projectCode?.toLowerCase() ||
+            p.shortName?.toLowerCase() === record.projectCode?.toLowerCase() ||
+            (Boolean(p.id) &&
+              p.id?.toLowerCase() === record.projectCode?.toLowerCase()),
+        ) || projects[0];
+
+      if (projMatch) {
+        const planMatch =
+          projMatch.plans?.find(
+            (pl) =>
+              pl.reference?.toLowerCase() ===
+                record.planReference?.toLowerCase() ||
+              pl.name?.toLowerCase() === record.planReference?.toLowerCase() ||
+              (Boolean(pl.id) &&
+                pl.id?.toLowerCase() === record.planReference?.toLowerCase()),
+          ) || projMatch.plans?.[0];
+
+        if (planMatch) {
+          const tracking =
+            findActivityTrackingRecord(
+              trackingRecords,
+              projMatch.code,
+              planMatch.reference,
+              act.reference,
+            ) ??
+            createInitialActivityTrackingRecord(
+              projMatch.code,
+              planMatch.reference,
+              act,
+            );
+
+          const key =
+            `${projMatch.code}-${planMatch.reference}-${act.reference}`.toLowerCase();
+          itemsByIdentity.set(key, {
+            activity: act,
+            plan: planMatch,
+            project: projMatch,
+            tracking,
+          });
+        }
       }
     }
   }
@@ -1449,12 +1535,5 @@ function trackerItemKey(item: OfficerTrackedActivityItem) {
 }
 
 function formatGregorianDate(value: string) {
-  const date = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(date.valueOf())) return value;
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  }).format(date);
+  return formatGregorianDateHelper(value) || value;
 }
