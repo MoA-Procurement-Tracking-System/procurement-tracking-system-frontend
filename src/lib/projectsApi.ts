@@ -4,6 +4,11 @@ import type {
 } from "@/features/projects/management/projectsData";
 import type { OfficerProject } from "@/features/projects/data/officerProjects";
 import type { AuthUser } from "./authTypes";
+import {
+  gregorianToEthiopian,
+  formatEthiopianDate,
+  formatGregorianDate,
+} from "@/features/projects/utils/ethiopianCalendar";
 import { apiClient, directApiFetch, ApiClientError } from "./apiClient";
 import { downloadReportFile, saveReportFile } from "./reportsApi";
 
@@ -132,8 +137,18 @@ export function invalidateProjectsCache() {
 
 export async function fetchProjects(): Promise<BackendProject[]> {
   try {
-    const res = await apiClient.get<any>("/projects");
-    const data = Array.isArray(res) ? res : res.data || [];
+    const res = await apiClient.get<any>("/projects", {
+      params: { pageSize: 500 },
+    });
+    const data = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.items)
+            ? res.data.items
+            : [];
     if (Array.isArray(data) && data.length > 0) {
       _cachedProjects = data;
       _cachedProjectsTimestamp = Date.now();
@@ -324,6 +339,14 @@ export function mapBackendProjectToOfficerProject(
     shortName: bp.code,
     status: bp.status === "ACTIVE" ? "Active" : "Inactive",
     fundingSource: bp.fundingSource?.label || "World Bank",
+    fundingSources: (() => {
+      const raw = bp.fundingSource?.label || "World Bank";
+      const parts = raw
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return parts.length > 0 ? parts : [raw];
+    })(),
     fundingType: bp.fundingType || "Loan / Grant",
     executingAgency: bp.executingAgency || "Ministry of Agriculture",
     countryOrganisation: bp.country || "Ethiopia",
@@ -337,16 +360,18 @@ export function mapBackendProjectToOfficerProject(
     assignedOfficers,
     assignedOfficerIds,
     assignedOfficerEmails,
-    assignmentStart: {
-      ethiopian: "01 Meskerem 2016",
-      gregorian: bp.projectStartDate
-        ? new Date(bp.projectStartDate).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "11 Sep 2023",
-    },
+    assignmentStart: bp.projectStartDate
+      ? (() => {
+          const isoDate = new Date(bp.projectStartDate)
+            .toISOString()
+            .split("T")[0];
+          const ethDate = gregorianToEthiopian(isoDate);
+          return {
+            ethiopian: ethDate ? formatEthiopianDate(ethDate) : "",
+            gregorian: formatGregorianDate(bp.projectStartDate),
+          };
+        })()
+      : undefined,
     projectPeriod: {
       from: bp.projectStartDate
         ? new Date(bp.projectStartDate).toISOString().split("T")[0]

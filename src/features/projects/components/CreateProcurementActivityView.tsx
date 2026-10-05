@@ -9,6 +9,7 @@ import type {
   ProcurementPlanSummary,
 } from "../data/officerProjects";
 import type {
+  AdditionalReference,
   ProcurementActivityAllocation as Allocation,
   ProcurementActivityFormValues as ActivityFormState,
   ProcurementActivityLot as LotEntry,
@@ -26,8 +27,14 @@ import {
   resolveProcurementMethodOption,
   type ProcurementActivityCategory,
 } from "../data/procurementActivityConfig";
-import { fetchLookups, subscribeToLookups } from "@/lib/lookupsApi";
 import {
+  createLookup,
+  fetchLookups,
+  getInitialLookups,
+  subscribeToLookups,
+} from "@/lib/lookupsApi";
+import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -47,9 +54,11 @@ import {
   Plus,
   Save,
   Trash2,
+  Loader2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useEffect, type ReactNode } from "react";
+import { useMemo, useState, useEffect, useRef, type ReactNode } from "react";
 
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -81,7 +90,9 @@ export function CreateProcurementActivityView({
 }: {
   existingActivityCount?: number;
   initialActivity?: ProcurementActivitySummary;
-  onSaveActivity?: (activity: ProcurementActivitySummary) => void;
+  onSaveActivity?: (
+    activity: ProcurementActivitySummary,
+  ) => void | Promise<void>;
   plan: ProcurementPlanSummary;
   project: OfficerProject;
 }) {
@@ -90,6 +101,7 @@ export function CreateProcurementActivityView({
   const [step, setStep] = useState<WizardStep>(1);
   const [attemptedStep, setAttemptedStep] = useState<WizardStep | null>(null);
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const initialMethodKey = resolveMethodKey(
     initialActivity?.details?.form?.method ||
@@ -99,8 +111,30 @@ export function CreateProcurementActivityView({
       "",
   );
 
+  const [activityCategory, setActivityCategory] =
+    useState<ProcurementActivityCategory>(() =>
+      initialActivity?.category
+        ? normalizeActivityCategory(initialActivity.category)
+        : category,
+    );
+
+  const loadedActivityRef = useRef<string | null>(
+    initialActivity
+      ? initialActivity.id ||
+          initialActivity.reference ||
+          initialActivity.description
+      : null,
+  );
+
   const [form, setForm] = useState<ActivityFormState>(() =>
-    createInitialForm(project, plan, category, initialActivity),
+    createInitialForm(
+      project,
+      plan,
+      initialActivity?.category
+        ? normalizeActivityCategory(initialActivity.category)
+        : category,
+      initialActivity,
+    ),
   );
   const [financingAllocations, setFinancingAllocations] = useState<
     Allocation[]
@@ -111,40 +145,58 @@ export function CreateProcurementActivityView({
   const [lots, setLots] = useState<LotEntry[]>(() =>
     extractInitialLots(initialActivity),
   );
+  const [additionalReferences, setAdditionalReferences] = useState<
+    AdditionalReference[]
+  >(() => extractInitialAdditionalReferences(initialActivity));
   const [roadmap, setRoadmap] = useState<RoadmapStage[]>(() =>
     extractInitialRoadmap(initialActivity, initialMethodKey),
   );
 
-  // Synchronize state whenever initialActivity arrives or updates
+  // Synchronize state only when a different initialActivity arrives
   useEffect(() => {
-    if (initialActivity) {
-      const resolvedKey = resolveMethodKey(
-        initialActivity.details?.form?.method ||
-          initialActivity.method ||
-          (initialActivity as any)?.procurementMethod?.code ||
-          (initialActivity as any)?.procurementMethod?.label ||
-          "",
-      );
-      setForm(createInitialForm(project, plan, category, initialActivity));
-      setFinancingAllocations(
-        extractInitialFinancingAllocations(project, initialActivity),
-      );
-      setComponentAllocations(
-        extractInitialComponentAllocations(project, initialActivity),
-      );
-      setLots(extractInitialLots(initialActivity));
-      setRoadmap(extractInitialRoadmap(initialActivity, resolvedKey));
-    }
+    if (!initialActivity) return;
+    const activityKey =
+      initialActivity.id ||
+      initialActivity.reference ||
+      initialActivity.description;
+    if (loadedActivityRef.current === activityKey) return;
+    loadedActivityRef.current = activityKey;
+
+    const targetCat = initialActivity.category
+      ? normalizeActivityCategory(initialActivity.category)
+      : category;
+    setActivityCategory(targetCat);
+
+    const resolvedKey = resolveMethodKey(
+      initialActivity.details?.form?.method ||
+        initialActivity.method ||
+        (initialActivity as any)?.procurementMethod?.code ||
+        (initialActivity as any)?.procurementMethod?.label ||
+        "",
+    );
+    setForm(createInitialForm(project, plan, targetCat, initialActivity));
+    setFinancingAllocations(
+      extractInitialFinancingAllocations(project, initialActivity),
+    );
+    setComponentAllocations(
+      extractInitialComponentAllocations(project, initialActivity),
+    );
+    setLots(extractInitialLots(initialActivity));
+    setAdditionalReferences(
+      extractInitialAdditionalReferences(initialActivity),
+    );
+    setRoadmap(extractInitialRoadmap(initialActivity, resolvedKey));
   }, [initialActivity, project, plan, category]);
 
   const [lookupVersion, setLookupVersion] = useState(0);
 
   useEffect(() => {
-    fetchLookups("PROCUREMENT_METHOD")
-      .then(() => {
-        setLookupVersion((v) => v + 1);
-      })
-      .catch(() => {});
+    Promise.allSettled([
+      fetchLookups("PROCUREMENT_METHOD"),
+      fetchLookups("CURRENCY"),
+    ]).then(() => {
+      setLookupVersion((v) => v + 1);
+    });
     const unsub = subscribeToLookups(() => {
       setLookupVersion((v) => v + 1);
     });
@@ -152,18 +204,23 @@ export function CreateProcurementActivityView({
   }, []);
 
   const methodOptions = useMemo(
-    () => methodsForCategory(category),
-    [category, lookupVersion],
+    () => methodsForCategory(activityCategory),
+    [activityCategory, lookupVersion],
   );
+  const currencyOptions = useMemo(() => {
+    const items = getInitialLookups("CURRENCY");
+    return items.map((item) => ({ code: item.code, label: item.label }));
+  }, [lookupVersion]);
   const selectedMethod = useMemo(
     () => resolveProcurementMethodOption(form.method),
     [form.method, lookupVersion],
   );
+  const planRefParam = plan.id || plan.reference || plan.name;
   const planHref =
     "/workspace/projects?project=" +
     encodeURIComponent(project.code) +
     "&plan=" +
-    encodeURIComponent(plan.reference);
+    encodeURIComponent(planRefParam);
   const activityReference = initialActivity
     ? initialActivity.reference
     : activityReferenceFor(
@@ -189,9 +246,7 @@ export function CreateProcurementActivityView({
     (usesCompetition && !form.marketApproach) ||
     (usesRfb && !form.qualificationApproach) ||
     (preferenceApplies && !form.domesticPreference) ||
-    (Boolean(form.method) && !form.reviewType) ||
     (usesRfb && !form.procurementProcess) ||
-    (!consultancy && Boolean(form.method) && !form.procurementDocumentType) ||
     (consultancy && Boolean(form.method) && !form.contractType);
   const stepTwoInvalid =
     !form.activityDescription.trim() ||
@@ -220,9 +275,7 @@ export function CreateProcurementActivityView({
       usesCompetition && !form.marketApproach,
       usesRfb && !form.qualificationApproach,
       preferenceApplies && !form.domesticPreference,
-      Boolean(form.method) && !form.reviewType,
       usesRfb && !form.procurementProcess,
-      !consultancy && Boolean(form.method) && !form.procurementDocumentType,
       consultancy && Boolean(form.method) && !form.contractType,
     ].filter(Boolean).length,
     2: [
@@ -280,7 +333,33 @@ export function CreateProcurementActivityView({
     window.scrollTo({ behavior: "smooth", top: 0 });
   }
 
-  function handleSave() {
+  function addAdditionalReference() {
+    const nextId = String(Date.now() + Math.random());
+    setAdditionalReferences((prev) => [
+      ...prev,
+      {
+        id: nextId,
+        type: "STEP Reference",
+        value: "",
+      },
+    ]);
+  }
+
+  function updateAdditionalReference(
+    id: string,
+    field: "type" | "value",
+    value: string,
+  ) {
+    setAdditionalReferences((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+    );
+  }
+
+  function removeAdditionalReference(id: string) {
+    setAdditionalReferences((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function handleSave() {
     if (stepOneInvalid) {
       setAttemptedStep(1);
       moveTo(1);
@@ -302,40 +381,69 @@ export function CreateProcurementActivityView({
       return;
     }
 
-    onSaveActivity?.({
-      ...(initialActivity
-        ? {
-            id: initialActivity.id,
-            activityId: (initialActivity as any).activityId,
-            createdById: initialActivity.createdById,
-            createdByName: initialActivity.createdByName,
-            createdAt: initialActivity.createdAt,
-          }
-        : {}),
-      category,
-      currentStage:
-        roadmap.find((stage) => !stage.notApplicable)?.name ?? "Not Started",
-      description: form.activityDescription.trim(),
-      details: {
-        componentAllocations: componentAllocations.map((allocation) => ({
-          ...allocation,
-        })),
-        financingAllocations: financingAllocations.map((allocation) => ({
-          ...allocation,
-        })),
-        form: { ...form },
-        lots: form.lotRequired ? lots.map((lot) => ({ ...lot })) : [],
-        roadmap: roadmap.map((stage) => ({ ...stage })),
-      },
-      estimatedAmount: Number(form.estimatedAmount),
-      method: selectedMethod?.label ?? form.method,
-      reference: activityReference,
-      status: form.inProcess
-        ? "In Progress"
-        : initialActivity?.status || "Not Started",
-    });
-    setSaved(true);
-    window.scrollTo({ behavior: "smooth", top: 0 });
+    setIsSaving(true);
+    try {
+      if (onSaveActivity) {
+        const cleanAdditionalRefs = additionalReferences
+          .filter((r) => r.value.trim().length > 0)
+          .map((r) => ({ ...r }));
+        const primaryStepRef =
+          cleanAdditionalRefs
+            .find(
+              (r) => r.type.toLowerCase().includes("step") && r.value.trim(),
+            )
+            ?.value.trim() ||
+          cleanAdditionalRefs[0]?.value.trim() ||
+          "";
+
+        await onSaveActivity({
+          ...(initialActivity
+            ? {
+                id: initialActivity.id,
+                activityId: (initialActivity as any).activityId,
+                createdById: initialActivity.createdById,
+                createdByName: initialActivity.createdByName,
+                createdAt: initialActivity.createdAt,
+              }
+            : {}),
+          category: activityCategory,
+          currentStage:
+            roadmap.find((stage) => !stage.notApplicable)?.name ??
+            "Not Started",
+          description: form.activityDescription.trim(),
+          details: {
+            additionalReferences: cleanAdditionalRefs,
+            componentAllocations: componentAllocations.map((allocation) => ({
+              ...allocation,
+            })),
+            financingAllocations: financingAllocations.map((allocation) => ({
+              ...allocation,
+            })),
+            form: {
+              ...form,
+              additionalReferences: cleanAdditionalRefs,
+              stepReference: primaryStepRef,
+            },
+            lots: form.lotRequired ? lots.map((lot) => ({ ...lot })) : [],
+            roadmap: roadmap.map((stage) => ({ ...stage })),
+          },
+          currency: form.currency || plan.currency || "ETB",
+          fundingSource: form.fundingSource || undefined,
+          estimatedAmount: Number(form.estimatedAmount),
+          method: selectedMethod?.label ?? form.method,
+          reference: activityReference,
+          status: form.inProcess
+            ? "In Progress"
+            : initialActivity?.status || "Not Started",
+        });
+      }
+      setSaved(true);
+      window.scrollTo({ behavior: "smooth", top: 0 });
+    } catch (err) {
+      console.error("Save activity error:", err);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function continueWizard() {
@@ -399,12 +507,17 @@ export function CreateProcurementActivityView({
             </div>
           </div>
           <button
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#006837] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#00552c] transition cursor-pointer shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#006837] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#00552c] transition cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSaving}
             onClick={handleSave}
             type="button"
           >
-            <Save className="h-3.5 w-3.5" />
-            Save Changes
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       )}
@@ -441,9 +554,16 @@ export function CreateProcurementActivityView({
               {step === 1 ? (
                 <KeyDetailsStep
                   attempted={attemptedStep === 1}
-                  category={category}
+                  category={activityCategory}
                   form={form}
                   methodOptions={methodOptions}
+                  onCategoryChange={(newCat) => {
+                    setActivityCategory(newCat);
+                    const available = methodsForCategory(newCat);
+                    if (!available.some((m) => m.key === form.method)) {
+                      selectMethod("");
+                    }
+                  }}
                   onChange={updateField}
                   onMethodChange={selectMethod}
                   project={project}
@@ -451,14 +571,19 @@ export function CreateProcurementActivityView({
               ) : null}
               {step === 2 ? (
                 <RelatedInformationStep
+                  additionalReferences={additionalReferences}
                   attempted={attemptedStep === 2}
                   context={context}
+                  currencyOptions={currencyOptions}
                   financingAllocations={financingAllocations}
                   form={form}
                   lots={lots}
+                  onAddAdditionalReference={addAdditionalReference}
                   onChange={updateField}
                   onFinancingChange={setFinancingAllocations}
                   onLotsChange={setLots}
+                  onRemoveAdditionalReference={removeAdditionalReference}
+                  onUpdateAdditionalReference={updateAdditionalReference}
                 />
               ) : null}
               {step === 3 ? (
@@ -492,6 +617,7 @@ export function CreateProcurementActivityView({
 
           <WizardFooter
             isEditing={isEditing}
+            isSaving={isSaving}
             onBack={goBack}
             onContinue={continueWizard}
             onSave={handleSave}
@@ -502,6 +628,31 @@ export function CreateProcurementActivityView({
       )}
     </div>
   );
+}
+
+export function getProjectFundingSources(project: {
+  fundingSource?: string;
+  fundingSources?: readonly string[];
+}): string[] {
+  const list: string[] = [];
+  if (Array.isArray(project.fundingSources)) {
+    for (const s of project.fundingSources) {
+      if (typeof s === "string" && s.trim()) {
+        list.push(s.trim());
+      }
+    }
+  }
+  if (list.length === 0 && project.fundingSource) {
+    const parts = project.fundingSource
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    list.push(...parts);
+  }
+  const unique = Array.from(new Set(list));
+  return unique.length > 0
+    ? unique
+    : [project.fundingSource?.trim() || "Project Funding"];
 }
 
 function createInitialForm(
@@ -528,11 +679,18 @@ function createInitialForm(
         anyAct.description ||
         "",
       classificationCode:
-        d?.classificationCode || anyAct.classificationCode || "",
-      comments: d?.comments || anyAct.comments || "",
+        d?.classificationCode ||
+        anyAct.classificationCode ||
+        anyAct.procurementClassificationCode ||
+        "",
+      comments: d?.comments || anyAct.comments || anyAct.remarks || "",
       contractType: anyAct.contractType || d?.contractType || "Lump Sum",
       currency:
-        anyAct.currency || plan.currency || project.baseCurrency || "ETB",
+        d?.currency ||
+        anyAct.currency ||
+        plan.currency ||
+        project.baseCurrency ||
+        "ETB",
       domesticPreference:
         d?.domesticPreference || anyAct.domesticPreference || "No",
       estimatedAmount: String(
@@ -542,26 +700,48 @@ function createInitialForm(
           "",
       ),
       evaluationOptionCode:
-        d?.evaluationOptionCode || anyAct.evaluationOptionCode || "",
+        d?.evaluationOptionCode ||
+        anyAct.evaluationOptionCode ||
+        (Array.isArray(anyAct.evaluationOptions)
+          ? anyAct.evaluationOptions[0]
+          : "") ||
+        "",
       fundingSource:
-        anyAct.fundingSource ||
         d?.fundingSource ||
+        anyAct.fundingSource ||
         anyAct.fundings?.[0]?.fundingSource ||
+        getProjectFundingSources(project)[0] ||
         project.fundingSource ||
         "",
-      highRiskCode: d?.highRiskCode || anyAct.highRiskCode || "",
+      highRiskCode:
+        d?.highRiskCode ||
+        anyAct.highRiskCode ||
+        (anyAct.highSeaShRisk ? "High" : ""),
       inProcess:
-        initialActivity.status === "In Progress" || Boolean(d?.inProcess),
+        initialActivity.status === "In Progress" ||
+        Boolean(d?.inProcess) ||
+        anyAct.status === "IN_PROGRESS",
       invitationReference:
-        d?.invitationReference || anyAct.invitationReference || "",
-      latitude: d?.latitude || anyAct.latitude || "",
+        d?.invitationReference ||
+        anyAct.invitationReference ||
+        anyAct.bidReferenceNo ||
+        "",
+      latitude:
+        d?.latitude ||
+        (anyAct.latitude !== undefined && anyAct.latitude !== null
+          ? String(anyAct.latitude)
+          : ""),
       location:
         anyAct.location ||
         d?.location ||
         plan.organizationRegion ||
         project.organizationRegion ||
         "",
-      longitude: d?.longitude || anyAct.longitude || "",
+      longitude:
+        d?.longitude ||
+        (anyAct.longitude !== undefined && anyAct.longitude !== null
+          ? String(anyAct.longitude)
+          : ""),
       lotRequired: Boolean(
         d?.lotRequired ||
         anyAct.lotRequired ||
@@ -589,12 +769,17 @@ function createInitialForm(
       requiresUnAgency: Boolean(
         d?.requiresUnAgency ||
         anyAct.requiresUnAgency ||
+        anyAct.requiresUnAgencyContracting ||
         resolvedMethod === "un-agency",
       ),
       reviewType: anyAct.reviewType || d?.reviewType || "Post Review",
       scopeNotes: d?.scopeNotes || anyAct.scopeNotes || "",
       specificMethod: d?.specificMethod || anyAct.specificMethod || "",
-      subcomponent: d?.subcomponent || anyAct.subcomponent || "",
+      subcomponent:
+        d?.subcomponent ||
+        anyAct.subcomponent ||
+        anyAct.components?.[0]?.subcomponent ||
+        "",
     };
   }
 
@@ -607,7 +792,8 @@ function createInitialForm(
     domesticPreference: "",
     estimatedAmount: "",
     evaluationOptionCode: "",
-    fundingSource: project.fundingSource,
+    fundingSource:
+      getProjectFundingSources(project)[0] || project.fundingSource || "",
     highRiskCode: "",
     inProcess: false,
     invitationReference: "",
@@ -659,6 +845,23 @@ function extractInitialRoadmap(
       status: st.status || "Not Started",
     }));
   }
+  if (anyAct?.stages?.length) {
+    return anyAct.stages.map((st: any) => {
+      const greg = st.plannedStartDate
+        ? new Date(st.plannedStartDate).toISOString().slice(0, 10)
+        : "";
+      return {
+        name: st.stageType?.label || st.name || "",
+        days: String(st.plannedDays || "14"),
+        ethiopianDate: st.ethiopianDate || "",
+        gregorianDate: greg,
+        notApplicable: Boolean(st.isNotApplicable || st.notApplicable),
+        allowNotApplicable: true,
+        remarks: st.remarks || "",
+        status: st.status || "Not Started",
+      };
+    });
+  }
   if (methodKey) {
     return roadmapForMethod(methodKey).map((stage) => ({
       allowNotApplicable: Boolean(stage.allowNotApplicable),
@@ -682,9 +885,9 @@ function extractInitialLots(
   if (rawLots && rawLots.length > 0) {
     return rawLots.map((lot: any, index: number) => ({
       id: lot.id ?? index + 1,
-      number: String(lot.number ?? index + 1),
+      number: String(lot.lotNumber ?? lot.number ?? index + 1),
       description: lot.description || "",
-      amount: String(lot.amount || ""),
+      amount: String(lot.estimatedAmount ?? lot.amount ?? ""),
     }));
   }
   return [{ amount: "", description: "", id: 1, number: "1" }];
@@ -700,8 +903,8 @@ function extractInitialFinancingAllocations(
     (initialActivity as any)?.fundings;
   if (raw && raw.length > 0) {
     return raw.map((f: any) => ({
-      id: f.id || f.fundingSource || "fs-1",
-      percent: String(f.percent ?? f.allocationPct ?? "100"),
+      id: f.id || f.source || f.fundingSource || "fs-1",
+      percent: String(f.percent ?? f.share ?? f.allocationPct ?? "100"),
       selected: f.selected !== undefined ? Boolean(f.selected) : true,
     }));
   }
@@ -724,8 +927,8 @@ function extractInitialComponentAllocations(
     (initialActivity as any)?.components;
   if (raw && raw.length > 0) {
     return raw.map((c: any) => ({
-      id: c.id || c.component || "comp-1",
-      percent: String(c.percent ?? c.allocationPct ?? "100"),
+      id: c.id || c.name || c.component || "comp-1",
+      percent: String(c.percent ?? c.share ?? c.allocationPct ?? "100"),
       selected: c.selected !== undefined ? Boolean(c.selected) : true,
     }));
   }
@@ -733,6 +936,37 @@ function extractInitialComponentAllocations(
     return createAllocations(project.components);
   }
   return [{ id: "Component 1", percent: "100", selected: true }];
+}
+
+function extractInitialAdditionalReferences(
+  initialActivity?: ProcurementActivitySummary | null,
+): AdditionalReference[] {
+  if (!initialActivity) return [];
+  const anyAct = initialActivity as any;
+  const d = initialActivity.details as any;
+  const fromDetails =
+    d?.additionalReferences ||
+    d?.form?.additionalReferences ||
+    anyAct?.additionalReferences;
+  if (Array.isArray(fromDetails) && fromDetails.length > 0) {
+    return fromDetails.map((r: any, idx: number) => ({
+      id: String(r.id || idx + 1),
+      type: r.type || "STEP Reference",
+      value: r.value || "",
+    }));
+  }
+  const legacyStep =
+    d?.form?.stepReference || anyAct.stepReference || anyAct.bidReferenceNo;
+  if (legacyStep && typeof legacyStep === "string" && legacyStep.trim()) {
+    return [
+      {
+        id: "1",
+        type: "STEP Reference",
+        value: legacyStep.trim(),
+      },
+    ];
+  }
+  return [];
 }
 
 function createAllocations(values: readonly string[]): Allocation[] {
@@ -1089,12 +1323,14 @@ function FormSection({
 }
 
 function Field({
+  action,
   children,
   error,
   hint,
   label,
   required = false,
 }: {
+  action?: ReactNode;
   children: ReactNode;
   error?: string;
   hint?: string;
@@ -1102,16 +1338,19 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="block min-w-0">
-      <span
-        className={
-          "mb-1.5 block text-xs font-semibold " +
-          (error ? "text-red-700" : "text-slate-700")
-        }
-      >
-        {label}
-        {required ? <span className="ml-1 text-red-600">*</span> : null}
-      </span>
+    <div className="block min-w-0">
+      <div className="mb-1.5 flex items-center justify-between">
+        <label
+          className={
+            "block text-xs font-semibold " +
+            (error ? "text-red-700" : "text-slate-700")
+          }
+        >
+          {label}
+          {required ? <span className="ml-1 text-red-600">*</span> : null}
+        </label>
+        {action ? <div>{action}</div> : null}
+      </div>
       {children}
       {error ? (
         <span className="mt-1.5 flex items-center gap-1 text-xs text-red-600 font-medium">
@@ -1123,7 +1362,7 @@ function Field({
           {hint}
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 
@@ -1199,6 +1438,7 @@ function YesNoChoice({
 
 function WizardFooter({
   isEditing = false,
+  isSaving = false,
   onBack,
   onContinue,
   onSave,
@@ -1206,6 +1446,7 @@ function WizardFooter({
   step,
 }: {
   isEditing?: boolean;
+  isSaving?: boolean;
   onBack: () => void;
   onContinue: () => void;
   onSave?: () => void;
@@ -1224,7 +1465,8 @@ function WizardFooter({
         </Link>
       ) : (
         <button
-          className="inline-flex h-10 items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#0A3C2F] cursor-pointer"
+          className="inline-flex h-10 items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#0A3C2F] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSaving}
           onClick={onBack}
           type="button"
         >
@@ -1236,33 +1478,45 @@ function WizardFooter({
       <div className="flex items-center gap-2.5">
         {isEditing && step < 4 && (
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#006837] px-5 text-xs font-semibold text-white shadow-sm hover:bg-[#00552c] transition cursor-pointer"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#006837] px-5 text-xs font-semibold text-white shadow-sm hover:bg-[#00552c] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSaving}
             onClick={onSave}
             type="button"
           >
-            <Save aria-hidden="true" className="h-4 w-4" />
-            Save Changes
+            {isSaving ? (
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save aria-hidden="true" className="h-4 w-4" />
+            )}
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         )}
 
         <button
           className={
-            "inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-xs font-semibold shadow-sm transition cursor-pointer " +
+            "inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-xs font-semibold shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed " +
             (step === 4
               ? "bg-[#006837] text-white hover:bg-[#00552c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A3C2F]"
               : isEditing
                 ? "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A3C2F]"
                 : "bg-[#006837] text-white hover:bg-[#00552c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A3C2F]")
           }
+          disabled={isSaving}
           onClick={step === 4 ? onSave : onContinue}
           type="button"
         >
           {step === 4 ? (
             <>
-              <Save aria-hidden="true" className="h-4 w-4" />
-              {isEditing
-                ? "Save Activity Changes"
-                : "Save Procurement Activity"}
+              {isSaving ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save aria-hidden="true" className="h-4 w-4" />
+              )}
+              {isSaving
+                ? "Saving..."
+                : isEditing
+                  ? "Save Activity Changes"
+                  : "Save Procurement Activity"}
             </>
           ) : (
             <>
@@ -1312,6 +1566,7 @@ function KeyDetailsStep({
   category,
   form,
   methodOptions,
+  onCategoryChange,
   onChange,
   onMethodChange,
   project,
@@ -1320,6 +1575,7 @@ function KeyDetailsStep({
   category: ProcurementActivityCategory;
   form: ActivityFormState;
   methodOptions: ReturnType<typeof methodsForCategory>;
+  onCategoryChange?: (category: ProcurementActivityCategory) => void;
   onChange: UpdateActivityField;
   onMethodChange: (value: string) => void;
   project: OfficerProject;
@@ -1463,7 +1719,6 @@ function KeyDetailsStep({
               <option value="">Select qualification</option>
               <option>Prequalification</option>
               <option>Post-qualification</option>
-              <option>Not Applicable</option>
             </SelectControl>
           </Field>
         ) : null}
@@ -1491,17 +1746,8 @@ function KeyDetailsStep({
         ) : null}
 
         {form.method ? (
-          <Field
-            error={
-              attempted && !form.reviewType
-                ? "Select a review type."
-                : undefined
-            }
-            label="Review Type"
-            required
-          >
+          <Field label="Review Type">
             <SelectControl
-              hasError={attempted && !form.reviewType}
               onChange={(value) => onChange("reviewType", value)}
               value={form.reviewType}
             >
@@ -1549,17 +1795,8 @@ function KeyDetailsStep({
         ) : null}
 
         {!consultancy && form.method ? (
-          <Field
-            error={
-              attempted && !form.procurementDocumentType
-                ? "Select a procurement document type."
-                : undefined
-            }
-            label="Procurement Document Type"
-            required
-          >
+          <Field label="Procurement Document Type">
             <SelectControl
-              hasError={attempted && !form.procurementDocumentType}
               onChange={(value) => onChange("procurementDocumentType", value)}
               value={form.procurementDocumentType}
             >
@@ -1629,12 +1866,7 @@ function KeyDetailsStep({
         <div className="mt-5 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
           <YesNoChoice
             label="Requires UN Agency Contracting"
-            onChange={(value) => {
-              onChange("requiresUnAgency", value);
-              if (value && form.method !== "un-agency") {
-                onMethodChange("un-agency");
-              }
-            }}
+            onChange={(value) => onChange("requiresUnAgency", value)}
             value={form.requiresUnAgency}
           />
           <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md border border-slate-300 bg-[#fbfcfd] px-3">
@@ -1667,16 +1899,22 @@ function KeyDetailsStep({
   );
 }
 
-function RelatedInformationStep({
+export function RelatedInformationStep({
+  additionalReferences,
   attempted,
   context,
+  currencyOptions,
   financingAllocations,
   form,
   lots,
+  onAddAdditionalReference,
   onChange,
   onFinancingChange,
   onLotsChange,
+  onRemoveAdditionalReference,
+  onUpdateAdditionalReference,
 }: {
+  additionalReferences: AdditionalReference[];
   attempted: boolean;
   context: {
     activityReference: string;
@@ -1684,14 +1922,92 @@ function RelatedInformationStep({
     plan: ProcurementPlanSummary;
     project: OfficerProject;
   };
+  currencyOptions: { code: string; label: string }[];
   financingAllocations: Allocation[];
   form: ActivityFormState;
   lots: LotEntry[];
+  onAddAdditionalReference: () => void;
   onChange: UpdateActivityField;
   onFinancingChange: (value: Allocation[]) => void;
   onLotsChange: (value: LotEntry[]) => void;
+  onRemoveAdditionalReference: (id: string) => void;
+  onUpdateAdditionalReference: (
+    id: string,
+    field: "type" | "value",
+    value: string,
+  ) => void;
 }) {
   const { activityReference, category, project } = context;
+
+  const inheritedFundingSources = useMemo(() => {
+    const fromProject = getProjectFundingSources(project);
+    if (form.fundingSource && !fromProject.includes(form.fundingSource)) {
+      return [...fromProject, form.fundingSource];
+    }
+    return fromProject;
+  }, [project, form.fundingSource]);
+
+  useEffect(() => {
+    if (!form.fundingSource && inheritedFundingSources.length > 0) {
+      onChange("fundingSource", inheritedFundingSources[0]);
+    }
+  }, [form.fundingSource, inheritedFundingSources, onChange]);
+
+  const [showAddCurrencyModal, setShowAddCurrencyModal] = useState(false);
+  const [newCurrencyCode, setNewCurrencyCode] = useState("");
+  const [newCurrencyName, setNewCurrencyName] = useState("");
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
+  const [isSubmittingCurrency, setIsSubmittingCurrency] = useState(false);
+
+  async function handleAddCurrencySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanCode = newCurrencyCode.trim().toUpperCase();
+    const cleanName = newCurrencyName.trim();
+
+    if (!cleanCode) {
+      setCurrencyError("Please provide a currency code (e.g. GBP, CAD, JPY).");
+      return;
+    }
+
+    if (
+      currencyOptions.some(
+        (c) =>
+          c.code.trim().toUpperCase() === cleanCode ||
+          (cleanName &&
+            c.label.toLowerCase() ===
+              `${cleanCode} (${cleanName})`.toLowerCase()),
+      )
+    ) {
+      onChange("currency", cleanCode);
+      setShowAddCurrencyModal(false);
+      setNewCurrencyCode("");
+      setNewCurrencyName("");
+      setCurrencyError(null);
+      return;
+    }
+
+    setIsSubmittingCurrency(true);
+    setCurrencyError(null);
+
+    const displayLabel = cleanName ? `${cleanCode} (${cleanName})` : cleanCode;
+
+    try {
+      const created = await createLookup({
+        type: "CURRENCY",
+        code: cleanCode,
+        label: displayLabel,
+      });
+
+      onChange("currency", created.code);
+      setNewCurrencyCode("");
+      setNewCurrencyName("");
+      setShowAddCurrencyModal(false);
+    } catch (err: any) {
+      setCurrencyError(err?.message || "Failed to add currency.");
+    } finally {
+      setIsSubmittingCurrency(false);
+    }
+  }
 
   function updateLot(
     id: number,
@@ -1742,6 +2058,91 @@ function RelatedInformationStep({
                 className="h-3.5 w-3.5 text-slate-400"
               />
             </div>
+
+            {additionalReferences.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-600">
+                    Additional Reference(s)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onAddAdditionalReference}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0A3C2F] hover:text-[#06241c] hover:underline"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add Another
+                  </button>
+                </div>
+                {additionalReferences.map((ref) => (
+                  <div
+                    key={ref.id}
+                    className="rounded-md border border-slate-200 bg-slate-50/70 p-2 text-xs"
+                  >
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <select
+                        aria-label="Reference type"
+                        className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 focus:border-[#0A3C2F] focus:outline-none"
+                        onChange={(e) =>
+                          onUpdateAdditionalReference(
+                            ref.id,
+                            "type",
+                            e.target.value,
+                          )
+                        }
+                        value={ref.type}
+                      >
+                        <option value="STEP Reference">STEP Reference</option>
+                        <option value="Donor Reference">Donor Reference</option>
+                        <option value="Ministry / Agency Reference">
+                          Ministry / Agency Reference
+                        </option>
+                        <option value="External Reference">
+                          External Reference
+                        </option>
+                        <option value="Other Reference">Other Reference</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveAdditionalReference(ref.id)}
+                        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Remove reference"
+                        aria-label="Remove reference"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <input
+                      className={inputClasses + " bg-white font-mono text-xs"}
+                      onChange={(e) =>
+                        onUpdateAdditionalReference(
+                          ref.id,
+                          "value",
+                          e.target.value,
+                        )
+                      }
+                      placeholder={
+                        ref.type.toLowerCase().includes("step")
+                          ? "e.g. WB-STEP-00123"
+                          : "Enter reference number"
+                      }
+                      value={ref.value}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-2.5">
+                <button
+                  type="button"
+                  onClick={onAddAdditionalReference}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-[#0A3C2F] hover:bg-[#0A3C2F]/5 hover:text-[#0A3C2F] transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5 text-[#0A3C2F]" />
+                  Add Reference Number (e.g. STEP)
+                </button>
+              </div>
+            )}
           </Field>
 
           <div className="md:col-span-1 xl:col-span-2">
@@ -1815,13 +2216,25 @@ function RelatedInformationStep({
           >
             <SelectControl
               hasError={attempted && !form.currency}
-              onChange={(value) => onChange("currency", value)}
+              onChange={(value) => {
+                if (value === "__add_new_currency__") {
+                  setCurrencyError(null);
+                  setShowAddCurrencyModal(true);
+                  return;
+                }
+                onChange("currency", value);
+              }}
               value={form.currency}
             >
               <option value="">Select currency</option>
-              <option value="ETB">ETB - Ethiopian Birr</option>
-              <option value="USD">USD - United States Dollar</option>
-              <option value="UA">UA - Unit of Account</option>
+              {currencyOptions.map((cur) => (
+                <option key={cur.code} value={cur.code}>
+                  {cur.label}
+                </option>
+              ))}
+              <option value="__add_new_currency__">
+                + Add currency if not listed...
+              </option>
             </SelectControl>
           </Field>
 
@@ -1831,7 +2244,11 @@ function RelatedInformationStep({
                 ? "Select a funding source for this activity."
                 : undefined
             }
-            hint="Auto-inherited from project. Only change if this activity is funded by Government Treasury."
+            hint={
+              inheritedFundingSources.length > 1
+                ? "Auto-inherited from project. Select the funding source that finances this activity."
+                : "Auto-inherited from project."
+            }
             label="Funding Source"
             required
           >
@@ -1840,14 +2257,14 @@ function RelatedInformationStep({
               onChange={(value) => onChange("fundingSource", value)}
               value={form.fundingSource}
             >
-              <option value={project.fundingSource}>
-                {project.fundingSource} (Project Donor)
-              </option>
-              {project.fundingSource !== "Treasury" ? (
-                <option value="Treasury">
-                  Treasury (Government Counterpart)
+              {inheritedFundingSources.length > 1 && !form.fundingSource && (
+                <option value="">Select funding source</option>
+              )}
+              {inheritedFundingSources.map((source) => (
+                <option key={source} value={source}>
+                  {source}
                 </option>
-              ) : null}
+              ))}
             </SelectControl>
           </Field>
 
@@ -2046,6 +2463,117 @@ function RelatedInformationStep({
           </Field>
         </div>
       </FormSection>
+
+      {showAddCurrencyModal && (
+        <div
+          aria-labelledby="add-currency-title"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3
+                id="add-currency-title"
+                className="text-sm font-semibold text-slate-900 flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4 text-[#0A3C2F]" />
+                Add New Currency
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isSubmittingCurrency) {
+                    setShowAddCurrencyModal(false);
+                    setCurrencyError(null);
+                  }
+                }}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCurrencySubmit} className="mt-4 space-y-4">
+              {currencyError && (
+                <div
+                  role="alert"
+                  className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs text-red-700"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span>{currencyError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Currency Code (ISO) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  maxLength={10}
+                  placeholder="e.g. GBP, CAD, JPY, CHF"
+                  value={newCurrencyCode}
+                  onChange={(e) =>
+                    setNewCurrencyCode(e.target.value.toUpperCase())
+                  }
+                  className={inputClasses + " font-mono uppercase"}
+                  disabled={isSubmittingCurrency}
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Standard 3-letter ISO code or recognized currency symbol.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Display Name / Description{" "}
+                  <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. British Pound Sterling"
+                  value={newCurrencyName}
+                  onChange={(e) => setNewCurrencyName(e.target.value)}
+                  className={inputClasses}
+                  disabled={isSubmittingCurrency}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCurrencyModal(false);
+                    setCurrencyError(null);
+                  }}
+                  disabled={isSubmittingCurrency}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCurrency || !newCurrencyCode.trim()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#006837] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#00552c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isSubmittingCurrency ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Add & Select Currency"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
