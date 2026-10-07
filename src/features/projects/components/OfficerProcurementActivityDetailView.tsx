@@ -15,6 +15,7 @@ import {
   MapPin,
   Route,
   Edit3,
+  FileSignature,
   History,
   Clock,
 } from "lucide-react";
@@ -22,7 +23,10 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { EditActivityModal } from "@/features/activities/components/EditActivityModal";
 import { VersionHistoryModal } from "@/features/plans/components/VersionHistoryModal";
-import { PhaseDelayBreakdownModal } from "./PhaseDelayBreakdownModal";
+import {
+  PhaseDelayBreakdownModal,
+  calculateRealActivityDelay,
+} from "./PhaseDelayBreakdownModal";
 import { getPlanVersionHistory } from "@/features/plans/data/planRevisions";
 
 interface DetailValue {
@@ -290,6 +294,7 @@ export function OfficerProcurementActivityDetailView({
               plan.status === "Returned" ||
               plan.status === "Returned for Revision") && (
               <Link
+                aria-label={`Edit activity ${activity.reference}`}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-[#0A3C2F] hover:bg-emerald-50 hover:text-[#0A3C2F] transition"
                 href={
                   "/workspace/projects?project=" +
@@ -300,11 +305,29 @@ export function OfficerProcurementActivityDetailView({
                   encodeURIComponent(activity.reference) +
                   "&mode=edit-activity"
                 }
+                title={`Edit activity ${activity.reference}`}
               >
                 <Edit3 className="h-3.5 w-3.5 text-slate-500" />
-                Revise Activity
+                Edit
               </Link>
             )}
+
+            <Link
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[#00552c] bg-[#006837] px-3.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#00522c] transition"
+              href={
+                "/workspace/contracts?mode=register&project=" +
+                encodeURIComponent(project.code) +
+                "&plan=" +
+                encodeURIComponent(plan.reference) +
+                "&activity=" +
+                encodeURIComponent(activity.reference) +
+                "&from=projects"
+              }
+              title={`Register contract for ${activity.reference}`}
+            >
+              <FileSignature className="h-3.5 w-3.5" />
+              Register Contract
+            </Link>
 
             <Link
               className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0A3C2F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A3C2F]"
@@ -371,6 +394,40 @@ export function OfficerProcurementActivityDetailView({
         <div className="mt-4">
           <DetailGrid values={relatedInformation} />
         </div>
+
+        {details?.fundingContributions &&
+        details.fundingContributions.length > 0 ? (
+          <div className="mt-4">
+            <CompactTable
+              columns={[
+                "Funding Source",
+                "Native Fund Amount",
+                "Conversion Rate",
+                `Equivalent (${form?.currency || "ETB"})`,
+              ]}
+              rows={details.fundingContributions.map((contrib) => {
+                const targetCur = form?.currency || "ETB";
+                const isSame =
+                  contrib.currency?.trim().toUpperCase() ===
+                  targetCur.trim().toUpperCase();
+                const rateNum = Number(contrib.exchangeRate);
+                const effectiveRate = isSame ? 1 : rateNum > 0 ? rateNum : 1;
+                const equiv = (Number(contrib.amount) || 0) * effectiveRate;
+                return [
+                  contrib.fundingSource,
+                  `${formatAmount(Number(contrib.amount))} ${contrib.currency}`,
+                  isSame
+                    ? "1.00 (Native)"
+                    : rateNum > 0
+                      ? `1 ${contrib.currency} = ${rateNum} ${targetCur}`
+                      : "1.00 (1:1 applied)",
+                  `${formatAmount(equiv)} ${targetCur}`,
+                ];
+              })}
+              title="Funding Source Contributions & Currencies"
+            />
+          </div>
+        ) : null}
 
         {details?.lots.length ? (
           <CompactTable
@@ -462,6 +519,10 @@ export function OfficerProcurementActivityDetailView({
         planId={plan.id || plan.reference}
         planName={plan.name}
         projectCode={project.code}
+        plan={plan}
+        project={project}
+        activity={activity}
+        activities={details?.roadmap ? [activity] : []}
       />
 
       {isEditModalOpen && (
@@ -483,22 +544,43 @@ export function OfficerProcurementActivityDetailView({
       <PhaseDelayBreakdownModal
         isOpen={isDelayModalOpen}
         onClose={() => setIsDelayModalOpen(false)}
-        data={{
-          reference: activity.reference,
-          title: activity.description || activity.reference,
-          category: activity.category,
-          method: activity.method,
-          totalDelayDays:
-            (activity as any).delayDays || (activity as any).daysOverdue || 12,
-          stages:
+        data={(() => {
+          const actStages =
             (activity as any).stages ||
-            (details as any)?.roadmapStages ||
-            (details as any)?.stages ||
-            [],
-          activityHref: trackerHref,
-          planReference: plan.reference,
-          projectCode: project.code,
-        }}
+            details?.roadmap ||
+            (activity as any).roadmap ||
+            [];
+          const rawDelay =
+            (activity as any).delayDays !== undefined &&
+            (activity as any).delayDays !== null
+              ? Number((activity as any).delayDays)
+              : (activity as any).daysOverdue !== undefined &&
+                  (activity as any).daysOverdue !== null
+                ? Number((activity as any).daysOverdue)
+                : calculateRealActivityDelay(actStages);
+
+          const resolvedCat =
+            activity.category ||
+            plan.category ||
+            (details?.form as any)?.category;
+          const resolvedMeth =
+            activity.method ||
+            details?.form?.method ||
+            (activity as any).procurementMethod?.label ||
+            (activity as any).procurementMethod;
+
+          return {
+            reference: activity.reference,
+            title: activity.description || activity.reference,
+            category: resolvedCat,
+            method: resolvedMeth,
+            totalDelayDays: rawDelay,
+            stages: actStages,
+            activityHref: trackerHref,
+            planReference: plan.reference,
+            projectCode: project.code,
+          };
+        })()}
       />
     </div>
   );

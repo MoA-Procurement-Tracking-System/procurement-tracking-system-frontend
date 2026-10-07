@@ -64,40 +64,44 @@ describe("CreateProcurementActivityView", () => {
   });
 
   it("filters procurement methods by the inherited plan category", () => {
-    const goodsMethods = methodsForCategory("Goods").map(
-      (method) => method.key,
-    );
-    const worksMethods = methodsForCategory("Works").map(
-      (method) => method.key,
-    );
-    const consultancyMethods = methodsForCategory("Consultancy Services").map(
-      (method) => method.key,
+    const goodsMethods = methodsForCategory("Goods").map((m) => m.label);
+    const worksMethods = methodsForCategory("Works").map((m) => m.label);
+    const nonConsultingMethods = methodsForCategory(
+      "Non-Consulting Services",
+    ).map((m) => m.label);
+    const consultancyMethods = methodsForCategory("Consulting Services").map(
+      (m) => m.label,
     );
 
-    expect(goodsMethods).toContain("rfb-international");
-    expect(goodsMethods).toContain("rfq-shopping");
-    expect(goodsMethods).not.toContain("qcbs");
+    expect(goodsMethods).toEqual([
+      "Request for Bids (RFB)",
+      "Request for Quotations (RFQ)",
+      "Direct Selection, Request",
+      "Request for Proposals (RFP)",
+    ]);
 
-    expect(worksMethods).toContain("rfb-international");
-    expect(worksMethods).toContain("rfb-national");
-    expect(worksMethods).toContain("rfq-shopping");
-    expect(worksMethods).not.toContain("qcbs");
-    expect(worksMethods).not.toContain("cqs");
-    expect(worksMethods).not.toContain("indv");
-    expect(worksMethods).not.toContain("sss");
-    expect(worksMethods).not.toContain("pm-sss");
+    expect(worksMethods).toEqual([
+      "Request for Bids (RFB)",
+      "Request for Quotations (RFQ)",
+      "Direct Selection, Request",
+      "Request for Proposals (RFP)",
+    ]);
 
-    expect(consultancyMethods).toContain("qcbs");
-    expect(consultancyMethods).toContain("indv");
-    expect(consultancyMethods).not.toContain("rfb-national");
-    expect(consultancyMethods).not.toContain("rfb-international");
+    expect(nonConsultingMethods).toEqual([
+      "Request for Bids (RFB)",
+      "Request for Quotations (RFQ)",
+      "Direct Selection, Request",
+      "Request for Proposals (RFP)",
+    ]);
 
-    const allOptions = methodsForCategory("Goods");
-    const unAgencyOption = allOptions.find((opt) => opt.key === "un-agency");
-    expect(unAgencyOption?.label).toBe("UN Agency");
-    expect(allOptions.map((opt) => opt.label)).not.toContain(
-      "UN Agency / UNOPS Direct",
-    );
+    expect(consultancyMethods).toEqual([
+      "Quality- and Cost-Based Selection (QCBS)",
+      "Fixed Budget Selection (FBS)",
+      "Least-Cost Selection (LCS)",
+      "Quality-Based Selection (QBS)",
+      "Consultant's Qualifications Selection (CQS)",
+      "Individual Consultant Selection (INDV)",
+    ]);
   });
 
   it("generates method-specific roadmap stages and an activity reference", () => {
@@ -107,6 +111,32 @@ describe("CreateProcurementActivityView", () => {
     expect(rfbRoadmap[0]?.name).toBe("Draft Pre-qualification Documents");
     expect(rfbRoadmap.at(-1)?.name).toBe("Contract Termination");
     expect(consultancyRoadmap).toHaveLength(15);
+    const individualRoadmap = roadmapForMethod("indv");
+    expect(
+      individualRoadmap.some((s) => s.name === "Invitation to Consultant"),
+    ).toBe(true);
+    expect(
+      individualRoadmap.some((s) => s.name === "Invitation to Bidders"),
+    ).toBe(false);
+
+    const directConsultancyRoadmap = roadmapForMethod(
+      "direct",
+      "Consultancy Services",
+    );
+    expect(
+      directConsultancyRoadmap.some(
+        (s) => s.name === "Invitation to Consultant",
+      ),
+    ).toBe(true);
+    expect(
+      directConsultancyRoadmap.some((s) => s.name === "Invitation to Bidders"),
+    ).toBe(false);
+
+    const directWorksRoadmap = roadmapForMethod("direct", "Works");
+    expect(
+      directWorksRoadmap.some((s) => s.name === "Invitation to Bidders"),
+    ).toBe(true);
+
     expect(
       activityReferenceFor(project, plan, "Works", "rfb-international", 123456),
     ).toBe("ET-MoA-123457-CW-RFB");
@@ -144,7 +174,7 @@ describe("CreateProcurementActivityView", () => {
     );
 
     // Header and banner indicate edit mode
-    expect(markup).toContain("Revise Procurement Activity");
+    expect(markup).toContain("Edit Procurement Activity");
     expect(markup).toContain("Editing Activity");
     expect(markup).toContain("ET-MOA-100200-GO-RFB");
     expect(markup).toContain("Save Changes");
@@ -605,6 +635,82 @@ describe("CreateProcurementActivityView", () => {
     expect(markup).not.toContain("Treasury");
   });
 
+  it("renders Exchange Rate (to ETB) field when a foreign currency is selected", () => {
+    const multiSourceProject: OfficerProject = {
+      ...project,
+      fundingSource: "World Bank (IDA)",
+    };
+
+    const dummyContext = {
+      activityReference: "ET-MoA-000001-GO-RFB",
+      category: "Goods" as const,
+      plan: {
+        ...plan,
+        name: "Test Plan",
+        category: "Goods" as const,
+      },
+      project: multiSourceProject,
+    };
+
+    const foreignCurrencyForm = {
+      activityDescription: "Test Description",
+      classificationCode: "",
+      comments: "",
+      commercialPractices: "",
+      contractType: "",
+      currency: "USD",
+      domesticPreference: "",
+      estimatedAmount: "250000",
+      evaluationOptionCode: "",
+      exchangeRate: "125",
+      fundingSource: "World Bank (IDA)",
+      highRiskCode: "",
+      inProcess: false,
+      invitationReference: "",
+      latitude: "",
+      location: "",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "",
+      method: "rfb-national",
+      oversightClassification: "",
+      pricingBasis: "",
+      procurementDocumentType: "",
+      procurementProcess: "",
+      qualificationApproach: "",
+      requiresUnAgency: false,
+      reviewType: "",
+      scopeNotes: "",
+      specificMethod: "",
+      subcomponent: "",
+    };
+
+    const markup = renderToStaticMarkup(
+      <RelatedInformationStep
+        additionalReferences={[]}
+        attempted={false}
+        context={dummyContext}
+        currencyOptions={[
+          { code: "ETB", label: "ETB (Ethiopian Birr)" },
+          { code: "USD", label: "USD ($)" },
+        ]}
+        financingAllocations={[]}
+        form={foreignCurrencyForm}
+        lots={[]}
+        onAddAdditionalReference={() => {}}
+        onChange={() => {}}
+        onFinancingChange={() => {}}
+        onLotsChange={() => {}}
+        onRemoveAdditionalReference={() => {}}
+        onUpdateAdditionalReference={() => {}}
+      />,
+    );
+
+    expect(markup).toContain("Exchange Rate (to ETB)");
+    expect(markup).toContain("125");
+    expect(markup).toContain("ETB equivalent");
+  });
+
   it("renders in edit mode and preserves custom activity data when editing", () => {
     const activityToEdit: ProcurementActivitySummary = {
       category: "Goods",
@@ -694,7 +800,7 @@ describe("CreateProcurementActivityView", () => {
     // Header and editing banner
     expect(markup).toContain("Editing Activity:");
     expect(markup).toContain("ET-MOA-456789-GO-RFB");
-    expect(markup).toContain("Revise Procurement Activity");
+    expect(markup).toContain("Edit Procurement Activity");
     expect(markup).toContain("Save Changes");
 
     // Step 1 controls initialized from activity
@@ -740,5 +846,306 @@ describe("CreateProcurementActivityView", () => {
     expect(step2Markup).toContain("750000");
     expect(step2Markup).toContain("USD");
     expect(step2Markup).toContain("World Bank (IDA)");
+  });
+
+  it("preserves all entered and selected data during edit mode", () => {
+    const fullActivity: ProcurementActivitySummary = {
+      category: "Works",
+      currentStage: "Preparation of Specification",
+      description: "Construction of Irrigation Canal Phase 1",
+      estimatedAmount: 12_500_000,
+      currency: "ETB",
+      method: "RFB - National",
+      reference: "ET-MOA-CW-001",
+      status: "Draft",
+      fundingSource: "World Bank",
+      details: {
+        form: {
+          activityDescription: "Construction of Irrigation Canal Phase 1",
+          classificationCode: "72141103",
+          comments: "High priority works package.",
+          contractType: "Lump Sum",
+          currency: "ETB",
+          domesticPreference: "Yes",
+          estimatedAmount: "12500000",
+          evaluationOptionCode: "",
+          fundingSource: "World Bank",
+          highRiskCode: "",
+          inProcess: true,
+          invitationReference: "MOA/WORKS/2026/01",
+          latitude: "9.14",
+          location: "Oromia",
+          longitude: "38.75",
+          lotRequired: true,
+          marketApproach: "Open - National",
+          method: "rfb-national",
+          oversightClassification: "",
+          pricingBasis: "Bill of Quantities (BOQ)",
+          procurementDocumentType: "Request for Bids - Small Works SPD",
+          procurementProcess: "Single Stage One Envelope",
+          qualificationApproach: "Post-qualification",
+          requiresUnAgency: false,
+          reviewType: "Prior Review",
+          scopeNotes: "Includes secondary canals and intake gates.",
+          specificMethod: "National Competitive Bidding",
+          subcomponent: "Subcomponent 1.2",
+        },
+        additionalReferences: [
+          { id: "1", type: "STEP Reference", value: "WB-STEP-998877" },
+        ],
+        componentAllocations: [
+          { id: "Irrigation Infrastructure", percent: "100", selected: true },
+        ],
+        financingAllocations: [
+          { id: "IDA-6200", percent: "100", selected: true },
+        ],
+        lots: [
+          {
+            id: 1,
+            number: "1",
+            description: "Main Canal Section",
+            amount: "7500000",
+          },
+          {
+            id: 2,
+            number: "2",
+            description: "Secondary Canal Section",
+            amount: "5000000",
+          },
+        ],
+        roadmap: [
+          {
+            name: "Preparation of Specification",
+            days: "14",
+            gregorianDate: "2026-08-01",
+            ethiopianDate: "25-Hamle-2018",
+            notApplicable: false,
+            allowNotApplicable: false,
+            remarks: "Specs ready",
+            status: "Not Started",
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <CreateProcurementActivityView
+        initialActivity={fullActivity}
+        plan={{ ...plan, category: "Works" }}
+        project={project}
+      />,
+    );
+
+    // Verify all key labels, banner, and values remain
+    expect(markup).toContain("Edit Procurement Activity");
+    expect(markup).toContain("ET-MOA-CW-001");
+    expect(markup).toContain("Save Changes");
+    expect(markup).toContain("Open - National");
+    expect(markup).toContain("Post-qualification");
+    expect(markup).toContain("Prior Review");
+    expect(markup).toContain("Single Stage One Envelope");
+  });
+
+  it("renders single funding source mode by default with budget structure switcher", () => {
+    const dummyContext = {
+      activityReference: "ET-MoA-000001-GO-RFB",
+      category: "Goods" as const,
+      plan,
+      project,
+    };
+    const dummyForm = {
+      activityDescription: "Supply of tractors",
+      classificationCode: "",
+      comments: "",
+      contractType: "",
+      currency: "ETB",
+      domesticPreference: "",
+      estimatedAmount: "5800000",
+      evaluationOptionCode: "",
+      fundingSource: "Primary Loan/Grant Allocation",
+      highRiskCode: "",
+      inProcess: false,
+      invitationReference: "",
+      latitude: "",
+      location: "",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "",
+      method: "rfb-national",
+      oversightClassification: "",
+      pricingBasis: "",
+      procurementDocumentType: "",
+      procurementProcess: "",
+      qualificationApproach: "",
+      requiresUnAgency: false,
+      reviewType: "",
+      scopeNotes: "",
+      specificMethod: "",
+      subcomponent: "",
+      hasMultiFunding: false,
+      fundingContributions: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      <RelatedInformationStep
+        additionalReferences={[]}
+        attempted={false}
+        context={dummyContext}
+        currencyOptions={[{ code: "ETB", label: "ETB - Ethiopian Birr" }]}
+        financingAllocations={[]}
+        form={dummyForm}
+        lots={[]}
+        onAddAdditionalReference={() => {}}
+        onChange={() => {}}
+        onFinancingChange={() => {}}
+        onLotsChange={() => {}}
+        onRemoveAdditionalReference={() => {}}
+        onUpdateAdditionalReference={() => {}}
+      />,
+    );
+
+    expect(markup).toContain("Budget &amp; Funding Structure");
+    expect(markup).toContain("Single Funding Source");
+    expect(markup).toContain("Multiple Sources (Co-Financing)");
+    expect(markup).toContain("Primary Loan/Grant Allocation");
+    expect(markup).toContain("5800000");
+  });
+
+  it("renders multi-source funding breakdown with native currencies and computes total equivalent based on conversion rates", () => {
+    const dummyContext = {
+      activityReference: "ET-MoA-000002-GO-RFB",
+      category: "Goods" as const,
+      plan,
+      project,
+    };
+    const multiFundingForm = {
+      activityDescription: "Heavy Machinery Procurement",
+      classificationCode: "",
+      comments: "",
+      contractType: "",
+      currency: "ETB",
+      domesticPreference: "",
+      estimatedAmount: "5800000",
+      evaluationOptionCode: "",
+      fundingSource: "World Bank IDA Grant / Government Counterpart",
+      highRiskCode: "",
+      inProcess: false,
+      invitationReference: "",
+      latitude: "",
+      location: "",
+      longitude: "",
+      lotRequired: false,
+      marketApproach: "",
+      method: "rfb-national",
+      oversightClassification: "",
+      pricingBasis: "",
+      procurementDocumentType: "",
+      procurementProcess: "",
+      qualificationApproach: "",
+      requiresUnAgency: false,
+      reviewType: "",
+      scopeNotes: "",
+      specificMethod: "",
+      subcomponent: "",
+      hasMultiFunding: true,
+      fundingContributions: [
+        {
+          id: "c-1",
+          fundingSource: "World Bank IDA Grant",
+          amount: "40000",
+          currency: "USD",
+          exchangeRate: "125",
+        },
+        {
+          id: "c-2",
+          fundingSource: "Government Counterpart",
+          amount: "800000",
+          currency: "ETB",
+          exchangeRate: "1",
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <RelatedInformationStep
+        additionalReferences={[]}
+        attempted={false}
+        context={dummyContext}
+        currencyOptions={[
+          { code: "ETB", label: "ETB - Ethiopian Birr" },
+          { code: "USD", label: "USD - US Dollar" },
+        ]}
+        financingAllocations={[]}
+        form={multiFundingForm}
+        lots={[]}
+        onAddAdditionalReference={() => {}}
+        onChange={() => {}}
+        onFinancingChange={() => {}}
+        onLotsChange={() => {}}
+        onRemoveAdditionalReference={() => {}}
+        onUpdateAdditionalReference={() => {}}
+      />,
+    );
+
+    // Verify multi-funding breakdown header and auto-total badge
+    expect(markup).toContain("Funding Sources &amp; Native Currency Breakdown");
+    expect(markup).toContain("Auto-Total");
+    expect(markup).toContain("Total Computed Activity Budget");
+
+    // Verify native amounts and currencies
+    expect(markup).toContain("World Bank IDA Grant");
+    expect(markup).toContain("Government Counterpart");
+    expect(markup).toContain("40,000.00 USD");
+    expect(markup).toContain("800,000.00 ETB");
+
+    // Verify computed equivalents:
+    // 40,000 USD * 125 = 5,000,000.00 ETB
+    // 800,000 ETB * 1 = 800,000.00 ETB
+    // Total = 5,800,000.00 ETB
+    expect(markup).toContain("5,000,000.00 ETB");
+    expect(markup).toContain("800,000.00 ETB");
+    expect(markup).toContain("5,800,000.00");
+  });
+
+  it("renders full supplementary submission flow with parent plan context and mandatory justification card when isAdditionalPlan is true", () => {
+    const markup = renderToStaticMarkup(
+      <CreateProcurementActivityView
+        isAdditionalPlan={true}
+        parentPlan={plan}
+        plan={plan}
+        project={project}
+      />,
+    );
+
+    // Verify full non-modal page headers and supplementary badge
+    expect(markup).toContain(
+      "Create Additional Procurement Plan &amp; Activity",
+    );
+    expect(markup).toContain("Supplementary Submission");
+    expect(markup).toContain(
+      "Submit an additional procurement activity for this approved plan along with mandatory justification.",
+    );
+
+    // Verify parent plan context banner
+    expect(markup).toContain("Approved Parent Plan:");
+    expect(markup).toContain(plan.name);
+    expect(markup).toContain(plan.reference);
+    expect(markup).toContain(plan.budgetYear);
+
+    // Verify mandatory justification reason section
+    expect(markup).toContain(
+      "Justification: Why was this activity not submitted with the original plan / batch?",
+    );
+    expect(markup).toContain("Visible to Director &amp; Committee");
+    expect(markup).toContain(
+      "This explanation will be prominently displayed on the Director and Endorsement Committee review boards.",
+    );
+    expect(markup).toContain("0 chars (min 10)");
+
+    // Verify it follows the exact same 4-step activity structure
+    expect(markup).toContain("Key Details");
+    expect(markup).toContain("Related Information");
+    expect(markup).toContain("Additional Details");
+    expect(markup).toContain("Roadmap");
   });
 });

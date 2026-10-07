@@ -19,6 +19,10 @@ export {
   formatPlanReference,
   formatReturnedPlanDetail,
   formatDelayedActivityAlert,
+  mapOfficerProjectsList,
+  extractLiveDelayedActivities,
+  calculateOverviewStatusItems,
+  generateDynamicAlerts,
 } from "./officerCalculations";
 
 export function OfficerDashboard({ user }: { user: AuthUser }) {
@@ -32,7 +36,9 @@ export function OfficerDashboard({ user }: { user: AuthUser }) {
       reference: alert.referenceLine,
       title:
         alert.activityDescription || alert.detailLine || alert.referenceLine,
-      totalDelayDays: alert.delayDays || 1,
+      category: alert.category,
+      method: alert.method,
+      totalDelayDays: alert.delayDays ?? 0,
       stages: alert.stages || [],
       activityHref: alert.href,
     });

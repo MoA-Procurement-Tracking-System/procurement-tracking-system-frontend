@@ -32,6 +32,7 @@ export default async function WorkspaceSectionPage({
     contract?: string | string[];
     from?: string | string[];
     mode?: string | string[];
+    origin?: string | string[];
     plan?: string | string[];
     planId?: string | string[];
     project?: string | string[];
@@ -61,6 +62,7 @@ export default async function WorkspaceSectionPage({
     const mode =
       query.mode === "create-plan" ||
       query.mode === "create-activity" ||
+      query.mode === "create-additional-activity" ||
       query.mode === "edit-plan" ||
       query.mode === "edit-activity"
         ? query.mode
@@ -159,12 +161,18 @@ export default async function WorkspaceSectionPage({
   if (section === "contracts" && userRole === "OFFICER") {
     const selectedContractNumber =
       typeof query.contract === "string" ? query.contract : undefined;
+    const fromOpen = query.from === "open";
     const fromTracker =
-      query.from === "tracker" || query.from === "activity-tracker";
+      query.from === "tracker" ||
+      query.from === "activity-tracker" ||
+      query.origin === "tracker";
+    const fromProjects = query.from === "projects" || query.from === "plan";
     const mode =
       query.mode === "register" ||
       query.mode === "add-payment" ||
-      query.mode === "add-amendment"
+      query.mode === "add-amendment" ||
+      query.mode === "open" ||
+      query.mode === "view"
         ? query.mode
         : undefined;
     const initialActivityReference =
@@ -175,6 +183,8 @@ export default async function WorkspaceSectionPage({
       typeof query.plan === "string" ? query.plan : undefined;
     return (
       <OfficerContractsView
+        fromOpen={fromOpen}
+        fromProjects={fromProjects}
         fromTracker={fromTracker}
         initialActivityReference={initialActivityReference}
         initialPlanReference={initialPlanReference}
