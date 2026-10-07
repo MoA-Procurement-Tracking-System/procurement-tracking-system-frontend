@@ -250,4 +250,77 @@ describe("OfficerProcurementActivityDetailView", () => {
 
     expect(markup).toContain("Version History");
   });
+
+  it("renders Register Contract button in the activity detail header", () => {
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementActivityDetailView
+        activity={detailedActivity}
+        plan={plan}
+        project={project}
+      />,
+    );
+
+    expect(markup).toContain("Register Contract");
+    expect(markup).toContain(
+      "/workspace/contracts?mode=register&amp;project=PRJ-24-001&amp;plan=PP-DRIVE-2016-01&amp;activity=" +
+        encodeURIComponent(detailedActivity.reference) +
+        "&amp;from=projects",
+    );
+  });
+
+  it("renders Edit button in the activity detail header for draft/returned plans", () => {
+    const draftPlan = { ...plan, status: "Draft" as const };
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementActivityDetailView
+        activity={detailedActivity}
+        plan={draftPlan}
+        project={project}
+      />,
+    );
+
+    expect(markup).toContain("Edit");
+    expect(markup).toContain("&amp;mode=edit-activity");
+    expect(markup).not.toContain("Revise Activity");
+  });
+
+  it("renders multi-source funding contributions table when present", () => {
+    const activityWithMultiFunding: ProcurementActivitySummary = {
+      ...detailedActivity,
+      details: {
+        ...detailedActivity.details!,
+        fundingContributions: [
+          {
+            id: "c-1",
+            fundingSource: "World Bank IDA Grant",
+            amount: "40000",
+            currency: "USD",
+            exchangeRate: "125",
+          },
+          {
+            id: "c-2",
+            fundingSource: "Government Counterpart",
+            amount: "800000",
+            currency: "ETB",
+            exchangeRate: "1",
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <OfficerProcurementActivityDetailView
+        activity={activityWithMultiFunding}
+        plan={plan}
+        project={project}
+      />,
+    );
+
+    expect(markup).toContain("Funding Source Contributions &amp; Currencies");
+    expect(markup).toContain("World Bank IDA Grant");
+    expect(markup).toContain("Government Counterpart");
+    expect(markup).toContain("40,000.00 USD");
+    expect(markup).toContain("800,000.00 ETB");
+    expect(markup).toContain("1 USD = 125 ETB");
+    expect(markup).toContain("5,000,000.00 ETB");
+  });
 });
